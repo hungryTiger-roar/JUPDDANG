@@ -1,6 +1,7 @@
 # Today I Learnd
 
 ## 2026-01-12
+---
 ### 의사결정 사항
 * Position1 : Front-end 
   * Stack : React, Figma (Mobile : React Native)

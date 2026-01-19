@@ -1,0 +1,37 @@
+# OS 관련
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# IDE 공통
+.idea/
+*.iml
+*.iws
+*.ipr
+.vscode/
+*.swp
+*.swo
+*~
+
+# 환경 변수 및 설정 파일
+.env
+.env.local
+.env.*.local
+*.local
+
+# 로그 파일
+*.log
+logs/
+
+# Docker 관련
+docker-compose.override.yml
+
+# AWS 관련
+.aws/
+*.pem
+*.key
+
+# 기타
+.DS_Store
+*.bak
+*.tmp

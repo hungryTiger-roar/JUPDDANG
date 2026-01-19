@@ -1,0 +1,84 @@
+# Gradle 빌드 관련
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+# Maven 빌드 관련 (혹시 Maven 사용 시)
+target/
+!.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+# IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+!**/src/main/**/out/
+!**/src/test/**/out/
+
+# Eclipse
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+bin/
+!**/src/main/**/bin/
+!**/src/test/**/bin/
+
+# NetBeans
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+
+# VS Code
+.vscode/
+
+# Java 컴파일 파일
+*.class
+
+# 패키지 파일
+*.jar
+*.war
+*.nar
+*.ear
+*.zip
+*.tar.gz
+*.rar
+
+# JVM Crash logs
+hs_err_pid*
+replay_pid*
+
+# Spring Boot 관련
+application-local.yml
+application-local.properties
+application-dev.yml
+application-prod.yml
+
+# 데이터베이스 관련
+*.db
+*.sqlite
+*.sql.gz
+
+# Docker 관련
+*.env.docker
+
+# 로그 파일
+logs/
+*.log
+
+# PostgreSQL 백업 파일
+*.dump
+*.backup
+
+# AWS 관련
+.elasticbeanstalk/

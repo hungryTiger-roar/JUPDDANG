@@ -1,4 +1,4 @@
-package com.ssafy.jupddang.zupddang
+package com.ssafy.zupddang.project
 
 import io.flutter.embedding.android.FlutterActivity
 

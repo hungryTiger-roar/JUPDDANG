@@ -35,7 +35,8 @@
         - JWT Token
     - 인증 객체(Authentication) 생성 시도
 - **Authentication Manager**
-    - ff
+    - 인증 요청을 받아서 적절한 provider에게 위임
+    - 최종적으로 인증 성공 / 실패 결정
 - **Authentication Provider**
     - 실제 검증 로직 수행
         - 비밀번호 비교

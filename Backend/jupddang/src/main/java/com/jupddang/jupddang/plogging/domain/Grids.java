@@ -1,9 +1,7 @@
 package com.jupddang.jupddang.plogging.domain;
 
-
 import jakarta.persistence.*;
 import lombok.AccessLevel;
-import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.CreatedDate;
@@ -13,22 +11,17 @@ import java.time.LocalDateTime;
 
 @Entity
 @Getter
-@Table(name = "ploggings")
+@Table(name = "grids")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @EntityListeners(AuditingEntityListener.class) // 생성/수정 시간 자동화
-public class Plogging {
+public class Grids {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "plogging_id")
-    private Long id;
+    @Column(name = "grid_id")
+    private String id;
 
-    @Column(nullable = true)
-    private Long userId;
+    @CreatedDate
+    @Column(updatable = false)
+    private LocalDateTime startedAt;
 
-    // 이동 거리
-    private Double distance;
-
-    // 소요 시간
-    private Integer times;
 }

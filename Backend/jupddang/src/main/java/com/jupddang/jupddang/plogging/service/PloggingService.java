@@ -1,18 +1,12 @@
 package com.jupddang.jupddang.plogging.service;
 
 
+import com.jupddang.jupddang.plogging.dto.request.PloggingEndRequest;
+import com.jupddang.jupddang.plogging.dto.response.PloggingResultResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-@Service
-@RequiredArgsConstructor
-public class PloggingService {
-
-//    private final PloggingRepository ploggingRepository;
-
-
-
-    public void endPlogging() {
-
-    }
+public interface PloggingService {
+    PloggingResultResponse endPlogging(Long userId, PloggingEndRequest request);
+    void test();
 }

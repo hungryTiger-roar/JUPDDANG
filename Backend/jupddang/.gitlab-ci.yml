@@ -1,0 +1,54 @@
+variables:
+  APP_NAME: "my-service"
+  DEV_PORT: 14000
+  PROD_PORT: 13000
+
+stages:
+  - build
+  - deploy_dev  # Dev 배포 단계
+  - deploy_prod # Prod 배포 단계
+
+# ==========================================
+# 1. CI: 빌드 (자동 실행)
+# ==========================================
+build_image:
+  stage: build
+  tags:
+    - jupddang
+  script:
+    - echo "🏗️ 이미지 빌드 중..."
+    - docker build -t $APP_NAME:$CI_COMMIT_SHA .
+    # 빌드는 언제나 자동으로 실행됨 (기본값)
+
+# ==========================================
+# 2. CD (Dev): 반수동 배포 (버튼 눌러야 실행)
+# ==========================================
+deploy_to_dev:
+  stage: deploy_dev
+  tags:
+    - jupddang
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "dev"' # dev 브랜치일 때만
+      when: manual                     # <--- [핵심] 수동 버튼(Play)을 눌러야 실행됨!
+      allow_failure: false             # (선택) 버튼 안 누르면 파이프라인이 '완료'되지 않고 '대기' 상태로 남음
+  script:
+    - echo "🚧 [수동 트리거] Dev 서버 배포 시작..."
+    - docker rm -f ${APP_NAME}-dev || true
+    - docker run -d -p 127.0.0.1:$DEV_PORT:80 --name ${APP_NAME}-dev $APP_NAME:$CI_COMMIT_SHA
+    - echo "✅ Dev 배포 완료 (Port: $DEV_PORT)"
+
+# ==========================================
+# 3. CD (Prod): 운영 배포 (Dev 검증 후 버튼 클릭)
+# ==========================================
+deploy_to_prod:
+  stage: deploy_prod
+  tags:
+    - jupddang
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "master"'
+      when: manual # 운영 배포도 안전하게 수동 클릭 권장
+  script:
+    - echo "🚀 [수동 트리거] Prod 서버 배포 시작..."
+    - docker rm -f ${APP_NAME}-prod || true
+    - docker run -d -p 127.0.0.1:$PROD_PORT:80 --name ${APP_NAME}-prod --restart always $APP_NAME:$CI_COMMIT_SHA
+    - sudo systemctl reload nginx

@@ -22,10 +22,15 @@ public class Post {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "post_id")
     private Long postId;
+
     @Column(name = "user_id", nullable = false)
     private String userId;
 
     private String pic; // 기록 사진 임의로 String 설정
+
+    @Column(columnDefinition = "TEXT")
+    private String content;
+
     @Column(name = "like") // db 예약어인 경우 백틱으로 감싸야함
     @Builder.Default
     private int like = 0;
@@ -40,6 +45,7 @@ public class Post {
 
     // 게시글 하나에 달린 댓글들 (양방향 매핑)
     @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("createdAt ASC") // 댓글 시간 순 정렬
     @Builder.Default
     private List<Comment> comments = new ArrayList<>();
 

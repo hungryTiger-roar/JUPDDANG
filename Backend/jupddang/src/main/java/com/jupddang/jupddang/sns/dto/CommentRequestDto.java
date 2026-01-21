@@ -6,7 +6,7 @@ import lombok.NoArgsConstructor;
 @Getter
 @NoArgsConstructor
 //
-public class commentRequestDto {
+public class CommentRequestDto {
     private String userId;
     private String content;
 }

@@ -31,7 +31,7 @@ public class Post {
     @Column(columnDefinition = "TEXT")
     private String content;
 
-    @Column(name = "like") // db 예약어인 경우 백틱으로 감싸야함
+    @Column(name = "`like`") // db 예약어인 경우 백틱으로 감싸야함
     @Builder.Default
     private int like = 0;
 
@@ -49,7 +49,7 @@ public class Post {
     @Builder.Default
     private List<Comment> comments = new ArrayList<>();
 
-    public void increateLike(){
+    public void increaseLike(){
         this.like++;
     }
 

@@ -22,7 +22,7 @@ public class Comment {
     // 어떤 게시글의 댓글인지 연결
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "post_id")
-    private Post postId;
+    private Post post;
 
     @Column(name = "user_id", nullable = false)
     private String userId;

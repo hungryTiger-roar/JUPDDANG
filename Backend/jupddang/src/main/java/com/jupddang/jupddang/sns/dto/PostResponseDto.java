@@ -9,7 +9,7 @@ import java.util.stream.Collectors;
 
 @Getter
 // 앱 화면에 뿌려줄 게시글 정보
-public class PostReponseDto {
+public class PostResponseDto {
     private Long postId;
     private String userId;
     private String pic;
@@ -18,7 +18,7 @@ public class PostReponseDto {
     private LocalDateTime createdAt;
     private List<CommentResponseDto> comments;
 
-    public PostReponseDto(Post post) {
+    public PostResponseDto(Post post) {
         this.postId = post.getPostId();
         this.userId = post.getUserId();
         this.pic = post.getPic();

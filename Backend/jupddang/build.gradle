@@ -38,6 +38,15 @@ dependencies {
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
     runtimeOnly 'com.h2database:h2'
+
+    // 검증 라이브러리
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+
+    // h3 라이브러리
+    implementation 'com.uber:h3:4.4.0'
+
+    // env인식
+    implementation 'io.github.cdimascio:java-dotenv:5.2.2'
 }
 
 tasks.named('test') {

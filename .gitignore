@@ -26,10 +26,6 @@ logs/
 # Docker 관련
 docker-compose.override.yml
 
-# Test용
-123123123123123.txt
-
-
 # AWS 관련
 .aws/
 *.pem

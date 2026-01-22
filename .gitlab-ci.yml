@@ -13,48 +13,57 @@ build_image:
     - jupddang
   only:
     - master
+    - dev
   script:
     - |
-      echo "🏗️ Building Docker Image..."
+      echo "🏗️ Building Docker Image for branch: $CI_COMMIT_REF_SLUG"
 
-      # ---------------------------------------------------------
-      # ✅ [문제 해결 로직] 우선순위 체크
-      # 1순위: GitLab CI 변수 (미래 확장성)
-      # 2순위: 서버 로컬 파일 (현재 해결책)
-      # ---------------------------------------------------------
-      if [ -n "$PROD_ENV" ]; then
-        cp "$PROD_ENV" .env
-        echo "✅ Loaded .env from CI/CD Variable"
-      elif [ -f "/home/gitlab-runner/.env" ]; then
-        cp /home/gitlab-runner/.env .env
-        echo "✅ Loaded .env from Server Local File"
+      # 환경별 .env 파일 선택
+      if [ "$CI_COMMIT_REF_SLUG" == "master" ]; then
+        ENV_FILE="/home/gitlab-runner/app/.env.prod"
       else
-        echo "❌ Error: .env file not found anywhere (Neither Variable nor Local path)!"
-        exit 1
+        ENV_FILE="/home/gitlab-runner/app/.env.dev"
       fi
 
+      # 빌드 컨텍스트에 .env 복사 (필요 시)
+      cp "$ENV_FILE" .env || { echo "❌ Env file not found"; exit 1; }
+
       # 이미지 빌드
-      docker build -t $IMAGE_NAME:$CI_COMMIT_SHORT_SHA ./Backend/jupddang
+      docker build -t $IMAGE_NAME:$CI_COMMIT_REF_SLUG ./Backend/jupddang
 
 # 2. Deploy 단계
-deploy_prod:
+deploy_app:
   stage: deploy
   tags:
     - jupddang
   needs: ["build_image"]
   only:
     - master
-  when: manual
-  allow_failure: false
+    - dev
   script:
     - |
-      echo "🚀 Starting Deployment..."
+      echo "🚀 Deploying to $CI_COMMIT_REF_SLUG Environment..."
 
-      docker tag $IMAGE_NAME:$CI_COMMIT_SHORT_SHA $IMAGE_NAME:latest
+      # 변수 설정
+      if [ "$CI_COMMIT_REF_SLUG" == "master" ]; then
+        ENV_FILE="/home/gitlab-runner/app/.env.prod"
+        PROJECT_NAME="jupddang-prod"
+      else
+        ENV_FILE="/home/gitlab-runner/app/.env.dev"
+        PROJECT_NAME="jupddang-dev"
+      fi
 
-      # V2 문법 (docker compose)
-      docker compose -f $COMPOSE_FILE down backend
-      docker compose -f $COMPOSE_FILE up -d backend
+      # 실행용 .env 복사
+      cp "$ENV_FILE" .env
+
+      # 이미지 태그 갱신
+      docker tag $IMAGE_NAME:$CI_COMMIT_REF_SLUG $IMAGE_NAME:latest
+
+      # 배포 실행
+      # --env-file: 정확한 환경변수 주입
+      # -p: 프로젝트 격리
+      docker compose -p $PROJECT_NAME --env-file "$ENV_FILE" -f $COMPOSE_FILE down backend
+      docker compose -p $PROJECT_NAME --env-file "$ENV_FILE" -f $COMPOSE_FILE up -d
 
       docker image prune -f
       echo "✅ Deployment Complete!"

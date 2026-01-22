@@ -46,8 +46,8 @@ deploy_prod:
       docker tag $IMAGE_NAME:$CI_COMMIT_SHORT_SHA $IMAGE_NAME:latest
 
       # docker-compose로 컨테이너 교체
-      docker-compose -f $COMPOSE_FILE down backend
-      docker-compose -f $COMPOSE_FILE up -d backend
+      docker compose -f $COMPOSE_FILE down backend
+      docker compose -f $COMPOSE_FILE up -d backend
 
       # 불필요한 이미지 정리
       docker image prune -f

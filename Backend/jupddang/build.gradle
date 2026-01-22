@@ -51,6 +51,7 @@ dependencies {
     // 3. 테스트 코드 롬복
     testCompileOnly 'org.projectlombok:lombok'
     testAnnotationProcessor 'org.projectlombok:lombok'
+    
 }
 
 tasks.named('test') {

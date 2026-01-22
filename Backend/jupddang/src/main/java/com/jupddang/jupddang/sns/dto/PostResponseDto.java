@@ -11,7 +11,7 @@ import java.util.stream.Collectors;
 // 앱 화면에 뿌려줄 게시글 정보
 public class PostResponseDto {
     private Long postId;
-    private String userId;
+    private String nickname; // 아이디 대신 닉네임
     private String pic;
     private String content;
     private int like;
@@ -20,7 +20,7 @@ public class PostResponseDto {
 
     public PostResponseDto(Post post) {
         this.postId = post.getPostId();
-        this.userId = post.getUserId();
+        this.nickname = post.getAccount().getName(); // 아이디 대신 닉네임
         this.pic = post.getPic();
         this.content = post.getContent();
         this.like = post.getLike();

@@ -1,5 +1,6 @@
 package com.jupddang.jupddang.sns.entity;
 
+import com.jupddang.jupddang.account.entity.Account;
 import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
@@ -24,8 +25,10 @@ public class Comment {
     @JoinColumn(name = "post_id")
     private Post post;
 
-    @Column(name = "user_id", nullable = false)
-    private String userId;
+    // 계정 가저오기(닉네임 보여주기위함)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id")
+    private Account account;
 
     @Column(columnDefinition = "TEXT")
     private String content;

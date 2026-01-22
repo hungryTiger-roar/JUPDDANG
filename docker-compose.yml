@@ -1,0 +1,82 @@
+version: '3.8'
+
+services:
+  # ==========================================
+  # 1. Backend Application (Spring Boot)
+  # ==========================================
+  backend:
+    container_name: jupddang-backend
+    # 이미지는 CI/CD 단계에서 빌드된 것을 사용 (latest)
+    image: jupddang-backend:latest
+    # 빌드 컨텍스트 지정 (로컬 테스트용, CI에서는 image 우선)
+    build:
+      context: ./Backend/jupddang
+      dockerfile: Dockerfile
+    ports:
+      # 보안: Host의 8080포트만 열고, 외부 접속은 Nginx를 통해서만 허용
+      - "127.0.0.1:8080:8080"
+    environment:
+      # .env 파일의 변수 매핑
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/jupddang
+      - SPRING_DATASOURCE_USERNAME=${DB_USER}
+      - SPRING_DATASOURCE_PASSWORD=${DB_PASS}
+      # 운영 환경 프로파일
+      - SPRING_PROFILES_ACTIVE=prod
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - jupddang-net
+    restart: always
+
+  # ==========================================
+  # 2. Database (PostgreSQL 15 + PostGIS 3.4)
+  # ==========================================
+  db:
+    container_name: jupddang-db
+    image: postgis/postgis:15-3.4
+    volumes:
+      # 데이터 영구 보존을 위한 볼륨 매핑
+      - ./data/postgres:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: jupddang
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASS}
+    networks:
+      - jupddang-net
+    restart: always
+    # DB 헬스 체크 (백엔드가 DB 구동을 기다림)
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d jupddang"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ==========================================
+  # 3. Monitoring (Prometheus + Grafana)
+  # ==========================================
+  prometheus:
+    image: prom/prometheus
+    container_name: jupddang-prometheus
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+    networks:
+      - jupddang-net
+    restart: always
+
+  grafana:
+    image: grafana/grafana
+    container_name: jupddang-grafana
+    ports:
+      # 보안: Nginx 역방향 프록시를 통해서만 접근 (localhost 바인딩)
+      - "127.0.0.1:3000:3000"
+    networks:
+      - jupddang-net
+    depends_on:
+      - prometheus
+    restart: always
+
+# Docker 네트워크 정의
+networks:
+  jupddang-net:
+    driver: bridge

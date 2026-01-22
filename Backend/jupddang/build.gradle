@@ -27,7 +27,8 @@ repositories {
 dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
-    implementation 'org.springframework.boot:spring-boot-starter-security'
+//    implementation 'org.springframework.boot:spring-boot-starter-security'
+//    testImplementation 'org.springframework.security:spring-security-test'
     implementation 'org.springframework.boot:spring-boot-starter-web'
     compileOnly 'org.projectlombok:lombok'
     developmentOnly 'org.springframework.boot:spring-boot-devtools'
@@ -35,9 +36,17 @@ dependencies {
     runtimeOnly 'org.postgresql:postgresql'
     annotationProcessor 'org.projectlombok:lombok'
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
-    testImplementation 'org.springframework.security:spring-security-test'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
     runtimeOnly 'com.h2database:h2'
+
+    // 검증 라이브러리
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+
+    // h3 라이브러리
+    implementation 'com.uber:h3:4.4.0'
+
+    // env인식
+    implementation 'io.github.cdimascio:java-dotenv:5.2.2'
 }
 
 tasks.named('test') {

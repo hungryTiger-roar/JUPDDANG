@@ -15,7 +15,7 @@ public class CommentResponseDto {
 
     public CommentResponseDto(Comment comment) {
         this.commentId = comment.getCommentId();
-        this.nickname = comment.getAccount().getName(); // 아이디 대신 닉네임
+        this.nickname = comment.getAccount().getNickName(); // 아이디 대신 닉네임
         this.content = comment.getContent();
         this.createdAt = comment.getCreatedAt();
     }

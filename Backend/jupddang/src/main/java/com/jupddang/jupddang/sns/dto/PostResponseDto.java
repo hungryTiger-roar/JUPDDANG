@@ -23,7 +23,7 @@ public class PostResponseDto {
         this.nickname = post.getAccount().getName(); // 아이디 대신 닉네임
         this.pic = post.getPic();
         this.content = post.getContent();
-        this.like = post.getLike();
+        this.like = post.getLikeCount();
         this.createdAt = post.getCreatedAt();
 
         this.comments = post.getComments().stream()

@@ -42,11 +42,15 @@ dependencies {
     // 검증 라이브러리
     implementation 'org.springframework.boot:spring-boot-starter-validation'
 
-    // h3 라이브러리
-    implementation 'com.uber:h3:4.4.0'
+    // 1. 컴파일 시점에 롬복 사용
+    compileOnly 'org.projectlombok:lombok'
+    
+    // 2. 어노테이션 프로세서 등록
+    annotationProcessor 'org.projectlombok:lombok'
 
-    // env인식
-    implementation 'io.github.cdimascio:java-dotenv:5.2.2'
+    // 3. 테스트 코드 롬복
+    testCompileOnly 'org.projectlombok:lombok'
+    testAnnotationProcessor 'org.projectlombok:lombok'
 }
 
 tasks.named('test') {

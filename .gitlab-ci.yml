@@ -10,7 +10,7 @@ variables:
 build_image:
   stage: build
   tags:
-    - shell-runner
+    - jupddang
   only:
     - main
   script:
@@ -31,7 +31,7 @@ build_image:
 deploy_prod:
   stage: deploy
   tags:
-    - shell-runner
+    - jupddang
   needs: ["build_image"] # build_image가 성공해야만 활성화됨
   only:
     - main

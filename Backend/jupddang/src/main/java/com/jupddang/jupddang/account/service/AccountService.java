@@ -30,7 +30,7 @@ public class AccountService {
                 request.getUserId(),
                 request.getPw(),
                 request.getEmail(),
-                request.getName(),
+                request.getNickname(),
                 request.getAddress()
         );
 
@@ -65,7 +65,7 @@ public class AccountService {
         Account account = accountRepository.findByUserId(userId)
                 .orElseThrow(() -> new IllegalArgumentException("Account not found."));
 
-        account.update(request.getPw(), request.getName(), request.getEmail(), request.getAddress());
+        account.update(request.getPw(), request.getNickname(), request.getEmail(), request.getAddress());
 
         return AccountResponse.from(account);
     }

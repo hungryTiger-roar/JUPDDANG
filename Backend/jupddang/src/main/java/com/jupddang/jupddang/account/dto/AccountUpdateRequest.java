@@ -8,7 +8,7 @@ import lombok.NoArgsConstructor;
 public class AccountUpdateRequest {
 
     private String pw;
-    private String name;
+    private String nickname;
     private String email;
     private String address;
 

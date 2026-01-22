@@ -6,7 +6,7 @@ variables:
   IMAGE_NAME: jupddang-backend
   COMPOSE_FILE: ./docker-compose.yml
 
-# 1. Build 단계: 이미지만 생성하고 끝남
+# 1. Build 단계
 build_image:
   stage: build
   tags:
@@ -17,26 +17,26 @@ build_image:
     - |
       echo "🏗️ Building Docker Image..."
 
-      # [확장성 고려] GitLab CI 변수(PROD_ENV)가 설정되어 있다면 .env로 복사
-      # 변수가 아직 없다면 이 부분은 무시되고 넘어감 (에러 방지)
+      # ---------------------------------------------------------
+      # ✅ [문제 해결 로직] 우선순위 체크
+      # 1순위: GitLab CI 변수 (미래 확장성)
+      # 2순위: 서버 로컬 파일 (현재 해결책)
+      # ---------------------------------------------------------
       if [ -n "$PROD_ENV" ]; then
         cp "$PROD_ENV" .env
         echo "✅ Loaded .env from CI/CD Variable"
+      elif [ -f "/home/gitlab-runner/.env" ]; then
+        cp /home/gitlab-runner/.env .env
+        echo "✅ Loaded .env from Server Local File"
       else
-        echo "⚠️ PROD_ENV variable is not set yet."
-      fi
-
-      # .env 파일 존재 여부 최종 확인
-      # 변수도 없고, 파일도 없으면 여기서 파이프라인 중단 (안전장치)
-      if [ ! -f .env ]; then 
-        echo "❌ Error: .env file is missing! Please check CI/CD Variables."
+        echo "❌ Error: .env file not found anywhere (Neither Variable nor Local path)!"
         exit 1
       fi
 
       # 이미지 빌드
       docker build -t $IMAGE_NAME:$CI_COMMIT_SHORT_SHA ./Backend/jupddang
 
-# 2. Deploy 단계: 수동 실행 (Manual)
+# 2. Deploy 단계
 deploy_prod:
   stage: deploy
   tags:
@@ -50,14 +50,11 @@ deploy_prod:
     - |
       echo "🚀 Starting Deployment..."
 
-      # 이미지 태그 갱신
       docker tag $IMAGE_NAME:$CI_COMMIT_SHORT_SHA $IMAGE_NAME:latest
 
-      # [문법 수정] docker-compose -> docker compose (V2)
+      # V2 문법 (docker compose)
       docker compose -f $COMPOSE_FILE down backend
       docker compose -f $COMPOSE_FILE up -d backend
 
-      # 불필요한 이미지 정리
       docker image prune -f
-      
       echo "✅ Deployment Complete!"

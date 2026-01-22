@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  backend:
+    # 컨테이너 이름: jupddang-backend-prod 또는 dev
+    container_name: jupddang-backend-${ENV_TYPE}
+    image: jupddang-backend:latest
+    environment:
+      - SPRING_PROFILES_ACTIVE=${ENV_TYPE}
+      - SPRING_DATASOURCE_URL=${SPRING_DATASOURCE_URL}
+      - SPRING_DATASOURCE_USERNAME=${SPRING_DATASOURCE_USERNAME}
+      - SPRING_DATASOURCE_PASSWORD=${SPRING_DATASOURCE_PASSWORD}
+    networks:
+      - jupddang-net
+    depends_on:
+      - db
+    ports:
+      # 외부 접속은 UFW로 막힘 (50001/50002), Nginx는 내부 8080으로 통신
+      - "${APP_PORT}:8080"
+
+  db:
+    container_name: jupddang-db-${ENV_TYPE}
+    image: postgis/postgis:15-3.4
+    restart: always
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASS}
+      POSTGRES_DB: ${DB_NAME}
+    networks:
+      - jupddang-net
+    volumes:
+      # 서버의 /home/gitlab-runner/data/... 경로에 데이터 저장
+      - /home/gitlab-runner/data/${ENV_TYPE}/db:/var/lib/postgresql/data
+    ports:
+      # 외부 접속(60001/60002) - 개발자 PC에서 DB툴로 접속 필요시 UFW 열어서 사용
+      - "${DB_PORT}:5432"
+
+networks:
+  jupddang-net:
+    external: true

@@ -1,4 +1,4 @@
-package com.ssafy.jupddang.jupddang
+package com.example.jupddang
 
 import io.flutter.embedding.android.FlutterActivity
 

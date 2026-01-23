@@ -39,11 +39,18 @@ public class AccountController {
 
     // 전체 계정 정보 조회
     @GetMapping
-    public ResponseEntity<List<AccountResponse>> getAccounts() {
-
-        List<AccountResponse> allAccounts = accountService.getAllAccounts();
-
-        return ResponseEntity.ok(allAccounts);
+    public ResponseEntity<?> getAccounts() {
+        try {
+            System.out.println("============== [DEBUG] 요청 도착: /api/account ==============");
+            List<AccountResponse> allAccounts = accountService.getAllAccounts();
+            System.out.println("============== [DEBUG] 조회 성공: " + allAccounts.size() + "건 ==============");
+            return ResponseEntity.ok(allAccounts);
+        } catch (Exception e) {
+            // 🚨 여기가 핵심! 에러가 나면 무조건 로그에 찍히게 만듭니다.
+            System.out.println("============== [ERROR] 에러 발생 ==============");
+            e.printStackTrace(); // 에러 내용을 콘솔에 강제로 출력
+            return ResponseEntity.internalServerError().body("서버 에러: " + e.getMessage());
+        }
     }
 
     // 내 프로필 조회

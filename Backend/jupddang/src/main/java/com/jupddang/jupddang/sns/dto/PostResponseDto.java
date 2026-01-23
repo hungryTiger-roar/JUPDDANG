@@ -11,8 +11,13 @@ import java.util.stream.Collectors;
 // 앱 화면에 뿌려줄 게시글 정보
 public class PostResponseDto {
     private Long postId;
-    private String userId;
-    private String pic;
+    private Long userId;
+    private Long ploggingId;
+
+    private String beforeImageUrl;
+    private String afterImageUrl;
+    private String mapImageUrl;
+
     private String content;
     private int like;
     private LocalDateTime createdAt;
@@ -21,7 +26,10 @@ public class PostResponseDto {
     public PostResponseDto(Post post) {
         this.postId = post.getPostId();
         this.userId = post.getUserId();
-        this.pic = post.getPic();
+        this.ploggingId = post.getPloggingId();
+        this.beforeImageUrl = post.getBeforeImageUrl();
+        this.afterImageUrl = post.getAfterImageUrl();
+        this.mapImageUrl = post.getMapImageUrl();
         this.content = post.getContent();
         this.like = post.getLike();
         this.createdAt = post.getCreatedAt();

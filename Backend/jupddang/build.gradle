@@ -49,6 +49,9 @@ dependencies {
     // 테스트 의존성
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
+    // Google Cloud Storage
+    implementation 'com.google.cloud:spring-cloud-gcp-starter-storage:4.9.0'
 }
 
 tasks.named('test') {

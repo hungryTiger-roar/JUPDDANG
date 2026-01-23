@@ -37,3 +37,7 @@ out/
 .vscode/
 
 .env
+
+# GCP Credentials
+**/gcp-credentials.json
+src/main/resources/gcp-credentials.json

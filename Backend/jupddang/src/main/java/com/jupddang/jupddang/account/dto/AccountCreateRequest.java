@@ -15,6 +15,6 @@ public class AccountCreateRequest {
     private String pw;
     private String email;
     private String nickname;
-    private String address;
+    private String region;
 
 }

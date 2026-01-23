@@ -25,6 +25,7 @@ public class AccountController {
         AccountResponse account = accountService.createAccount(request);
 
         return ResponseEntity.ok(account);
+        
     }
 
     // 로그인
@@ -72,4 +73,5 @@ public class AccountController {
         return ResponseEntity.ok(accountResponse);
 
     }
+
 }

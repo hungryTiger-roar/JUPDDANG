@@ -23,10 +23,9 @@ public class AccountResponse {
                 account.getUserId(),
                 account.getEmail(),
                 account.getNickname(),
-                account.getAddress(),
+                account.getRegion(),
                 account.getCreatedAt()
         );
     }
-
 
 }

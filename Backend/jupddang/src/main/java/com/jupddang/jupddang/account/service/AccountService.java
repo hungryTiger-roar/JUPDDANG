@@ -6,33 +6,34 @@ import com.jupddang.jupddang.account.dto.AccountResponse;
 import com.jupddang.jupddang.account.dto.AccountUpdateRequest;
 import com.jupddang.jupddang.account.entity.Account;
 import com.jupddang.jupddang.account.repository.AccountRepository;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
 @Service
+@RequiredArgsConstructor
 public class AccountService {
 
     private final AccountRepository accountRepository;
 
-    public AccountService(AccountRepository accountRepository) {
-        this.accountRepository = accountRepository;
-    }
-
     @Transactional
     public AccountResponse createAccount(AccountCreateRequest request) {
+
         if (accountRepository.existsById(request.getUserId())) {
             throw new IllegalArgumentException("UserId already exists.");
         }
 
-        Account account = new Account(
-                request.getUserId(),
-                request.getPw(),
-                request.getEmail(),
-                request.getNickname(),
-                request.getAddress()
-        );
+        Account account = Account.builder()
+                .userId(request.getUserId())
+                .pw(request.getPw())
+                .email(request.getEmail())
+                .nickname(request.getNickname())
+                .region(request.getRegion())
+                .color("#111111") // 블랙 (기본 값)
+                .score(0)
+                .build();
 
         return AccountResponse.from(accountRepository.save(account));
     }
@@ -65,7 +66,15 @@ public class AccountService {
         Account account = accountRepository.findByUserId(userId)
                 .orElseThrow(() -> new IllegalArgumentException("Account not found."));
 
-        account.update(request.getPw(), request.getNickname(), request.getEmail(), request.getAddress());
+        account.update(
+                request.getPw(),
+                request.getNickname(),
+                request.getProfileImage(),
+                request.getIntro(),
+                request.getRegion(),
+                request.getEmail(),
+                request.getColor()
+                );
 
         return AccountResponse.from(account);
     }

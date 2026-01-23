@@ -5,9 +5,12 @@ import com.jupddang.jupddang.plogging.dto.response.PloggingResultResponse;
 import com.jupddang.jupddang.plogging.repository.GridRepository;
 import com.jupddang.jupddang.plogging.repository.PloggingRepository;
 import com.jupddang.jupddang.plogging.service.PloggingService;
+import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
+@Service
 public class PloggingServiceImplements implements PloggingService {
 
     private final PloggingRepository ploggingRepository;
@@ -19,7 +22,12 @@ public class PloggingServiceImplements implements PloggingService {
     }
 
     @Override
-    public PloggingResultResponse endPlogging(Long userId, PloggingEndRequest request) {
+    public PloggingResultResponse endPlogging(
+            Long userId,
+            PloggingEndRequest request,
+            MultipartFile beforeImage,
+            MultipartFile afterImage,
+            MultipartFile mapImage) {
         return null;
     }
 

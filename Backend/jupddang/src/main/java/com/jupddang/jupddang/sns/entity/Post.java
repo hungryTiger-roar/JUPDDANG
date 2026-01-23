@@ -24,9 +24,21 @@ public class Post {
     private Long postId;
 
     @Column(name = "user_id", nullable = false)
-    private String userId;
+    private Long userId;  // String → Long 변경!
 
-    private String pic; // 기록 사진 임의로 String 설정
+    // Plogging 참조 추가!
+    @Column(name = "plogging_id")
+    private Long ploggingId;
+
+    // 이미지 3장으로 변경!
+    @Column(length = 500)
+    private String beforeImageUrl;
+
+    @Column(length = 500)
+    private String afterImageUrl;
+
+    @Column(length = 500)
+    private String mapImageUrl;
 
     @Column(columnDefinition = "TEXT")
     private String content;

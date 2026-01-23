@@ -1,5 +1,7 @@
 package com.jupddang.jupddang.sns.service;
 
+import com.jupddang.jupddang.account.entity.Account;
+import com.jupddang.jupddang.account.repository.AccountRepository;
 import com.jupddang.jupddang.sns.dto.CommentRequestDto;
 import com.jupddang.jupddang.sns.dto.PostResponseDto;
 import com.jupddang.jupddang.sns.entity.Comment;
@@ -18,6 +20,7 @@ import java.util.stream.Collectors;
 public class SnsService {
     private final PostRepository postRepository;
     private final CommentRepository commentRepository;
+    private final AccountRepository accountRepository;
 
     // 전체 포스트 조회
     @Transactional(readOnly = true)
@@ -49,9 +52,12 @@ public class SnsService {
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 게시글이 없습니다. id=" + postId));
 
+        Account account = accountRepository.findById(requestDto.getUserId())
+                .orElseThrow(() -> new IllegalArgumentException("해당 유저가 없습니다."));
+
         Comment comment = Comment.builder()
                 .post(post)
-                .userId(requestDto.getUserId()) // DTO에서 받은 유저 ID
+                .account(account) // userId 대신 account 객체 저장
                 .content(requestDto.getContent()) // DTO에서 받은 내용
                 .build();
 

@@ -50,8 +50,13 @@ dependencies {
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
+
+    // Google Cloud Storage
+    implementation 'com.google.cloud:spring-cloud-gcp-starter-storage:4.9.0'
+
     // 소켓 통신
     implementation 'org.springframework.boot:spring-boot-starter-websocket'
+
 }
 
 tasks.named('test') {

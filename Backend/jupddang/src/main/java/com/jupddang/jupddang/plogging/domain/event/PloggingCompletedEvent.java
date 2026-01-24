@@ -14,7 +14,7 @@ import org.springframework.web.multipart.MultipartFile;
 @AllArgsConstructor
 public class PloggingCompletedEvent {
     private final Long ploggingId;
-    private final Long userId;
+    private final String userId;
     private final MultipartFile beforeImage;
     private final MultipartFile afterImage;
     private final MultipartFile mapImage;

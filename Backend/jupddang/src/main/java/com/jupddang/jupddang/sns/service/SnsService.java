@@ -28,6 +28,7 @@ public class SnsService {
     private final PostRepository postRepository;
     private final CommentRepository commentRepository;
     private final GcsImageService gcsImageService;
+    private final AccountRepository accountRepository;
 
     /**
      * Plogging 완료 이벤트 처리 - 피드 생성
@@ -49,9 +50,12 @@ public class SnsService {
                     event.getMapImage(), "map"
             );
 
+            Account account = accountRepository.findByUserId(event.getUserId())  // String으로 조회
+                    .orElseThrow(() -> new IllegalArgumentException("해당 유저가 없습니다."));
+
             // 2. Post(Feed) 생성
             Post post = Post.builder()
-                    .userId(event.getUserId())
+                    .account(account)
                     .ploggingId(event.getPloggingId())
                     .beforeImageUrl(beforeUrl)
                     .afterImageUrl(afterUrl)

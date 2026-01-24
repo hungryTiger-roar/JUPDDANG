@@ -24,8 +24,9 @@ public class Post {
     @Column(name = "post_id")
     private Long postId;
 
-    @Column(name = "user_id", nullable = false)
-    private Long userId;  // String → Long 변경!
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", referencedColumnName = "userId")  // Account의 userId(String)와 연결
+    private Account account;
 
     // Plogging 참조 추가!
     @Column(name = "plogging_id")

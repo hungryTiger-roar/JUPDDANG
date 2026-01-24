@@ -30,7 +30,7 @@ public class SnsService {
      * Plogging 완료 이벤트 처리 - 피드 생성
      */
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    @Transactional
+//    @Transactional
     public void handlePloggingCompleted(PloggingCompletedEvent event) {
         log.info("PloggingCompletedEvent 수신 - ploggingId: {}", event.getPloggingId());
 

@@ -26,7 +26,7 @@ public class PloggingController {
             @RequestPart("beforeImage") MultipartFile beforeImage,
             @RequestPart("afterImage") MultipartFile afterImage,
             @RequestPart("mapImage") MultipartFile mapImage,
-            @RequestAttribute("userId") Long userId
+            @RequestHeader("userId") Long userId
     ) {
         // 서비스 호출
         PloggingResultResponse response = ploggingService.endPlogging(

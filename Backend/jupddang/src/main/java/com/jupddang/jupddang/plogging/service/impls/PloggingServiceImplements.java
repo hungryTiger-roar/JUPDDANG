@@ -58,7 +58,7 @@ public class PloggingServiceImplements implements PloggingService {
         // 3. Event 발행 (피드 생성 트리거)
         PloggingCompletedEvent event = PloggingCompletedEvent.builder()
                 .ploggingId(savedPlogging.getId())
-                .userId(userId)
+                .userId(String.valueOf(userId))
                 .beforeImage(beforeImage)
                 .afterImage(afterImage)
                 .mapImage(mapImage)

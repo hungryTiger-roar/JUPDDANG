@@ -39,3 +39,4 @@ docker-compose.override.yml
 .DS_Store
 *.bak
 *.tmp
+Backend/jupddang/env

@@ -14,7 +14,6 @@ import java.time.LocalDateTime;
 @Table(name = "account")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
-@Builder
 public class Account {
 
     @Id
@@ -24,14 +23,26 @@ public class Account {
     @Column(nullable = false)
     private String pw;
 
+    @Column(nullable = false)
+    private String nickname;
+
+    @Column(name = "profile_image", nullable = false)
+    private String profileImage;
+
+    @Column(nullable = false)
+    private String intro;
+
+    @Column(nullable = false)
+    private String region;
+
     @Column(nullable = false, unique = true)
     private String email;
 
     @Column(nullable = false)
-    private String name;
+    private String color;
 
     @Column(nullable = false)
-    private String address;
+    private int score;
 
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -41,26 +52,38 @@ public class Account {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
-    public Account(String userId, String pw, String email, String name, String address) {
+    @Builder
+    public Account(String userId, String pw, String email, String nickname, String region, String color, int score) {
         this.userId = userId;
         this.pw = pw;
         this.email = email;
-        this.name = name;
-        this.address = address;
+        this.nickname = nickname;
+        this.region = region;
+        this.color = color;
+        this.score = score;
     }
 
-    public void update(String pw, String name, String email, String address) {
+    public void update(String pw, String nickname, String profileImage, String intro, String region, String email, String color) {
         if (pw != null) {
             this.pw = pw;
         }
-        if (name != null) {
-            this.name = name;
+        if (nickname != null) {
+            this.nickname = nickname;
+        }
+        if (profileImage != null) {
+            this.profileImage = profileImage;
+        }
+        if (intro != null) {
+            this.intro = intro;
+        }
+        if (region != null) {
+            this.region = region;
         }
         if (email != null) {
             this.email = email;
         }
-        if (address != null) {
-            this.address = address;
+        if (color != null) {
+            this.color = color;
         }
     }
 

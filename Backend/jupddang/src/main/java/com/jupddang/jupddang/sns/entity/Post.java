@@ -1,5 +1,6 @@
 package com.jupddang.jupddang.sns.entity;
 
+import com.jupddang.jupddang.account.entity.Account;
 import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
@@ -43,9 +44,9 @@ public class Post {
     @Column(columnDefinition = "TEXT")
     private String content;
 
-    @Column(name = "`like`") // db 예약어인 경우 백틱으로 감싸야함
+    @Column(name = "like_cnt") // db 예약어인 경우 백틱으로 감싸야함
     @Builder.Default
-    private int like = 0;
+    private int likeCount = 0;
 
     @CreatedDate
     @Column(name = "created_at", updatable = false)
@@ -62,7 +63,7 @@ public class Post {
     private List<Comment> comments = new ArrayList<>();
 
     public void increaseLike(){
-        this.like++;
+        this.likeCount++;
     }
 
 }

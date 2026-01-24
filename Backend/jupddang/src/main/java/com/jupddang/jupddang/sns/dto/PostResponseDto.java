@@ -11,6 +11,7 @@ import java.util.stream.Collectors;
 // 앱 화면에 뿌려줄 게시글 정보
 public class PostResponseDto {
     private Long postId;
+<<<<<<< Backend/jupddang/src/main/java/com/jupddang/jupddang/sns/dto/PostResponseDto.java
     private Long userId;
     private Long ploggingId;
 
@@ -18,6 +19,10 @@ public class PostResponseDto {
     private String afterImageUrl;
     private String mapImageUrl;
 
+=======
+    private String nickname; // 아이디 대신 닉네임
+    private String pic;
+>>>>>>> Backend/jupddang/src/main/java/com/jupddang/jupddang/sns/dto/PostResponseDto.java
     private String content;
     private int like;
     private LocalDateTime createdAt;
@@ -25,13 +30,13 @@ public class PostResponseDto {
 
     public PostResponseDto(Post post) {
         this.postId = post.getPostId();
-        this.userId = post.getUserId();
+        this.nickname = post.getAccount().getNickname();
         this.ploggingId = post.getPloggingId();
         this.beforeImageUrl = post.getBeforeImageUrl();
         this.afterImageUrl = post.getAfterImageUrl();
         this.mapImageUrl = post.getMapImageUrl();
         this.content = post.getContent();
-        this.like = post.getLike();
+        this.like = post.getLikeCount();
         this.createdAt = post.getCreatedAt();
 
         this.comments = post.getComments().stream()

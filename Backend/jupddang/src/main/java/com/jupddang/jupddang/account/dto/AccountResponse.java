@@ -14,7 +14,7 @@ public class AccountResponse {
 
     private String userId;
     private String email;
-    private String name;
+    private String nickname;
     private String address;
     private LocalDateTime createdAt;
 
@@ -22,11 +22,10 @@ public class AccountResponse {
         return new AccountResponse(
                 account.getUserId(),
                 account.getEmail(),
-                account.getName(),
-                account.getAddress(),
+                account.getNickname(),
+                account.getRegion(),
                 account.getCreatedAt()
         );
     }
-
 
 }

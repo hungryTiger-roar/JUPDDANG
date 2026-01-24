@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Jubddang WebSocket Test</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+</head>
+<body>
+<h2>줍땅 소켓 테스트</h2>
+<button onclick="connect()">1. 연결 (Connect)</button>
+<button onclick="sendMessage()">2. 전송 (Send)</button>
+<hr>
+<div id="status">상태: 대기중...</div>
+<div id="response" style="background: #f0f0f0; padding: 10px; margin-top: 10px;"></div>
+
+<script>
+    var stompClient = null;
+
+    function connect() {
+        // SockJS 없이 쌩 WebSocket 연결 (서버 설정과 동일하게)
+        var socket = new WebSocket('ws://localhost:8080/ws');
+        stompClient = Stomp.over(socket);
+
+        stompClient.connect({}, function (frame) {
+            document.getElementById('status').innerText = '상태: 연결 성공! (Connected)';
+            console.log('Connected: ' + frame);
+
+            // 구독 (Subscribe)
+            stompClient.subscribe('/sub/channel/echo', function (message) {
+                showResponse(JSON.parse(message.body).content);
+            });
+        }, function (error) {
+            document.getElementById('status').innerText = '상태: 에러 발생 (콘솔 확인)';
+            console.log(error);
+        });
+    }
+
+    function sendMessage() {
+        // 메시지 전송 (Publish)
+        stompClient.send("/pub/echo", {}, JSON.stringify({'content': 'Hello Jubddang!'}));
+    }
+
+    function showResponse(message) {
+        document.getElementById('response').innerText += "서버 응답: " + message + "\n";
+    }
+</script>
+</body>
+</html>

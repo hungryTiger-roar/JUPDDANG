@@ -7,6 +7,7 @@ import com.jupddang.jupddang.account.dto.AccountUpdateRequest;
 import com.jupddang.jupddang.account.entity.Account;
 import com.jupddang.jupddang.account.repository.AccountRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,6 +18,7 @@ import java.util.List;
 public class AccountService {
 
     private final AccountRepository accountRepository;
+    private final BCryptPasswordEncoder bCryptPasswordEncoder;
 
     @Transactional
     public AccountResponse createAccount(AccountCreateRequest request) {
@@ -27,7 +29,7 @@ public class AccountService {
 
         Account account = Account.builder()
                 .userId(request.getUserId())
-                .pw(request.getPw())
+                .pw(bCryptPasswordEncoder.encode(request.getPw()))
                 .email(request.getEmail())
                 .nickname(request.getNickname())
                 .region(request.getRegion())
@@ -47,14 +49,19 @@ public class AccountService {
 
     @Transactional(readOnly = true)
     public AccountResponse login(AccountLoginRequest request) {
-        Account account = accountRepository.findByUserIdAndPw(request.getUserId(), request.getPw())
+        Account account = accountRepository.findByUserId(request.getUserId())
                 .orElseThrow(() -> new IllegalArgumentException("Invalid userId or password."));
+
+        if (!bCryptPasswordEncoder.matches(request.getPw(), account.getPw())) {
+            throw new IllegalArgumentException("");
+        };
 
         return AccountResponse.from(account);
     }
 
     @Transactional(readOnly = true)
     public AccountResponse getAccount(String userId) {
+
         Account account = accountRepository.findByUserId(userId)
                 .orElseThrow(() -> new IllegalArgumentException("Account not found."));
 

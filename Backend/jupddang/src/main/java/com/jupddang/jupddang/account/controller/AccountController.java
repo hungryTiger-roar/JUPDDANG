@@ -25,7 +25,7 @@ public class AccountController {
         AccountResponse account = accountService.createAccount(request);
 
         return ResponseEntity.ok(account);
-        
+
     }
 
     // 로그인

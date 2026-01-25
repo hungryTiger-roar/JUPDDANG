@@ -2,10 +2,7 @@ package com.jupddang.jupddang.plogging.domain;
 
 
 import jakarta.persistence.*;
-import lombok.AccessLevel;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
@@ -15,6 +12,8 @@ import java.time.LocalDateTime;
 @Getter
 @Table(name = "ploggings")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor
+@Builder
 @EntityListeners(AuditingEntityListener.class) // 생성/수정 시간 자동화
 public class Plogging {
 

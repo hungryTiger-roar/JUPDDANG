@@ -24,12 +24,23 @@ public class Post {
     @Column(name = "post_id")
     private Long postId;
 
-    // 계정 가저오기(닉네임 보여주기위함)
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id")
+    @JoinColumn(name = "user_id", referencedColumnName = "userId")  // Account의 userId(String)와 연결
     private Account account;
 
-    private String pic; // 기록 사진 임의로 String 설정
+    // Plogging 참조 추가!
+    @Column(name = "plogging_id")
+    private Long ploggingId;
+
+    // 이미지 3장으로 변경!
+    @Column(length = 500)
+    private String beforeImageUrl;
+
+    @Column(length = 500)
+    private String afterImageUrl;
+
+    @Column(length = 500)
+    private String mapImageUrl;
 
     @Column(columnDefinition = "TEXT")
     private String content;

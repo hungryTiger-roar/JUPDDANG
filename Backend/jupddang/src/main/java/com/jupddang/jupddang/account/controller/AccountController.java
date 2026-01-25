@@ -7,6 +7,8 @@ import com.jupddang.jupddang.account.dto.AccountResponse;
 import com.jupddang.jupddang.account.dto.AccountUpdateRequest;
 import com.jupddang.jupddang.account.entity.Account;
 import com.jupddang.jupddang.account.service.AccountService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -20,12 +22,14 @@ import java.util.List;
 @RequiredArgsConstructor
 @Slf4j
 @RequestMapping("/api/account")
+@Tag(name = "account api", description = "계정 관련 API")
 public class AccountController {
 
     private final AccountService accountService;
 
     // 회원가입
     @PostMapping("/signup")
+    @Operation(summary = "회원가입")
     public ResponseEntity<AccountResponse> signup(@RequestBody AccountCreateRequest request) {
 
         AccountResponse account = accountService.createAccount(request);
@@ -36,6 +40,7 @@ public class AccountController {
 
     // 로그인
     @PostMapping("/login")
+    @Operation(summary = "로그인")
     public ResponseEntity<AccountLoginResponse> login(@RequestBody AccountLoginRequest request) {
 
         AccountLoginResponse login = accountService.login(request);
@@ -45,6 +50,7 @@ public class AccountController {
 
     // 전체 계정 정보 조회
     @GetMapping
+    @Operation(summary = "전체 계정 목록 조회")
     public ResponseEntity<?> getAccounts() {
         try {
             System.out.println("============== [DEBUG] 요청 도착: /api/account ==============");
@@ -61,6 +67,7 @@ public class AccountController {
 
     // 내 프로필 조회
     @GetMapping("/myprofile")
+    @Operation(summary = "내 프로필 조회")
     public ResponseEntity<AccountResponse> getAccount(@AuthenticationPrincipal Account account) {
 
         log.info("userId = {}", account.getUserId());
@@ -75,6 +82,7 @@ public class AccountController {
 
     // 내 프로필 수정
     @PatchMapping("/myprofile")
+    @Operation(summary = "내 프로필 수정")
     public ResponseEntity<AccountResponse> updateAccount(@RequestBody AccountUpdateRequest request, @AuthenticationPrincipal Account account) {
 
         AccountResponse accountResponse = accountService.updateAccount(account.getUserId(), request);
@@ -84,6 +92,7 @@ public class AccountController {
 
     // 회원 탈퇴
     @DeleteMapping("/delete")
+    @Operation(summary = "회원 탈퇴")
     public ResponseEntity<AccountResponse> deleteAccount(@AuthenticationPrincipal Account account) {
 
         AccountResponse accountResponse = accountService.deleteAccount(account.getUserId());

@@ -34,9 +34,15 @@ public class SecurityConfig {
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .exceptionHandling(ex -> ex.authenticationEntryPoint(authenticationEntryPoint))
-                // URL별 권한 설정 (회원가입, 로그인 요청 외 인증 필요)
+                // URL별 권한 설정 (회원가입, 로그인, swagger 요청 외 인증 필요)
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/account/signup", "/api/account/login").permitAll()
+                        .requestMatchers(
+                                "/api/account/signup",
+                                "/api/account/login",
+                                "/swagger-ui/**",
+                                "/v3/api-docs/**"
+                        )
+                        .permitAll()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(new JwtAuthenticationFilter(jwtTokenProvider), UsernamePasswordAuthenticationFilter.class)

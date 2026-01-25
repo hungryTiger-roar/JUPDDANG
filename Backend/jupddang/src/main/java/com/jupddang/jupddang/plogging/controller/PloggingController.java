@@ -3,6 +3,8 @@ package com.jupddang.jupddang.plogging.controller;
 import com.jupddang.jupddang.plogging.dto.request.PloggingEndRequest;
 import com.jupddang.jupddang.plogging.dto.response.PloggingResultResponse;
 import com.jupddang.jupddang.plogging.service.PloggingService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
@@ -13,6 +15,7 @@ import org.springframework.web.multipart.MultipartFile;
 @RestController
 @RequestMapping("/api/v1/plogging")
 @RequiredArgsConstructor
+@Tag(name = "plogging api", description = "플로깅 관련 API")
 public class PloggingController {
 
     private final PloggingService ploggingService;
@@ -21,6 +24,7 @@ public class PloggingController {
      * POST /api/v1/plogging/end
      */
     @PostMapping(value ="/end", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "플로깅 종료 및 결과 생성")
     public ResponseEntity<PloggingResultResponse> endPlogging(
             @RequestPart("data") @Valid PloggingEndRequest request,
             @RequestPart("beforeImage") MultipartFile beforeImage,

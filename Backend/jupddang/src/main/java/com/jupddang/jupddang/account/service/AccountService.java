@@ -7,6 +7,9 @@ import com.jupddang.jupddang.account.dto.AccountUpdateRequest;
 import com.jupddang.jupddang.account.entity.Account;
 import com.jupddang.jupddang.account.repository.AccountRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,7 +18,7 @@ import java.util.List;
 
 @Service
 @RequiredArgsConstructor
-public class AccountService {
+public class AccountService implements UserDetailsService {
 
     private final AccountRepository accountRepository;
     private final BCryptPasswordEncoder bCryptPasswordEncoder;
@@ -53,7 +56,7 @@ public class AccountService {
                 .orElseThrow(() -> new IllegalArgumentException("Invalid userId or password."));
 
         if (!bCryptPasswordEncoder.matches(request.getPw(), account.getPw())) {
-            throw new IllegalArgumentException("");
+            throw new IllegalArgumentException("Invalid userId or password.");
         };
 
         return AccountResponse.from(account);
@@ -74,7 +77,7 @@ public class AccountService {
                 .orElseThrow(() -> new IllegalArgumentException("Account not found."));
 
         account.update(
-                request.getPw(),
+                bCryptPasswordEncoder.encode(request.getPw()),
                 request.getNickname(),
                 request.getProfileImage(),
                 request.getIntro(),
@@ -97,4 +100,9 @@ public class AccountService {
     }
 
 
+    @Override
+    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+        return accountRepository.findByUserId(username)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
+    }
 }

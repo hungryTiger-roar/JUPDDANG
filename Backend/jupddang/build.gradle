@@ -50,15 +50,35 @@ dependencies {
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
+    // 소켓 통신
+    implementation 'org.springframework.boot:spring-boot-starter-websocket'
 
     // Google Cloud Storage
     implementation 'com.google.cloud:spring-cloud-gcp-starter-storage:4.9.0'
 
-    // 소켓 통신
-    implementation 'org.springframework.boot:spring-boot-starter-websocket'
+    // Security
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+    testImplementation 'org.springframework.security:spring-security-test'
+
+    // JWT
+    implementation 'io.jsonwebtoken:jjwt-api:0.11.5' // 토큰 생성 및 파싱 API
+    runtimeOnly  'io.jsonwebtoken:jjwt-impl:0.11.5' // 실제 구현체
+    runtimeOnly  'io.jsonwebtoken:jjwt-jackson:0.11.5' // JSON 직렬화 (claims 처리)
+
+    // Swagger
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.5.0'
+
+    //redis
+    implementation 'org.springframework.boot:spring-boot-starter-data-redis'
 
 }
 
 tasks.named('test') {
     useJUnitPlatform()
+
+    testLogging {
+        events "passed", "skipped", "failed"
+        showStandardStreams = true
+        exceptionFormat = 'full'
+    }
 }

@@ -15,6 +15,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -83,9 +84,13 @@ public class AccountController {
     // 내 프로필 수정
     @PatchMapping("/myprofile")
     @Operation(summary = "내 프로필 수정")
-    public ResponseEntity<AccountResponse> updateAccount(@RequestBody AccountUpdateRequest request, @AuthenticationPrincipal Account account) {
+    public ResponseEntity<AccountResponse> updateAccount(
+            @RequestPart(value = "data", required = false) AccountUpdateRequest request,  // ← JSON
+            @RequestPart(value = "image", required = false) MultipartFile image,  // ← 파일
+            @AuthenticationPrincipal Account account
+    ) {
 
-        AccountResponse accountResponse = accountService.updateAccount(account.getUserId(), request);
+        AccountResponse accountResponse = accountService.updateAccount(account.getUserId(), request, image);
 
         return ResponseEntity.ok(accountResponse);
     }
@@ -101,4 +106,23 @@ public class AccountController {
 
     }
 
+    // 프로필 이미지 업로드
+    @PostMapping("/profile-image")
+    @Operation(summary = "프로필 이미지 업로드", description = "인증된 사용자의 프로필 이미지를 GCS에 업로드")
+    public ResponseEntity<AccountResponse> uploadProfileImage(
+            @RequestParam("image") MultipartFile image,
+            @AuthenticationPrincipal Account account
+    ) {
+        log.info("프로필 이미지 업로드 요청 - userId: {}, 파일명: {}, 파일크기: {}bytes",
+                account.getUserId(),
+                image.getOriginalFilename(),
+                image.getSize());
+
+        AccountResponse response = accountService.uploadProfileImage(
+                account.getUserId(),
+                image
+        );
+
+        return ResponseEntity.ok(response);
+    }
 }

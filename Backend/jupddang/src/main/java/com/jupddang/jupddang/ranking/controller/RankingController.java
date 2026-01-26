@@ -16,25 +16,28 @@ public class RankingController {
 
     private final RankingService rankingService;
 
-    // 1. 전체(누적) 랭킹 조회 API
-    // URL: /api/ranking/total?userId=...
+    // 1. 전체(누적) 랭킹 조회
+    // 예: /api/ranking/total?page=0&size=20&userId=test
     @GetMapping("/total")
     public ResponseEntity<RankingListResponseDto> getTotalRanking(
-            @RequestParam String userId // 시큐리티 없이 직접 받기
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam String userId
     ) {
-        // 서비스에 "TOTAL"이라고 명확하게 넘겨줌
-        RankingListResponseDto response = rankingService.getRankingList("TOTAL", userId);
+        RankingListResponseDto response = rankingService.getTotalRanking(page, size, userId);
         return ResponseEntity.ok(response);
     }
 
-    // 2. 월간 랭킹 조회 API
-    // URL: /api/ranking/monthly?userId=...
+    // 2. 월간 랭킹 조회
+    // 예: /api/ranking/monthly?userId=test (자동으로 이번 달)
+    // 예: /api/ranking/monthly?year=2025&month=12&userId=test (특정 달)
     @GetMapping("/monthly")
     public ResponseEntity<RankingListResponseDto> getMonthlyRanking(
-            @RequestParam String userId // 시큐리티 없이 직접 받기
+            @RequestParam(required = false) Integer year,
+            @RequestParam(required = false) Integer month,
+            @RequestParam String userId
     ) {
-        // 서비스에 "MONTHLY"라고 명확하게 넘겨줌
-        RankingListResponseDto response = rankingService.getRankingList("MONTHLY", userId);
+        RankingListResponseDto response = rankingService.getMonthlyRanking(year, month, userId);
         return ResponseEntity.ok(response);
     }
 }

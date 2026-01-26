@@ -152,10 +152,30 @@ public class AccountService {
 
     @Transactional
     public AccountResponse deleteAccount(String userId) {
+
+        // 1. 계정 조회
         Account account = accountRepository.findByUserId(userId)
                 .orElseThrow(() -> new IllegalArgumentException("Account not found."));
 
+        // 2. 프로필 이미지 삭제 (기본 이미지는 제외)
+        if (account.getProfileImage() != null &&
+                !account.getProfileImage().isEmpty() &&
+                !account.getProfileImage().contains("default-profile.png")) {
+
+            try {
+                gcsImageService.deleteImage(account.getProfileImage());
+                log.info("탈퇴 시 프로필 이미지 삭제 완료: {}", account.getProfileImage());
+            } catch (Exception e) {
+                // 이미지 삭제 실패해도 회원 탈퇴는 진행
+                log.error("프로필 이미지 삭제 실패 (회원 탈퇴는 진행): {}", e.getMessage());
+            }
+        } else {
+            log.info("삭제할 프로필 이미지 없음 (기본 이미지 또는 null)");
+        }
+
+        // 3. 계정 삭제
         accountRepository.delete(account);
+        log.info("회원 탈퇴 완료: userId={}", userId);
 
         return AccountResponse.from(account);
     }

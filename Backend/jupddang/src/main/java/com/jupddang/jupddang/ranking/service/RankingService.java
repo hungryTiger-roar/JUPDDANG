@@ -8,9 +8,11 @@ import com.jupddang.jupddang.ranking.dto.RankingListResponseDto;
 import com.jupddang.jupddang.ranking.dto.RankingResponseDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Slice;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -21,85 +23,91 @@ import java.util.List;
 @Transactional(readOnly = true)
 public class RankingService {
     private final AccountRepository accountRepository;
-    private final PloggingRepository ploggingRepository; // 월간 랭킹
+    private final PloggingRepository ploggingRepository;
 
-    public RankingListResponseDto getRankingList(String type, String userId) {
-
-        List<RankingResponseDto> rankingDtos = new ArrayList<>();
-        RankingResponseDto myRankingDto = null;
-
+    // 1. 전체(누적) 랭킹 (페이징 적용 + 내 등수 포함)
+    public RankingListResponseDto getTotalRanking(int page, int size, String userId) {
+        // 내 정보 조회
         Account me = accountRepository.findByUserId(userId)
                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
 
-        // 월간 랭킹
-        if ("MONTHLY".equals(type)) {
-            // 이번 달 1일 ~ 말일 계산
-            LocalDateTime now = LocalDateTime.now();
-            LocalDateTime start = now.withDayOfMonth(1).truncatedTo(ChronoUnit.DAYS);
-            LocalDateTime end = now.withDayOfMonth(now.toLocalDate().lengthOfMonth())
-                    .withHour(23).withMinute(59).withSecond(59);
+        // 랭킹 리스트 조회 (페이징)
+        Slice<Account> accountSlice = accountRepository.findAllByOrderByScoreDesc(PageRequest.of(page, size));
 
-            // 레포지토리 호출 (상위 10개)
-            List<Object[]> results = ploggingRepository.findMonthlyRanking(start, end, PageRequest.of(0, 10));
+        List<RankingResponseDto> rankingDtos = new ArrayList<>();
+        int currentRank = (page * size) + 1; // 0페이지면 1등부터, 1페이지(size 10)면 11등부터
 
-            // DTO 변환
-            int rank = 1;
-            for (Object[] row : results) {
-                String uId = (String) row[0];
-                String nick = (String) row[1];
-                String pImg = (String) row[2];
-                Long scoreSum = (Long) row[3];
-
-                // ★ 여기서 Enum 활용!
-                String tierLabel = PloggingLevel.findByScore(scoreSum).getLabel();
-
-                rankingDtos.add(RankingResponseDto.builder()
-                        .rank(rank++)
-                        .userId(uId)
-                        .nickname(nick)
-                        .profileImage(pImg)
-                        .score(scoreSum)
-                        .tier(tierLabel) // Enum에서 가져온 라벨(Gold 1 등)
-                        .build());
-            }
-            // 월간 내 정보 (일단 0등 처리, 필요시 별도 구현)
-            myRankingDto = convertToDto(me, 0);
+        for (Account account : accountSlice) {
+            rankingDtos.add(convertToDto(account, currentRank++, (long)account.getScore()));
         }
 
-        // 전체 랭킹 (TOTAL) - 기존 로직
-        else {
-            List<Account> topAccounts = accountRepository.findTop10ByOrderByScoreDesc();
-
-            int rank = 1;
-            for (Account account : topAccounts) {
-                rankingDtos.add(convertToDto(account, rank++));
-            }
-
-            long count = accountRepository.countByScoreGreaterThan(me.getScore());
-            int myRank = (int) count + 1;
-
-            myRankingDto = convertToDto(me, myRank);
-        }
+        // 내 등수 계산 (전체 점수 기준)
+        long myCount = accountRepository.countByScoreGreaterThan(me.getScore());
+        RankingResponseDto myRankingDto = convertToDto(me, (int) myCount + 1, (long)me.getScore());
 
         return RankingListResponseDto.builder()
                 .topRankings(rankingDtos)
-                .myRanking(myRankingDto)
+                .myRanking(myRankingDto) // ★ 내 랭킹 포함됨
                 .build();
     }
 
-    private RankingResponseDto convertToDto(Account account, int rank) {
+    // 2. 월간 랭킹 (날짜 자동 + 내 점수 포함)
+    public RankingListResponseDto getMonthlyRanking(Integer year, Integer month, String userId) {
+        Account me = accountRepository.findByUserId(userId)
+                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
 
-        // ★ 여기서도 Enum 활용!
-        String tierLabel = PloggingLevel.findByScore((long) account.getScore()).getLabel();
+        // 날짜가 없으면 현재 날짜로 자동 설정
+        if (year == null) year = LocalDate.now().getYear();
+        if (month == null) month = LocalDate.now().getMonthValue();
 
+        // 해당 월의 시작과 끝 계산
+        LocalDateTime start = LocalDateTime.of(year, month, 1, 0, 0, 0);
+        LocalDateTime end = start.plusMonths(1).minusSeconds(1);
+
+        // 월간 랭킹 리스트 (일단 상위 10명만 조회하도록 설정, 필요시 파라미터화 가능)
+        List<Object[]> results = ploggingRepository.findMonthlyRanking(start, end, PageRequest.of(0, 10));
+
+        List<RankingResponseDto> rankingDtos = new ArrayList<>();
+        int rank = 1;
+        for (Object[] row : results) {
+            rankingDtos.add(RankingResponseDto.builder()
+                    .rank(rank++)
+                    .userId((String) row[0])
+                    .nickname((String) row[1])
+                    .profileImage((String) row[2])
+                    .score((Long) row[3])
+                    .tier(PloggingLevel.findByScore((Long) row[3]).getLabel())
+                    .build());
+        }
+
+        // 내 월간 점수 조회 (없으면 0점)
+        long myMonthlyScore = ploggingRepository.sumScoreByAccountAndDate(me, start, end).orElse(0L);
+
+        // 내 월간 정보 생성 (월간 등수 계산은 복잡해서 일단 점수만 정확히 표기하고 등수는 0 처리)
+        RankingResponseDto myRankingDto = RankingResponseDto.builder()
+                .rank(0) // 월간 내 등수는 별도 집계 필요 (일단 0)
+                .userId(me.getUserId())
+                .nickname(me.getNickname())
+                .profileImage(me.getProfileImage())
+                .score(myMonthlyScore) // ★ 이번 달 내 점수
+                .tier(PloggingLevel.findByScore(myMonthlyScore).getLabel())
+                .build();
+
+        return RankingListResponseDto.builder()
+                .topRankings(rankingDtos)
+                .myRanking(myRankingDto) // ★ 내 랭킹(점수) 포함됨
+                .build();
+    }
+
+    // DTO 변환 헬퍼 메서드
+    private RankingResponseDto convertToDto(Account account, int rank, Long score) {
         return RankingResponseDto.builder()
                 .rank(rank)
                 .userId(account.getUserId())
                 .nickname(account.getNickname())
                 .profileImage(account.getProfileImage())
-                .score((long) account.getScore())
-                .tier(tierLabel) // Enum이 계산해준 라벨 사용
+                .score(score)
+                .tier(PloggingLevel.findByScore(score).getLabel())
                 .build();
-
     }
 }

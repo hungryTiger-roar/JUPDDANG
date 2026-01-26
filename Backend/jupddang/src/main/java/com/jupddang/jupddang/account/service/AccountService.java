@@ -15,17 +15,22 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+import com.jupddang.jupddang.common.infrastructure.storage.GcsImageService;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.List;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class AccountService {
 
     private final AccountRepository accountRepository;
     private final AuthenticationManager authenticationManager;
     private final BCryptPasswordEncoder bCryptPasswordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
+    private final GcsImageService gcsImageService;
 
     @Transactional
     public AccountResponse createAccount(AccountCreateRequest request) {
@@ -128,4 +133,43 @@ public class AccountService {
 
         return AccountResponse.from(account);
     }
+
+    @Transactional
+    public AccountResponse uploadProfileImage(String userId, MultipartFile image) {
+
+        // 1. 계정 조회
+        Account account = accountRepository.findByUserId(userId)
+                .orElseThrow(() -> new IllegalArgumentException("Account not found."));
+
+        // 2. 기존 프로필 이미지가 있으면 GCS에서 삭제
+        if (account.getProfileImage() != null &&
+                !account.getProfileImage().isEmpty() &&
+                !account.getProfileImage().contains("default-profile.png")) {
+
+            try {
+                gcsImageService.deleteImage(account.getProfileImage());
+                log.info("기존 프로필 이미지 삭제 완료: {}", account.getProfileImage());
+            } catch (Exception e) {
+                log.warn("기존 프로필 이미지 삭제 실패 (계속 진행): {}", e.getMessage());
+            }
+        }
+
+        // 3. 새 이미지를 GCS에 업로드
+        String imageUrl = gcsImageService.uploadImage(image, "profile");
+        log.info("새 프로필 이미지 업로드 완료: {}", imageUrl);
+
+        // 4. Account 엔티티의 profileImage 필드만 업데이트
+        account.update(
+                null,       // pw
+                null,       // nickname
+                imageUrl,   // profileImage
+                null,       // intro
+                null,       // region
+                null,       // email
+                null        // color
+        );
+
+        return AccountResponse.from(account);
+    }
+
 }

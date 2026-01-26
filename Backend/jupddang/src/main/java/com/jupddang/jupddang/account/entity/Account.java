@@ -94,6 +94,9 @@ public class Account implements UserDetails {
         }
     }
 
+    
+
+
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return List.of(new SimpleGrantedAuthority("ROLE_USER"));
@@ -127,5 +130,12 @@ public class Account implements UserDetails {
     @Override
     public boolean isEnabled() {
         return true;
+    }
+    /**
+     * 점수 누적 메서드
+     * @param point 획득한 점수
+     */
+    public void addScore(int point) {
+        this.score += point;
     }
 }

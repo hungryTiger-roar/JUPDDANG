@@ -31,4 +31,4 @@ ENV TZ=Asia/Seoul
 RUN apk add --no-cache tzdata
 
 # 실행 (운영 프로파일 적용)
-ENTRYPOINT ["java", "-jar", "-Dspring.profiles.active=prod", "app.jar"]
+ENTRYPOINT ["java", "-jar", "/app/app.jar"]

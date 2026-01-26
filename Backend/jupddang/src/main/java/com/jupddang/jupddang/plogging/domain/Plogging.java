@@ -1,43 +1,11 @@
-//package com.jupddang.jupddang.plogging.domain;
-//
-//
-//import jakarta.persistence.*;
-//import lombok.*;
-//import org.springframework.data.annotation.CreatedDate;
-//import org.springframework.data.jpa.domain.support.AuditingEntityListener;
-//
-//import java.time.LocalDateTime;
-//
-//@Entity
-//@Getter
-//@Table(name = "ploggings")
-//@NoArgsConstructor(access = AccessLevel.PROTECTED)
-//@AllArgsConstructor
-//@Builder
-//@EntityListeners(AuditingEntityListener.class) // 생성/수정 시간 자동화
-//public class Plogging {
-//
-//    @Id
-//    @GeneratedValue(strategy = GenerationType.IDENTITY)
-//    @Column(name = "plogging_id")
-//    private Long id;
-//
-//    @Column(nullable = true)
-//    private Long userId;
-//
-//    // 이동 거리
-//    private Double distance;
-//
-//    // 소요 시간
-//    private Integer times;
-//}
+
 
 package com.jupddang.jupddang.plogging.domain;
 
 import com.jupddang.jupddang.account.entity.Account; // Account 임포트 필수!
 import jakarta.persistence.*;
-        import lombok.*;
-        import org.springframework.data.annotation.CreatedDate;
+import lombok.*;
+import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;

@@ -3,11 +3,8 @@ stages:
   - deploy
 
 variables:
-  # 이미지 이름
   IMAGE_NAME: jupddang-backend
-  # Docker Compose 파일 경로
   COMPOSE_FILE: /home/gitlab-runner/app/docker-compose.yml
-  # 환경변수 파일 기본 경로
   ENV_ROOT: /home/gitlab-runner/app
 
 # ==================================================
@@ -24,17 +21,15 @@ build_image:
     - |
       echo "🏗️ Building Docker Image for branch: $CI_COMMIT_REF_SLUG"
 
-      # 환경별 .env 파일 선택 (빌드 시 필요한 변수가 있을 경우를 대비)
       if [ "$CI_COMMIT_REF_SLUG" == "master" ]; then
         ENV_FILE="${ENV_ROOT}/.env.prod"
       else
         ENV_FILE="${ENV_ROOT}/.env.dev"
       fi
 
-      # 빌드 컨텍스트에 .env 복사
       cp "$ENV_FILE" .env || { echo "❌ Env file not found"; exit 1; }
 
-      # 이미지 빌드 (태그: 브랜치명)
+      # 이미지 빌드 (임시 태그: 커밋명)
       docker build -t $IMAGE_NAME:$CI_COMMIT_REF_SLUG ./Backend/jupddang
 
 # ==================================================
@@ -52,33 +47,28 @@ deploy_app:
     - |
       echo "🚀 Deploying to $CI_COMMIT_REF_SLUG Environment..."
 
-      # ---------------------------------------------------------
-      # [핵심] 브랜치에 따라 배포할 '서비스 이름'과 '환경파일' 결정
-      # ---------------------------------------------------------
+      # 브랜치별 타겟 설정
       if [ "$CI_COMMIT_REF_SLUG" == "master" ]; then
         TARGET_ENV="${ENV_ROOT}/.env.prod"
-        TARGET_SERVICE="backend-prod"   # docker-compose.yml에 정의된 서비스명
+        TARGET_SERVICE="backend-prod"
+        IMAGE_TAG="prod"
       else
         TARGET_ENV="${ENV_ROOT}/.env.dev"
-        TARGET_SERVICE="backend-dev"    # docker-compose.yml에 정의된 서비스명
+        TARGET_SERVICE="backend-dev"
+        IMAGE_TAG="dev"
       fi
 
-      echo "🎯 Target Service: $TARGET_SERVICE"
-      echo "📄 Using Env File: $TARGET_ENV"
+      echo "🎯 Target Service: $TARGET_SERVICE | Tag: $IMAGE_TAG"
 
-      # 1. 실행용 .env 복사 (현재 디렉토리로)
+      # 1. 환경변수 준비
       cp "$TARGET_ENV" .env
 
-      # 2. 이미지 태그 갱신 (build 단계에서 만든 이미지를 latest로 태깅)
-      # docker-compose.yml이 latest를 바라보고 있기 때문
-      docker tag $IMAGE_NAME:$CI_COMMIT_REF_SLUG $IMAGE_NAME:latest
+      # 2. 이미지 태그 변환 (commit -> prod/dev)
+      docker tag $IMAGE_NAME:$CI_COMMIT_REF_SLUG $IMAGE_NAME:$IMAGE_TAG
 
-      # 3. 배포 실행 (Zero Downtime 방식)
-      # -p 옵션 삭제: 컨테이너 이름이 고정되어 있으므로 프로젝트 격리 불필요
-      # up -d --no-deps --build <서비스명>: 해당 서비스만 새로 빌드해서 교체 (DB/Redis 재시작 안 함)
-      
+      # 3. 배포 실행 (Zero Downtime)
+      # 해당 서비스만 빌드 및 재시작 (DB/Redis 건드리지 않음)
       docker compose --env-file "$TARGET_ENV" -f $COMPOSE_FILE up -d --no-deps --build $TARGET_SERVICE
 
-      # 4. 불필요한 이미지 정리
       docker image prune -f
-      echo "✅ Deployment of $TARGET_SERVICE Complete!"
+      echo "✅ Deployment Complete!"

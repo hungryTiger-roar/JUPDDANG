@@ -37,7 +37,7 @@ public class Account implements UserDetails {
     @Column(nullable = false)
     private String intro;
 
-    @Column(nullable = false)
+    @Column(name = "address", nullable = false)
     private String region;
 
     @Column(nullable = false, unique = true)
@@ -66,6 +66,8 @@ public class Account implements UserDetails {
         this.region = region;
         this.color = color;
         this.score = score;
+        this.profileImage = "https://storage.googleapis.com/jupddang-images/default/default-profile.png";
+        this.intro = "안녕하세요!";
     }
 
     public void update(String pw, String nickname, String profileImage, String intro, String region, String email, String color) {
@@ -91,6 +93,9 @@ public class Account implements UserDetails {
             this.color = color;
         }
     }
+
+    
+
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
@@ -125,5 +130,12 @@ public class Account implements UserDetails {
     @Override
     public boolean isEnabled() {
         return true;
+    }
+    /**
+     * 점수 누적 메서드
+     * @param point 획득한 점수
+     */
+    public void addScore(int point) {
+        this.score += point;
     }
 }

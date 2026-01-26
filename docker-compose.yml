@@ -41,6 +41,10 @@ services:
   # ===========================
   backend-prod:
     container_name: jupddang-backend-prod
+    # [수정] 빌드 컨텍스트 추가 (Dockerfile 변경사항 반영용)
+    build:
+      context: .
+      dockerfile: Dockerfile
     image: jupddang-backend:latest
     env_file: .env.prod
     volumes:
@@ -83,6 +87,10 @@ services:
   # ===========================
   backend-dev:
     container_name: jupddang-backend-dev
+    # [수정] 빌드 컨텍스트 추가 (prod와 같은 이미지 사용)
+    build:
+      context: .
+      dockerfile: Dockerfile
     image: jupddang-backend:latest
     env_file: .env.dev
     volumes:
@@ -101,6 +109,10 @@ services:
     image: postgis/postgis:15-3.4
     restart: always
     env_file: .env.dev
+    # [중요] DB 인코딩 강제 설정 추가
+    command: postgres -c 'config_file=/etc/postgresql/postgresql.conf'
+    environment:
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
     volumes:
       - /home/gitlab-runner/data/dev/db:/var/lib/postgresql/data
     networks:

@@ -49,7 +49,7 @@ public class Trashcan {
     @Column(nullable = false)
     private LocalDateTime updatedAt;
 
-    protected Trashcan() {}
+    public Trashcan() {}
 
     public Long getId() {
         return id;

@@ -1,6 +1,7 @@
 package com.jupddang.jupddang.plogging.service;
 
 
+import com.jupddang.jupddang.plogging.dto.request.LocationRequest;
 import com.jupddang.jupddang.plogging.dto.request.PloggingEndRequest;
 import com.jupddang.jupddang.plogging.dto.response.PloggingResultResponse;
 import org.springframework.web.multipart.MultipartFile;
@@ -15,5 +16,5 @@ public interface PloggingService {
             MultipartFile afterImage,
             MultipartFile mapImage
     );
-    void test();
+    void processLocation(Long userId, LocationRequest request);
 }

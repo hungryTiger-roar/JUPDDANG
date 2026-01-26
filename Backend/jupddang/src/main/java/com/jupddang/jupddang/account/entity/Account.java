@@ -87,4 +87,12 @@ public class Account {
         }
     }
 
+
+    /**
+     * 점수 누적 메서드
+     * @param point 획득한 점수
+     */
+    public void addScore(int point) {
+        this.score += point;
+    }
 }

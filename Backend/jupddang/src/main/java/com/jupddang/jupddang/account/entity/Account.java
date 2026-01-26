@@ -31,10 +31,10 @@ public class Account implements UserDetails {
     @Column(nullable = false)
     private String nickname;
 
-    @Column(name = "profile_image", nullable = false)
+    @Column(name = "profile_image", nullable = true)
     private String profileImage;
 
-    @Column(nullable = false)
+    @Column(nullable = true)
     private String intro;
 
     @Column(nullable = false)

@@ -1,13 +1,16 @@
 package com.jupddang.jupddang.sns.controller;
 
 import com.jupddang.jupddang.sns.dto.CommentRequestDto;
+import com.jupddang.jupddang.sns.dto.PostCreateRequestDto;
 import com.jupddang.jupddang.sns.dto.PostResponseDto;
 import com.jupddang.jupddang.sns.service.SnsService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -27,6 +30,21 @@ public class SnsController {
     }
 
     // 포스트 좋아요
+    @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
+    @Operation(summary = "寃뚯떆湲 ?묒꽦 (JSON)")
+    public ResponseEntity<PostResponseDto> createPost(@RequestBody PostCreateRequestDto request) {
+        return ResponseEntity.ok(snsService.createPost(request));
+    }
+
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "寃뚯떆湲 ?묒꽦 (Multipart)")
+    public ResponseEntity<PostResponseDto> createPostWithImages(
+            @RequestPart("data") PostCreateRequestDto request,
+            @RequestPart(value = "images", required = false) List<MultipartFile> images
+    ) {
+        return ResponseEntity.ok(snsService.createPostWithImages(request, images));
+    }
+
     @PostMapping("/{postId}/like")
     @Operation(summary = "게시글 좋아요")
     public ResponseEntity<String> likePost(@PathVariable Long postId) {

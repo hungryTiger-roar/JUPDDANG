@@ -6,6 +6,7 @@ import com.jupddang.jupddang.plogging.domain.event.PloggingCompletedEvent;
 import com.jupddang.jupddang.account.entity.Account;
 import com.jupddang.jupddang.account.repository.AccountRepository;
 import com.jupddang.jupddang.sns.dto.CommentRequestDto;
+import com.jupddang.jupddang.sns.dto.PostCreateRequestDto;
 import com.jupddang.jupddang.sns.dto.PostResponseDto;
 import com.jupddang.jupddang.sns.entity.Comment;
 import com.jupddang.jupddang.sns.entity.Post;
@@ -17,7 +18,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -74,6 +77,64 @@ public class SnsService {
     }
 
     // 전체 포스트 조회
+    @Transactional
+    public PostResponseDto createPost(PostCreateRequestDto request) {
+        return createPostInternal(request, List.of());
+    }
+
+    @Transactional
+    public PostResponseDto createPostWithImages(
+            PostCreateRequestDto request,
+            List<MultipartFile> images
+    ) {
+        return createPostInternal(request, images);
+    }
+
+    private PostResponseDto createPostInternal(
+            PostCreateRequestDto request,
+            List<MultipartFile> images
+    ) {
+        Account account = accountRepository.findByUserId(request.getUserId())
+                .orElseThrow(() -> new IllegalArgumentException("Account not found."));
+
+        List<String> uploadedUrls = new ArrayList<>();
+        if (images != null) {
+            for (MultipartFile image : images) {
+                if (image == null || image.isEmpty()) {
+                    continue;
+                }
+                uploadedUrls.add(gcsImageService.uploadImage(image, "community"));
+                if (uploadedUrls.size() >= 3) {
+                    break;
+                }
+            }
+        }
+
+        String beforeImageUrl = request.getBeforeImageUrl();
+        String afterImageUrl = request.getAfterImageUrl();
+        String mapImageUrl = request.getMapImageUrl();
+
+        if (!uploadedUrls.isEmpty()) {
+            beforeImageUrl = uploadedUrls.get(0);
+        }
+        if (uploadedUrls.size() > 1) {
+            afterImageUrl = uploadedUrls.get(1);
+        }
+        if (uploadedUrls.size() > 2) {
+            mapImageUrl = uploadedUrls.get(2);
+        }
+
+        Post post = Post.builder()
+                .account(account)
+                .content(request.getContent())
+                .beforeImageUrl(beforeImageUrl)
+                .afterImageUrl(afterImageUrl)
+                .mapImageUrl(mapImageUrl)
+                .build();
+
+        return new PostResponseDto(postRepository.save(post));
+    }
+
     @Transactional(readOnly = true)
     public List<PostResponseDto> getAllPost() {
         return postRepository.findAllByOrderByCreatedAtDesc().stream()

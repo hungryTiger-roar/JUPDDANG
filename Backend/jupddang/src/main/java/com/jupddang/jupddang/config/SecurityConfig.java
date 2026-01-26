@@ -27,22 +27,39 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         return http
-                // JWT 기반 API 이므로 CSRF, 세션, 기본 로그인/Basic 인증을 비활성화
+                // JWT 기반이므로 불필요한 설정 비활성화
                 .csrf(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .formLogin(AbstractHttpConfigurer::disable)
+                .cors(cors -> cors.configure(http)) // Nginx 환경에서 CORS 문제 방지
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+
+                // 예외 처리 (인증 실패 시)
                 .exceptionHandling(ex -> ex.authenticationEntryPoint(authenticationEntryPoint))
-                // URL별 권한 설정 (회원가입, 로그인, swagger 요청 외 인증 필요)
+
+                // 🚀 [핵심] URL별 권한 설정 (개발 편의성 극대화)
                 .authorizeHttpRequests(auth -> auth
+                        // 1. Swagger 관련 모든 경로 허용 (UI, Docs, Resources)
+                        .requestMatchers(
+                                "/swagger-ui/**",
+                                "/v3/api-docs/**",
+                                "/swagger-resources/**",
+                                "/webjars/**"
+                        ).permitAll()
+
+                        // 2. 모니터링(Actuator) 및 헬스체크 허용
+                        .requestMatchers("/actuator/**").permitAll()
+
+                        // 3. 회원가입/로그인 및 에러 페이지 허용
                         .requestMatchers(
                                 "/api/account/signup",
                                 "/api/account/login",
-                                "/swagger-ui/**",
-                                "/v3/api-docs/**"
-                        )
-                        .permitAll()
+                                "/api/auth/**",
+                                "/error"
+                        ).permitAll()
+
+                        // 4. 그 외 모든 요청은 인증 필요
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(new JwtAuthenticationFilter(jwtTokenProvider), UsernamePasswordAuthenticationFilter.class)

@@ -37,7 +37,7 @@ public class Account implements UserDetails {
     @Column(nullable = false)
     private String intro;
 
-    @Column(nullable = false)
+    @Column(name = "address", nullable = false)
     private String region;
 
     @Column(nullable = false, unique = true)

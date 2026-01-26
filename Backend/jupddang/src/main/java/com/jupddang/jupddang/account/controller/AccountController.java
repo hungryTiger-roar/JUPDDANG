@@ -16,6 +16,7 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.http.MediaType;
 
 import java.util.List;
 
@@ -107,7 +108,7 @@ public class AccountController {
     }
 
     // 프로필 이미지 업로드
-    @PostMapping("/profile-image")
+    @PostMapping(value = "/profile-image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(summary = "프로필 이미지 업로드", description = "인증된 사용자의 프로필 이미지를 GCS에 업로드")
     public ResponseEntity<AccountResponse> uploadProfileImage(
             @RequestParam("image") MultipartFile image,

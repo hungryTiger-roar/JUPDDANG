@@ -16,6 +16,8 @@ public class AccountResponse {
     private String email;
     private String nickname;
     private String address;
+    String profileImage;
+    String intro;
     private LocalDateTime createdAt;
 
     public static AccountResponse from(Account account) {
@@ -24,6 +26,8 @@ public class AccountResponse {
                 account.getEmail(),
                 account.getNickname(),
                 account.getRegion(),
+                account.getProfileImage(),
+                account.getIntro(),
                 account.getCreatedAt()
         );
     }

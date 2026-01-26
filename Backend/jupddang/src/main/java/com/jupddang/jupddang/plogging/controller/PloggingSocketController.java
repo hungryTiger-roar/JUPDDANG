@@ -8,7 +8,6 @@ import org.springframework.messaging.handler.annotation.DestinationVariable;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.stereotype.Controller;
-
 import java.security.Principal;
 
 @Slf4j
@@ -18,38 +17,19 @@ public class PloggingSocketController {
 
     private final PloggingService ploggingService;
 
-    /**
-     * Case 1: 개인(Solo) 플로깅
-     * URL: /app/plogging/location/solo
-     */
-    @MessageMapping("/plogging/location/solo")
-    public void sendSoloLocation(
-            @Payload LocationRequest request,
-            Principal principal
-    ) {
-        Long userId = 1L; // TODO: principal.getName() 등으로 실제 ID 추출
-
-        // 개인 모드이므로 partyId는 null로 명시
-        request.setPartyId(null);
-
+    // 예시 1: Principal 사용 시
+    @MessageMapping("/plogging/location")
+    public void sendLocation(Principal principal, @Payload LocationRequest request) {
+        // Principal.getName()은 보통 String ID를 반환합니다.
+        String userId = principal.getName(); 
         ploggingService.processLocation(userId, request);
     }
 
-    /**
-     * Case 2: 파티(Party) 플로깅
-     * URL: /app/plogging/location/party/{partyId}
-     */
-    @MessageMapping("/plogging/location/party/{partyId}")
-    public void sendPartyLocation(
-            @DestinationVariable Long partyId,
-            @Payload LocationRequest request,
-            Principal principal
-    ) {
-        Long userId = 1L; // TODO: principal.getName() 등으로 실제 ID 추출
-
-        // 경로변수에서 받은 partyId 주입
-        request.setPartyId(partyId);
-
+    // 예시 2: DestinationVariable 사용 시 (경로에 ID가 있는 경우)
+    // 기존: @DestinationVariable Long userId
+    // 변경: @DestinationVariable String userId
+    @MessageMapping("/plogging/{userId}/location")
+    public void sendLocationWithId(@DestinationVariable String userId, @Payload LocationRequest request) {
         ploggingService.processLocation(userId, request);
     }
 }

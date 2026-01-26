@@ -4,9 +4,14 @@ stages:
 
 variables:
   IMAGE_NAME: jupddang-backend
-  COMPOSE_FILE: ./docker-compose.yml
+  # 👇 [중요] 서버에 있는 설정 파일을 바라보도록 절대 경로로 수정해야 합니다.
+  # (기존 ./docker-compose.yml 은 프로젝트 내부 파일을 보는데, 우리는 서버 설정을 따르기로 했으니까요)
+  COMPOSE_FILE: /home/gitlab-runner/app/docker-compose.yml
+  ENV_ROOT: /home/gitlab-runner/app
 
+# ==================================================
 # 1. Build 단계
+# ==================================================
 build_image:
   stage: build
   tags:
@@ -18,20 +23,21 @@ build_image:
     - |
       echo "🏗️ Building Docker Image for branch: $CI_COMMIT_REF_SLUG"
 
-      # 환경별 .env 파일 선택
       if [ "$CI_COMMIT_REF_SLUG" == "master" ]; then
-        ENV_FILE="/home/gitlab-runner/app/.env.prod"
+        ENV_FILE="${ENV_ROOT}/.env.prod"
       else
-        ENV_FILE="/home/gitlab-runner/app/.env.dev"
+        ENV_FILE="${ENV_ROOT}/.env.dev"
       fi
 
-      # 빌드 컨텍스트에 .env 복사 (필요 시)
+      # 빌드용 환경변수 복사
       cp "$ENV_FILE" .env || { echo "❌ Env file not found"; exit 1; }
 
       # 이미지 빌드
       docker build -t $IMAGE_NAME:$CI_COMMIT_REF_SLUG ./Backend/jupddang
 
+# ==================================================
 # 2. Deploy 단계
+# ==================================================
 deploy_app:
   stage: deploy
   tags:
@@ -44,26 +50,29 @@ deploy_app:
     - |
       echo "🚀 Deploying to $CI_COMMIT_REF_SLUG Environment..."
 
-      # 변수 설정
+      # 👇 [핵심 수정] 브랜치에 따라 'backend-prod' 또는 'backend-dev'를 선택하게 함
       if [ "$CI_COMMIT_REF_SLUG" == "master" ]; then
-        ENV_FILE="/home/gitlab-runner/app/.env.prod"
-        PROJECT_NAME="jupddang-prod"
+        TARGET_ENV="${ENV_ROOT}/.env.prod"
+        TARGET_SERVICE="backend-prod"   # 여기가 옛날엔 "backend" 였음 -> 수정됨
+        IMAGE_TAG="prod"
       else
-        ENV_FILE="/home/gitlab-runner/app/.env.dev"
-        PROJECT_NAME="jupddang-dev"
+        TARGET_ENV="${ENV_ROOT}/.env.dev"
+        TARGET_SERVICE="backend-dev"    # 여기가 옛날엔 "backend" 였음 -> 수정됨
+        IMAGE_TAG="dev"
       fi
 
-      # 실행용 .env 복사
-      cp "$ENV_FILE" .env
+      echo "🎯 Target Service: $TARGET_SERVICE | Tag: $IMAGE_TAG"
 
-      # 이미지 태그 갱신
-      docker tag $IMAGE_NAME:$CI_COMMIT_REF_SLUG $IMAGE_NAME:latest
+      # 1. 환경변수 복사
+      cp "$TARGET_ENV" .env
 
-      # 배포 실행
-      # --env-file: 정확한 환경변수 주입
-      # -p: 프로젝트 격리
-      docker compose -p $PROJECT_NAME --env-file "$ENV_FILE" -f $COMPOSE_FILE down backend
-      docker compose -p $PROJECT_NAME --env-file "$ENV_FILE" -f $COMPOSE_FILE up -d
+      # 2. 이미지 태그 변경 (commit hash -> prod/dev)
+      docker tag $IMAGE_NAME:$CI_COMMIT_REF_SLUG $IMAGE_NAME:$IMAGE_TAG
+
+      # 3. 배포 실행
+      # (기존 스크립트의 'down backend' 부분이 삭제되고, 아래 한 줄로 통합됨)
+      # --no-deps: DB/Redis 재시작 없이 오직 백엔드만 교체
+      docker compose --env-file "$TARGET_ENV" -f $COMPOSE_FILE up -d --no-deps --build $TARGET_SERVICE
 
       docker image prune -f
-      echo "✅ Deployment Complete!"
+      echo "✅ Deployment of $TARGET_SERVICE Complete!"

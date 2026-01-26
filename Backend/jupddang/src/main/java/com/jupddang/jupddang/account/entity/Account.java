@@ -66,6 +66,8 @@ public class Account implements UserDetails {
         this.region = region;
         this.color = color;
         this.score = score;
+        this.profileImage = "https://storage.googleapis.com/jupddang-images/default/default-profile.png";
+        this.intro = "안녕하세요!";
     }
 
     public void update(String pw, String nickname, String profileImage, String intro, String region, String email, String color) {

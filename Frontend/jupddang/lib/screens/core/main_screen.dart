@@ -35,7 +35,7 @@ class _MainScreenState extends State<MainScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       // IndexedStack을 사용하여 화면 전환 시 상태 유지 (지도가 매번 리로딩되지 않도록 함)
-      extendBody: true, // 지도가 바 아래까지 확장되도록 설정 (투명 배경 효과)
+      extendBody: false, // Prevents background bleed-through
       body: IndexedStack(index: _selectedIndex, children: _screens),
       bottomNavigationBar: CustomBottomNavbar(
         currentIndex: _selectedIndex,

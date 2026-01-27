@@ -24,8 +24,6 @@ public class Plogging {
     @Column(name = "plogging_id")
     private Long id;
 
-    @Column(nullable = true)
-    private String userId;
     // [수정] 닉네임, 프로필 사진을 쿼리 한 방에 가져오려면 이렇게 객체로 연결해야 함 (JPA 정석)
     // 기존 Long userId -> Account account 로 변경
     @ManyToOne(fetch = FetchType.LAZY)

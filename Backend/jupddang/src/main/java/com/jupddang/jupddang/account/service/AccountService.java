@@ -46,7 +46,7 @@ public class AccountService {
                 .nickname(request.getNickname())
                 .region(request.getRegion())
                 .color("#111111")
-                .totalscore(0)
+                .totalScore(0)
                 .build();
 
         return AccountResponse.from(accountRepository.save(account));

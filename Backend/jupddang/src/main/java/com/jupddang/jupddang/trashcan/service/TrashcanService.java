@@ -1,8 +1,13 @@
 package com.jupddang.jupddang.trashcan.service;
 
+import com.jupddang.jupddang.account.entity.Account;
+import com.jupddang.jupddang.account.repository.AccountRepository;
+import com.jupddang.jupddang.trashcan.dto.TrashcanCreateRequest;
+import com.jupddang.jupddang.trashcan.dto.TrashcanDetailDto;
 import com.jupddang.jupddang.trashcan.dto.TrashcanDto;
 import com.jupddang.jupddang.trashcan.dto.TrashcanListResponse;
 import com.jupddang.jupddang.trashcan.entity.Trashcan;
+import com.jupddang.jupddang.trashcan.entity.TrashcanStatus;
 import com.jupddang.jupddang.trashcan.repository.TrashcanRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -18,6 +23,7 @@ import java.util.List;
 public class TrashcanService {
 
     private final TrashcanRepository trashcanRepository;
+    private final AccountRepository accountRepository;
 
     /**
      * 지도 영역 내의 쓰레기통 조회
@@ -80,4 +86,38 @@ public class TrashcanService {
             throw new IllegalArgumentException("경도는 124.0 ~ 132.0 범위여야 합니다");
         }
     }
+
+    /**
+     * 새로운 쓰레기통 위치 추가
+     *
+     * @param request 쓰레기통 정보
+     * @param userId 제안한 사용자 ID
+     * @return 생성된 쓰레기통 정보
+     */
+    @Transactional
+    public TrashcanDetailDto createTrashcan(TrashcanCreateRequest request, String userId) {
+        // 요청 유효성 검증
+        request.validate();
+
+        Account account = accountRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다: " + userId));
+
+        // 새로운 Trashcan 엔티티 생성
+        Trashcan trashcan = new Trashcan();
+        trashcan.setLatitude(request.latitude());
+        trashcan.setLongitude(request.longitude());
+        trashcan.setAddress(request.address());
+        trashcan.setStatus(TrashcanStatus.PENDING);  // 초기 상태: 인증 대기
+        trashcan.setReportedBy(account);
+        trashcan.setVerificationCount(0);
+
+        // DB 저장
+        Trashcan saved = trashcanRepository.save(trashcan);
+
+        log.info("새로운 쓰레기통 위치 추가: id={}, userId={}, lat={}, lng={}",
+                saved.getId(), userId, saved.getLatitude(), saved.getLongitude());
+
+        return TrashcanDetailDto.from(saved);
+    }
+
 }

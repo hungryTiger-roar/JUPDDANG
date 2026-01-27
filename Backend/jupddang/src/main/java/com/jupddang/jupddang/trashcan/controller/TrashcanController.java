@@ -1,14 +1,17 @@
 package com.jupddang.jupddang.trashcan.controller;
 
+import com.jupddang.jupddang.account.entity.Account;
+import com.jupddang.jupddang.trashcan.dto.TrashcanCreateRequest;
+import com.jupddang.jupddang.trashcan.dto.TrashcanDetailDto;
 import com.jupddang.jupddang.trashcan.dto.TrashcanListResponse;
 import com.jupddang.jupddang.trashcan.service.TrashcanService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.*;
 
 @Slf4j
 @RestController
@@ -38,5 +41,24 @@ public class TrashcanController {
         );
 
         return ResponseEntity.ok(response);
+    }
+
+    /**
+     * 새로운 쓰레기통 위치 추가
+     * POST /api/v1/trashcans
+     */
+    @PostMapping
+    public ResponseEntity<TrashcanDetailDto> createTrashcan(
+            @RequestBody TrashcanCreateRequest request,
+            @AuthenticationPrincipal Account account) {
+
+        String userId = account.getUserId();
+
+        log.info("쓰레기통 위치 추가 요청 - userId: {}, lat: {}, lng: {}",
+                userId, request.latitude(), request.longitude());
+
+        TrashcanDetailDto response = trashcanService.createTrashcan(request, userId);
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 }

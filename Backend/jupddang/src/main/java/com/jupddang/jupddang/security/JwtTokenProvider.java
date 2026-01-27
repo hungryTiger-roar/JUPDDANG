@@ -69,7 +69,73 @@ public class JwtTokenProvider {
         return accessTokenValidity.toSeconds();
     }
 
+    /**
+     * JWT 토큰에서 사용자 ID 추출
+     *
+     * @param token JWT 토큰
+     * @return 사용자 ID (subject)
+     * @throws JwtException 토큰이 유효하지 않은 경우
+     */
+    public String getUserIdFromToken(String token) {
+        Claims claims = parseClaims(token);
+        return claims.getSubject();
+    }
 
+    /**
+     * JWT 토큰에서 권한(roles) 추출
+     *
+     * @param token JWT 토큰
+     * @return 권한 목록
+     */
+    @SuppressWarnings("unchecked")
+    public List<String> getRolesFromToken(String token) {
+        Claims claims = parseClaims(token);
+        return claims.get("roles", List.class);
+    }
+
+    /**
+     * JWT 토큰에서 만료 시간 추출
+     *
+     * @param token JWT 토큰
+     * @return 만료 시간 (Date)
+     */
+    public Date getExpirationFromToken(String token) {
+        Claims claims = parseClaims(token);
+        return claims.getExpiration();
+    }
+
+    /**
+     * JWT 토큰에서 발급 시간 추출
+     *
+     * @param token JWT 토큰
+     * @return 발급 시간 (Date)
+     */
+    public Date getIssuedAtFromToken(String token) {
+        Claims claims = parseClaims(token);
+        return claims.getIssuedAt();
+    }
+
+    /**
+     * JWT 토큰 만료 여부 확인
+     *
+     * @param token JWT 토큰
+     * @return 만료되었으면 true, 아니면 false
+     */
+    public boolean isTokenExpired(String token) {
+        try {
+            Date expiration = getExpirationFromToken(token);
+            return expiration.before(new Date());
+        } catch (JwtException e) {
+            return true;
+        }
+    }
+
+    /**
+     * Spring Security Authentication 객체 생성
+     *
+     * @param token JWT 토큰
+     * @return Authentication 객체
+     */
     public Authentication getAuthentication(String token) {
         // 1. 토큰에서 Claims(payload) 추출
         Claims claims = parseClaims(token);
@@ -82,7 +148,7 @@ public class JwtTokenProvider {
         // 3. Authentication 객체 생성
         // Principal에 Account 엔티티 전체를 저장 (userId가 아닌 account 객체)
         return new UsernamePasswordAuthenticationToken(
-                account,  // Principal = Account 엔티티 (이전: userId String)
+                account,  // Principal = Account 엔티티
                 null,     // Credentials (비밀번호는 불필요)
                 account.getAuthorities()  // 권한 정보
         );

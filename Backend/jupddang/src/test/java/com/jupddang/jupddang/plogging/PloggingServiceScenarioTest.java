@@ -1,5 +1,7 @@
 package com.jupddang.jupddang.plogging;
 
+import com.jupddang.jupddang.account.entity.Account;
+import com.jupddang.jupddang.account.repository.AccountRepository;
 import com.jupddang.jupddang.plogging.domain.Plogging;
 import com.jupddang.jupddang.plogging.domain.event.PloggingCompletedEvent;
 import com.jupddang.jupddang.plogging.dto.request.LocationRequest;
@@ -47,13 +49,13 @@ class PloggingServiceScenarioTest {
     @Mock private PloggingRepository ploggingRepository;
     @Mock private PloggingRedisRepository redisRepository;
     @Mock private GridRepository gridRepository;
+    @Mock private AccountRepository accountRepository;
     @Mock private ApplicationEventPublisher eventPublisher;
     @Mock private SimpMessagingTemplate messagingTemplate;
     @Mock private H3Core h3Core;
     @Mock private RaidService raidService;
 
     private final String USER_ID_A = "100";
-    private final String USER_ID_B = "200";
     private final String MOCK_H3_INDEX_1 = "8928308280fffff";
     private final String MOCK_H3_INDEX_2 = "8928308281fffff";
     private final String MOCK_H3_INDEX_3 = "8928308282fffff";
@@ -94,48 +96,51 @@ class PloggingServiceScenarioTest {
                 null, 5.0, Collections.emptyList(), Collections.emptyList(), 3600
         );
         MockMultipartFile image = new MockMultipartFile("img", "test.jpg", "image/jpeg", "byte".getBytes());
-        log.info("  - 플로깅 요청: distance={}km, time={}초", request.distance(), request.endTime());
 
+        // 1. Account Mocking
+        Account mockAccount = Account.builder()
+                .userId(USER_ID_A)
+                .nickname("TestUser")
+                .build();
+        given(accountRepository.getReferenceById(USER_ID_A)).willReturn(mockAccount);
+
+        // 2. Plogging Save Mocking
         Plogging savedPlogging = Plogging.builder()
                 .id(999L)
-                .userId(USER_ID_A)
+                .account(mockAccount)
                 .distance(5.0)
                 .times(3600)
+                .score(0)
                 .build();
         given(ploggingRepository.save(any(Plogging.class))).willReturn(savedPlogging);
 
+        // 3. Redis Mocking
         Set<String> capturedGrids = Set.of(MOCK_H3_INDEX_1, MOCK_H3_INDEX_2, MOCK_H3_INDEX_3);
         given(redisRepository.getCapturedGrids(USER_ID_A)).willReturn(capturedGrids);
         log.info("  - 점령 그리드 수: {}", capturedGrids.size());
 
+        // 4. RaidService Mocking
         given(raidService.applyRaidScore(eq(USER_ID_A), anySet())).willReturn(500);
-        log.info("  - 예상 레이드 점수: 500");
 
         // when
         log.info("[WHEN] endPlogging 메서드 실행...");
-        Instant executeStart = Instant.now();
         PloggingResultResponse response = ploggingService.endPlogging(USER_ID_A, request, image, image, image);
-        Duration executionTime = Duration.between(executeStart, Instant.now());
-        log.info("  - 실행 시간: {}ms", executionTime.toMillis());
 
         // then
         log.info("[THEN] 검증 시작...");
-        log.info("  ✓ DB 저장 검증");
+
+        verify(accountRepository).getReferenceById(USER_ID_A);
         verify(ploggingRepository).save(any(Plogging.class));
-
-        log.info("  ✓ 이벤트 발행 검증");
         verify(eventPublisher).publishEvent(any(PloggingCompletedEvent.class));
-
-        log.info("  ✓ 레이드 정산 검증");
         verify(raidService).applyRaidScore(eq(USER_ID_A), anySet());
-
-        log.info("  ✓ Redis 정리 검증");
         verify(redisRepository).deleteUserState(USER_ID_A);
 
+        // [수정 완료] Record 타입이므로 getter 없이 필드명()으로 호출
         log.info("  ✓ 응답 데이터 검증: raidScore={}, occupiedGridCnt={}",
                 response.raidScore(), response.occupiedGridCnt());
-        assertThat(response.raidScore()).isEqualTo(500);
-        assertThat(response.occupiedGridCnt()).isEqualTo(3);
+
+        assertThat(response.raidScore()).isEqualTo(500);       // .getRaidScore() (X) -> .raidScore() (O)
+        assertThat(response.occupiedGridCnt()).isEqualTo(3);   // .getOccupiedGridCnt() (X) -> .occupiedGridCnt() (O)
 
         Duration totalTime = Duration.between(stepStart, Instant.now());
         log.info(">>> [Scenario 5] 테스트 완료 (총 {}ms)", totalTime.toMillis());
@@ -153,9 +158,6 @@ class PloggingServiceScenarioTest {
         AtomicInteger successCount = new AtomicInteger();
         AtomicInteger failCount = new AtomicInteger();
 
-        log.info("  - 총 사용자 수: {}", userCount);
-        log.info("  - 스레드 풀 크기: 32");
-
         given(redisRepository.getUserState(anyString())).willReturn(null);
 
         Instant concurrencyStart = Instant.now();
@@ -171,24 +173,19 @@ class PloggingServiceScenarioTest {
                     successCount.incrementAndGet();
                 } catch (Exception e) {
                     failCount.incrementAndGet();
-                    log.error("  ✗ 사용자 {} 처리 실패: {}", userId, e.getMessage());
                 } finally {
                     latch.countDown();
                 }
             });
         }
 
-        log.info("  - 모든 요청 제출 완료, 대기 중...");
         latch.await();
         executorService.shutdown();
 
         Duration concurrencyTime = Duration.between(concurrencyStart, Instant.now());
 
         log.info("  ✓ 성공: {}/{}", successCount.get(), userCount);
-        log.info("  ✗ 실패: {}/{}", failCount.get(), userCount);
         log.info("  - 총 실행 시간: {}ms", concurrencyTime.toMillis());
-        log.info("  - 평균 처리 시간: {}ms/user", concurrencyTime.toMillis() / userCount);
-        log.info("  - 처리량: {}/sec", (userCount * 1000.0) / concurrencyTime.toMillis());
 
         assertThat(successCount.get()).isEqualTo(userCount);
         log.info(">>> [Scenario 6] 테스트 완료");

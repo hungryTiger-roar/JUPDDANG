@@ -40,3 +40,4 @@ docker-compose.override.yml
 *.bak
 *.tmp
 Backend/jupddang/env
+Backend/jupddang/src/main/resources/gcp-credentials.json

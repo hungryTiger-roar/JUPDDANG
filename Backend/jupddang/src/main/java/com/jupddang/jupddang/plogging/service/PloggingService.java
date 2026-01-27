@@ -10,11 +10,11 @@ import org.springframework.stereotype.Service;
 
 public interface PloggingService {
     PloggingResultResponse endPlogging(
-            Long userId,
+            String userId,
             PloggingEndRequest request,
             MultipartFile beforeImage,
             MultipartFile afterImage,
             MultipartFile mapImage
     );
-    void processLocation(Long userId, LocationRequest request);
+    void processLocation(String userId, LocationRequest request);
 }

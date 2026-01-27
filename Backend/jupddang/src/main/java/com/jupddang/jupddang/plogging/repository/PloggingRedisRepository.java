@@ -2,60 +2,44 @@ package com.jupddang.jupddang.plogging.repository;
 
 import com.jupddang.jupddang.plogging.dto.UserPloggingStatus;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Repository;
 
-import java.time.Duration;
-import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 @Repository
 @RequiredArgsConstructor
 public class PloggingRedisRepository {
 
-    private final StringRedisTemplate redisTemplate;
+    private final RedisTemplate<String, Object> redisTemplate;
 
-    private static final String KEY_STATUS = "plogging:status:";
-    private static final String KEY_CAPTURED = "plogging:captured:";
-
-    // [중요] Service에서 호출하는 시그니처와 일치해야 함
-    public void updateUserState(Long userId, String h3Index, long currentTime, boolean isOccupied) {
-        String key = KEY_STATUS + userId;
-        redisTemplate.opsForHash().putAll(key, Map.of(
-                "h3", h3Index,
-                "entryTime", String.valueOf(currentTime),
-                "isOccupied", String.valueOf(isOccupied)
-        ));
-        redisTemplate.expire(key, Duration.ofHours(6));
+    // [수정] Long userId -> String userId
+    public UserPloggingStatus getUserState(String userId) {
+        // Redis Key 생성 시 String 결합
+        return (UserPloggingStatus) redisTemplate.opsForValue().get("plogging:state:" + userId);
     }
 
-    public UserPloggingStatus getUserState(Long userId) {
-        String key = KEY_STATUS + userId;
-        Map<Object, Object> entries = redisTemplate.opsForHash().entries(key);
-        if (entries.isEmpty()) return null;
-
-        return new UserPloggingStatus(
-                (String) entries.get("h3"),
-                Long.parseLong((String) entries.get("entryTime")),
-                Boolean.parseBoolean((String) entries.getOrDefault("isOccupied", "false"))
-        );
+    // [수정] Long userId -> String userId
+    public void updateUserState(String userId, String h3Index, long entryTime, boolean isOccupied) {
+        UserPloggingStatus status = new UserPloggingStatus(h3Index, entryTime, isOccupied);
+        redisTemplate.opsForValue().set("plogging:state:" + userId, status, 30, TimeUnit.MINUTES);
     }
 
-    // Account 점수용: 점령한 땅 추가
-    public void addCapturedGrid(Long userId, String h3Index) {
-        String key = KEY_CAPTURED + userId;
-        redisTemplate.opsForSet().add(key, h3Index);
-        redisTemplate.expire(key, Duration.ofHours(6));
+    // [수정] Long userId -> String userId
+    public void addCapturedGrid(String userId, String h3Index) {
+        redisTemplate.opsForSet().add("plogging:captured:" + userId, h3Index);
+        redisTemplate.expire("plogging:captured:" + userId, 30, TimeUnit.MINUTES);
     }
 
-    // Account 점수용: 점령 개수 조회
-    public int getCapturedCount(Long userId) {
-        String key = KEY_CAPTURED + userId;
-        Long size = redisTemplate.opsForSet().size(key);
+    // [수정] Long userId -> String userId
+    public int getCapturedCount(String userId) {
+        Long size = redisTemplate.opsForSet().size("plogging:captured:" + userId);
         return size != null ? size.intValue() : 0;
     }
 
-    public void deleteUserState(Long userId) {
-        redisTemplate.delete(KEY_STATUS + userId);
-        redisTemplate.delete(KEY_CAPTURED + userId);
+    // [수정] Long userId -> String userId
+    public void deleteUserState(String userId) {
+        redisTemplate.delete("plogging:state:" + userId);
+        redisTemplate.delete("plogging:captured:" + userId);
     }
 }

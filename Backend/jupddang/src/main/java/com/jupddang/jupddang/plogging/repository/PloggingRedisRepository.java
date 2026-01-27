@@ -1,8 +1,8 @@
 package com.jupddang.jupddang.plogging.repository;
 
 import com.jupddang.jupddang.plogging.dto.UserPloggingStatus;
-import com.jupddang.jupddang.plogging.dto.request.LocationRequest;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Repository;
 
@@ -10,92 +10,203 @@ import java.time.Duration;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
 
+@Slf4j
 @Repository
 @RequiredArgsConstructor
 public class PloggingRedisRepository {
 
     private final RedisTemplate<String, Object> redisTemplate;
 
+    // Redis Key Prefix
     private static final String KEY_STATUS = "plogging:status:";
-    private static final String KEY_CAPTURED = "plogging:captured:"; // 점령 성공한 곳들
+    private static final String KEY_CAPTURED = "plogging:captured:";
 
-    public void updateUserState(String userId, String h3Index, long currentTime, boolean isOccupied) {
+    // TTL 설정
+    private static final Duration TTL = Duration.ofHours(6);
+
+    /**
+     * 사용자 플로깅 상태 업데이트
+     * @param userId 사용자 ID (String)
+     * @param h3Index 현재 H3 그리드 인덱스
+     * @param entryTime 진입 시간 (밀리초)
+     * @param isOccupied 점령 완료 여부
+     */
+    public void updateUserState(String userId, String h3Index, long entryTime, boolean isOccupied) {
         String key = KEY_STATUS + userId;
-        redisTemplate.opsForHash().putAll(key, Map.of(
-                "h3", h3Index,
-                "entryTime", String.valueOf(currentTime),
-                "isOccupied", String.valueOf(isOccupied)
-        ));
-        redisTemplate.expire(key, Duration.ofHours(6));
+
+        try {
+            redisTemplate.opsForHash().putAll(key, Map.of(
+                    "h3", h3Index,
+                    "entryTime", String.valueOf(entryTime),
+                    "isOccupied", String.valueOf(isOccupied)
+            ));
+            redisTemplate.expire(key, TTL);
+
+            log.debug("Redis 상태 업데이트: userId={}, h3={}, occupied={}", userId, h3Index, isOccupied);
+        } catch (Exception e) {
+            log.error("Redis 상태 업데이트 실패: userId={}", userId, e);
+            throw e;
+        }
     }
 
+    /**
+     * 사용자 플로깅 상태 조회
+     * @param userId 사용자 ID (String)
+     * @return UserPloggingStatus 또는 null
+     */
     public UserPloggingStatus getUserState(String userId) {
         String key = KEY_STATUS + userId;
-        Map<Object, Object> entries = redisTemplate.opsForHash().entries(key);
-        if (entries.isEmpty()) return null;
 
-        return new UserPloggingStatus(
-                (String) entries.get("h3"),
-                Long.parseLong((String) entries.get("entryTime")),
-                Boolean.parseBoolean((String) entries.getOrDefault("isOccupied", "false"))
-        );
+        try {
+            Map<Object, Object> entries = redisTemplate.opsForHash().entries(key);
+
+            if (entries == null || entries.isEmpty()) {
+                log.debug("Redis 상태 없음: userId={}", userId);
+                return null;
+            }
+
+            String h3 = (String) entries.get("h3");
+            String entryTimeStr = (String) entries.get("entryTime");
+            String isOccupiedStr = (String) entries.getOrDefault("isOccupied", "false");
+
+            if (h3 == null || entryTimeStr == null) {
+                log.warn("Redis 데이터 불완전: userId={}", userId);
+                return null;
+            }
+
+            long entryTime = Long.parseLong(entryTimeStr);
+            boolean isOccupied = Boolean.parseBoolean(isOccupiedStr);
+
+            return new UserPloggingStatus(h3, entryTime, isOccupied);
+
+        } catch (Exception e) {
+            log.error("Redis 상태 조회 실패: userId={}", userId, e);
+            return null;
+        }
     }
 
-    // --- 2. 점령(Capture) 목록 관리 ---
-
-    // 점령 성공 시 추가 (기존 유지)
+    /**
+     * 점령 성공한 그리드 추가
+     * @param userId 사용자 ID (String)
+     * @param h3Index 점령한 H3 그리드 인덱스
+     */
     public void addCapturedGrid(String userId, String h3Index) {
         String key = KEY_CAPTURED + userId;
-        redisTemplate.opsForSet().add(key, h3Index);
-        redisTemplate.expire(key, Duration.ofHours(6));
+
+        try {
+            redisTemplate.opsForSet().add(key, h3Index);
+            redisTemplate.expire(key, TTL);
+
+            log.debug("Redis 점령 추가: userId={}, h3={}", userId, h3Index);
+        } catch (Exception e) {
+            log.error("Redis 점령 추가 실패: userId={}, h3={}", userId, h3Index, e);
+            throw e;
+        }
     }
 
-    // 점령 개수 조회 (기존 유지)
-    public int getCapturedCount(String userId) {
-        String key = KEY_CAPTURED + userId;
-        Long size = redisTemplate.opsForSet().size(key);
-        return size != null ? size.intValue() : 0;
-    }
-
+    /**
+     * 점령한 그리드 목록 조회
+     * @param userId 사용자 ID (String)
+     * @return 점령한 H3 인덱스 Set (빈 Set 반환 가능)
+     */
     public Set<String> getCapturedGrids(String userId) {
         String key = KEY_CAPTURED + userId;
-        Set<String> members = redisTemplate.opsForSet().members(key);
-        return members != null ? members : Collections.emptySet();
+
+        try {
+            Set<Object> members = redisTemplate.opsForSet().members(key);
+
+            if (members == null || members.isEmpty()) {
+                log.debug("Redis 점령 목록 없음: userId={}", userId);
+                return Collections.emptySet();
+            }
+
+            // Object를 String으로 변환
+            Set<String> result = members.stream()
+                    .map(Object::toString)
+                    .collect(java.util.stream.Collectors.toSet());
+
+            log.debug("Redis 점령 목록 조회: userId={}, count={}", userId, result.size());
+            return result;
+
+        } catch (Exception e) {
+            log.error("Redis 점령 목록 조회 실패: userId={}", userId, e);
+            return Collections.emptySet();
+        }
     }
 
-    public void deleteUserState(String userId) {
-        redisTemplate.delete(KEY_STATUS + userId);
-        redisTemplate.delete(KEY_CAPTURED + userId);
-
-    // [수정] Long userId -> String userId
-    public UserPloggingStatus getUserState(String userId) {
-        // Redis Key 생성 시 String 결합
-        return (UserPloggingStatus) redisTemplate.opsForValue().get("plogging:state:" + userId);
-    }
-
-    // [수정] Long userId -> String userId
-    public void updateUserState(String userId, String h3Index, long entryTime, boolean isOccupied) {
-        UserPloggingStatus status = new UserPloggingStatus(h3Index, entryTime, isOccupied);
-        redisTemplate.opsForValue().set("plogging:state:" + userId, status, 30, TimeUnit.MINUTES);
-    }
-
-    // [수정] Long userId -> String userId
-    public void addCapturedGrid(String userId, String h3Index) {
-        redisTemplate.opsForSet().add("plogging:captured:" + userId, h3Index);
-        redisTemplate.expire("plogging:captured:" + userId, 30, TimeUnit.MINUTES);
-    }
-
-    // [수정] Long userId -> String userId
+    /**
+     * 점령한 그리드 개수 조회
+     * @param userId 사용자 ID (String)
+     * @return 점령한 그리드 개수
+     */
     public int getCapturedCount(String userId) {
-        Long size = redisTemplate.opsForSet().size("plogging:captured:" + userId);
-        return size != null ? size.intValue() : 0;
+        String key = KEY_CAPTURED + userId;
+
+        try {
+            Long size = redisTemplate.opsForSet().size(key);
+            int count = size != null ? size.intValue() : 0;
+
+            log.debug("Redis 점령 개수: userId={}, count={}", userId, count);
+            return count;
+
+        } catch (Exception e) {
+            log.error("Redis 점령 개수 조회 실패: userId={}", userId, e);
+            return 0;
+        }
     }
 
-    // [수정] Long userId -> String userId
+    /**
+     * 사용자 플로깅 데이터 전체 삭제
+     * @param userId 사용자 ID (String)
+     */
     public void deleteUserState(String userId) {
-        redisTemplate.delete("plogging:state:" + userId);
-        redisTemplate.delete("plogging:captured:" + userId);
+        String statusKey = KEY_STATUS + userId;
+        String capturedKey = KEY_CAPTURED + userId;
+
+        try {
+            Boolean statusDeleted = redisTemplate.delete(statusKey);
+            Boolean capturedDeleted = redisTemplate.delete(capturedKey);
+
+            log.info("Redis 데이터 삭제: userId={}, status={}, captured={}",
+                    userId, statusDeleted, capturedDeleted);
+
+        } catch (Exception e) {
+            log.error("Redis 데이터 삭제 실패: userId={}", userId, e);
+            throw e;
+        }
+    }
+
+    /**
+     * 특정 그리드를 점령 목록에서 제거
+     * @param userId 사용자 ID (String)
+     * @param h3Index 제거할 H3 그리드 인덱스
+     */
+    public void removeCapturedGrid(String userId, String h3Index) {
+        String key = KEY_CAPTURED + userId;
+
+        try {
+            Long removed = redisTemplate.opsForSet().remove(key, h3Index);
+            log.debug("Redis 점령 제거: userId={}, h3={}, removed={}", userId, h3Index, removed);
+        } catch (Exception e) {
+            log.error("Redis 점령 제거 실패: userId={}, h3={}", userId, h3Index, e);
+        }
+    }
+
+    /**
+     * 사용자의 모든 Redis 키 존재 여부 확인
+     * @param userId 사용자 ID (String)
+     * @return 데이터 존재 여부
+     */
+    public boolean existsUserData(String userId) {
+        try {
+            Boolean statusExists = redisTemplate.hasKey(KEY_STATUS + userId);
+            Boolean capturedExists = redisTemplate.hasKey(KEY_CAPTURED + userId);
+
+            return Boolean.TRUE.equals(statusExists) || Boolean.TRUE.equals(capturedExists);
+        } catch (Exception e) {
+            log.error("Redis 존재 확인 실패: userId={}", userId, e);
+            return false;
+        }
     }
 }

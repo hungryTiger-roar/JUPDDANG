@@ -29,7 +29,7 @@ public class PloggingScoreListener {
 
         try {
             // 1. 상세 정보를 위해 DB 조회 (Event에 없는 distance 등 필요 시)
-            Plogging plogging = ploggingRepository.findById(String.valueOf(event.ploggingId()))
+            Plogging plogging = ploggingRepository.findById(Long.valueOf(String.valueOf(event.ploggingId())))
                     .orElseThrow(() -> new RuntimeException("Plogging info not found"));
 
             // 2. 점수 계산 로직

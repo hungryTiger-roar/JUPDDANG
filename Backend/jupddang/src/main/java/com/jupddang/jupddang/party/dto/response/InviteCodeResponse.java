@@ -1,4 +1,4 @@
-package com.jupddang.jupddang.party.dto;
+package com.jupddang.jupddang.party.dto.response;
 /**
  * 초대 코드 생성 API 응답 DTO
  * Record를 사용하여 불변 객체로 구현

@@ -1,5 +1,6 @@
 package com.jupddang.jupddang.account.entity;
 
+import com.jupddang.jupddang.common.enums.PloggingLevel;
 import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
@@ -43,8 +44,11 @@ public class Account implements UserDetails {
     @Column(nullable = true)
     private String color;
 
+    @Column(name = "total_score", nullable = false)
+    private long totalScore;
+
     @Column(nullable = false)
-    private int score;
+    private String tier;
 
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -55,15 +59,17 @@ public class Account implements UserDetails {
     private LocalDateTime updatedAt;
 
     @Builder
-    public Account(String userId, String pw, String email, String nickname, String region, String color, int score) {
+    public Account(String userId, String pw, String email, String nickname, String region, String color) {
         this.userId = userId;
         this.pw = pw;
         this.email = email;
         this.nickname = nickname;
         this.color = color;
-        this.score = score;
+        this.totalScore = 0L;
+        this.tier = PloggingLevel.BRONZE_5.getLabel();
         this.profileImage = "https://storage.googleapis.com/jupddang-images/default/default-profile.png";
         this.intro = "안녕하세요!";
+
     }
 
     public void update(String pw, String nickname, String profileImage, String intro, String region, String email, String color) {
@@ -87,7 +93,16 @@ public class Account implements UserDetails {
         }
     }
 
-    
+    /**
+     * 점수 누적 및 티어 갱신 메서드
+     * @param point 획득한 점수
+     */
+    public void addScore(int point) {
+        this.totalScore += point;
+
+        // 점수에 따라 티어도 같이 다시 계산해서 넣기
+        this.tier = PloggingLevel.findByScore(this.totalScore).getLabel();
+    }
 
 
     @Override
@@ -123,12 +138,5 @@ public class Account implements UserDetails {
     @Override
     public boolean isEnabled() {
         return true;
-    }
-    /**
-     * 점수 누적 메서드
-     * @param point 획득한 점수
-     */
-    public void addScore(int point) {
-        this.score += point;
     }
 }

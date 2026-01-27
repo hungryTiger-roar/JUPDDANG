@@ -17,14 +17,12 @@ public class RankingController {
     private final RankingService rankingService;
 
     // 1. 전체(누적) 랭킹 조회
-    // 예: /api/ranking/total?page=0&size=20&userId=test
+    // 예: /api/ranking/total?userId=test
     @GetMapping("/total")
     public ResponseEntity<RankingListResponseDto> getTotalRanking(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size,
             @RequestParam String userId
     ) {
-        RankingListResponseDto response = rankingService.getTotalRanking(page, size, userId);
+        RankingListResponseDto response = rankingService.getTotalRanking(userId);
         return ResponseEntity.ok(response);
     }
 

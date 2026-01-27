@@ -12,10 +12,11 @@ import java.util.List;
 public interface RaidRecordRepository extends JpaRepository<RaidRecord, Long> {
 
     // 1. 내 기여도 추가 (Upsert용 Update)
+    // [수정 1] NOW() -> CURRENT_TIMESTAMP (타입 에러 해결)
+    // [수정 2] r.account.id -> r.account.userId (Account 엔티티의 PK 필드명과 일치)
     @Modifying
-    @Query("UPDATE RaidRecord r SET r.totalScore = r.totalScore + :score, r.updatedAt = NOW() " +
-            "WHERE r.raidBoss.id = :bossId AND r.account.id = :userId")
-    // [수정] userId 타입을 Long -> String으로 변경
+    @Query("UPDATE RaidRecord r SET r.totalScore = r.totalScore + :score, r.updatedAt = CURRENT_TIMESTAMP " +
+            "WHERE r.raidBoss.id = :bossId AND r.account.userId = :userId")
     int addDamage(@Param("bossId") Long bossId, @Param("userId") String userId, @Param("score") int score);
 
     // 2. 특정 구역의 총 누적 점수 합계

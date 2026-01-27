@@ -14,14 +14,14 @@ public interface PartyMemberRepository extends JpaRepository<PartyMember, Long> 
     List<PartyMember> findByPartyId(Long partyId);
 
     // 특정 파티의 특정 멤버 조회
-    Optional<PartyMember> findByPartyIdAndUserId(Long partyId, Long userId);
+    Optional<PartyMember> findByPartyIdAndUserId(Long partyId, String userId);
 
     // 멤버 참여 여부 확인
-    boolean existsByPartyIdAndUserId(Long partyId, Long userId);
+    boolean existsByPartyIdAndUserId(Long partyId, String userId);
 
     // 파티 인원 수 카운트
     long countByPartyId(Long partyId);
 
     // 멤버 삭제 (파티 나가기용)
-    void deleteByPartyIdAndUserId(Long partyId, Long userId);
+    void deleteByPartyIdAndUserId(Long partyId, String userId);
 }

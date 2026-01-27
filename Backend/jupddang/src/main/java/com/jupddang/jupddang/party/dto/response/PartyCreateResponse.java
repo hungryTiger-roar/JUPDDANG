@@ -1,4 +1,4 @@
-package com.jupddang.jupddang.party.dto;
+package com.jupddang.jupddang.party.dto.response;
 
 public record PartyCreateResponse(
         Long partyId,

@@ -14,5 +14,5 @@ public interface PartyActivityRepository extends JpaRepository<PartyActivity, Lo
     List<PartyActivity> findByPartyId(Long partyId);
 
     // 특정 사용자의 특정 파티 활동 조회
-    Optional<PartyActivity> findByPartyIdAndUserId(Long partyId, Long userId);
+    Optional<PartyActivity> findByPartyIdAndUserId(Long partyId, String userId);
 }

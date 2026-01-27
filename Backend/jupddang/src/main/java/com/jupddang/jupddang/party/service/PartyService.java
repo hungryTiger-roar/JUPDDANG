@@ -3,16 +3,29 @@ package com.jupddang.jupddang.party.service;
 import com.jupddang.jupddang.party.domain.Party;
 import com.jupddang.jupddang.party.domain.PartyMember;
 import com.jupddang.jupddang.party.domain.PartyStatus;
-import com.jupddang.jupddang.party.dto.PartyCreateRequest;
-import com.jupddang.jupddang.party.dto.PartyCreateResponse;
-import com.jupddang.jupddang.party.dto.PartyDetailResponse;
-import com.jupddang.jupddang.party.dto.PartyJoinRequest;
-import com.jupddang.jupddang.party.dto.PartyJoinResponse;
+import com.jupddang.jupddang.party.domain.PartyActivity;
+import com.jupddang.jupddang.party.dto.request.PartyCreateRequest;
+import com.jupddang.jupddang.party.dto.request.PartyJoinRequest;
+import com.jupddang.jupddang.party.dto.response.ActivityCompleteResponse;
+import com.jupddang.jupddang.party.dto.response.PartyActivityStatusResponse;
+import com.jupddang.jupddang.party.dto.response.PartyCreateResponse;
+import com.jupddang.jupddang.party.dto.response.PartyDetailResponse;
+import com.jupddang.jupddang.party.dto.response.PartyJoinResponse;
+import com.jupddang.jupddang.party.dto.response.PartyStartResponse;
 import com.jupddang.jupddang.party.exception.InviteCodeGenerationException;
+import com.jupddang.jupddang.party.repository.PartyActivityRepository;
 import com.jupddang.jupddang.party.repository.PartyMemberRepository;
 import com.jupddang.jupddang.party.repository.PartyRepository;
+import com.jupddang.jupddang.plogging.domain.Plogging;
+import com.jupddang.jupddang.plogging.dto.request.PloggingEndRequest;
+import com.jupddang.jupddang.plogging.dto.response.PloggingResultResponse;
+import com.jupddang.jupddang.plogging.repository.PloggingRepository;
+import com.jupddang.jupddang.plogging.service.PloggingService;
+import com.jupddang.jupddang.sns.entity.Post;
+import com.jupddang.jupddang.sns.repository.PostRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.security.SecureRandom;
 import java.util.List;
@@ -22,15 +35,28 @@ public class PartyService {
 
     private final PartyRepository partyRepository;
     private final PartyMemberRepository partyMemberRepository;
+    private final PartyActivityRepository partyActivityRepository;
+    private final PloggingService ploggingService;
+    private final PloggingRepository ploggingRepository;
+    private final PostRepository postRepository;
+
     private static final SecureRandom RANDOM = new SecureRandom();
     private static final int CODE_LENGTH = 6;
     private static final int MAX_CODE_VALUE = 1_000_000;
     private static final int MAX_ATTEMPTS = 10;
 
     public PartyService(PartyRepository partyRepository,
-                        PartyMemberRepository partyMemberRepository) {
+                        PartyMemberRepository partyMemberRepository,
+                        PartyActivityRepository partyActivityRepository,
+                        PloggingService ploggingService,
+                        PloggingRepository ploggingRepository,
+                        PostRepository postRepository) {
         this.partyRepository = partyRepository;
         this.partyMemberRepository = partyMemberRepository;
+        this.partyActivityRepository = partyActivityRepository;
+        this.ploggingService = ploggingService;
+        this.ploggingRepository = ploggingRepository;
+        this.postRepository = postRepository;
     }
 
     // 초대 코드 생성
@@ -59,8 +85,7 @@ public class PartyService {
 
     // 파티 생성
     @Transactional
-    public PartyCreateResponse createParty(PartyCreateRequest request, Long userId) {
-        // 1. 초대 코드 생성 (기존 메서드 재사용)
+    public PartyCreateResponse createParty(PartyCreateRequest request, String userId) {
         String inviteCode = generateUniqueInviteCode();
 
         // 2. 파티 생성 (방장 설정)
@@ -81,8 +106,7 @@ public class PartyService {
 
     // 파티 참여
     @Transactional
-    public PartyJoinResponse joinParty(PartyJoinRequest request, Long userId) {
-        // 1. 초대 코드로 파티 찾기
+    public PartyJoinResponse joinParty(PartyJoinRequest request, String userId) {
         Party party = partyRepository.findByInviteCode(request.inviteCode())
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 초대 코드입니다."));
 
@@ -119,9 +143,9 @@ public class PartyService {
         );
     }
 
-    // 파티 상세 조회 (새로 추가)
+    // 파티 상세 조회
     @Transactional(readOnly = true)
-    public PartyDetailResponse getPartyDetail(Long partyId, Long currentUserId) {
+    public PartyDetailResponse getPartyDetail(Long partyId, String currentUserId) {
         Party party = partyRepository.findById(partyId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 파티입니다."));
 
@@ -160,6 +184,112 @@ public class PartyService {
                 ),
                 party.getCreatedAt(),
                 party.getStartedAt()
+        );
+    }
+
+    // 파티 시작 (방장 전용)
+    @Transactional
+    public PartyStartResponse startParty(Long partyId, String userId) {
+        Party party = partyRepository.findById(partyId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 파티입니다."));
+
+        party.start(userId);
+
+        List<PartyMember> members = partyMemberRepository.findByPartyId(partyId);
+
+        List<String> startedMemberIds = members.stream()
+                .map(member -> {
+                    PartyActivity activity = new PartyActivity(partyId, member.getUserId());
+                    partyActivityRepository.save(activity);
+                    return member.getUserId();
+                })
+                .toList();
+
+        return new PartyStartResponse(
+                party.getId(),
+                party.getStatus(),
+                party.getStartedAt(),
+                startedMemberIds,
+                members.size()
+        );
+    }
+
+    // 실시간 활동 상태 조회
+    @Transactional(readOnly = true)
+    public PartyActivityStatusResponse getActivityStatus(Long partyId, String userId) {
+        Party party = partyRepository.findById(partyId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 파티입니다."));
+
+        if (!partyMemberRepository.existsByPartyIdAndUserId(partyId, userId)) {
+            throw new IllegalStateException("파티에 참여하지 않은 사용자입니다.");
+        }
+
+        List<PartyActivity> activities = partyActivityRepository.findByPartyId(partyId);
+
+        List<PartyActivityStatusResponse.MemberActivityStatus> statusList = activities.stream()
+                .map(activity -> new PartyActivityStatusResponse.MemberActivityStatus(
+                        activity.getUserId(),
+                        party.isLeader(activity.getUserId()),
+                        activity.getStatus(),
+                        activity.getStartedAt(),
+                        activity.getEndedAt(),
+                        activity.getDistance(),
+                        activity.getTrashCount()
+                ))
+                .toList();
+
+        return new PartyActivityStatusResponse(partyId, statusList);
+    }
+
+    /**
+     * 개별 활동 완료
+     * - 본인의 활동만 완료 처리
+     * - PloggingService를 통해 개인 플로깅 생성
+     * - Post도 함께 생성됨
+     */
+    @Transactional
+    public ActivityCompleteResponse completeActivity(
+            Long partyId, String userId,
+            PloggingEndRequest request,
+            MultipartFile beforeImage,
+            MultipartFile afterImage,
+            MultipartFile mapImage
+    ) {
+        // 1. 활동 조회
+        PartyActivity activity = partyActivityRepository
+                .findByPartyIdAndUserId(partyId, userId)
+                .orElseThrow(() -> new IllegalArgumentException("활동을 찾을 수 없습니다."));
+
+        // 2. 개인 플로깅 생성 (PloggingService 재사용)
+        PloggingResultResponse ploggingResult = ploggingService.endPlogging(
+                userId, request, beforeImage, afterImage, mapImage
+        );
+
+        // 3. Plogging 조회 - ploggingResult에서 ID 가져오기!
+        Plogging plogging = ploggingRepository.findById(ploggingResult.ploggingId())
+                .orElseThrow(() -> new IllegalArgumentException("플로깅을 찾을 수 없습니다."));
+
+        // 4. Post 조회
+        Post post = postRepository.findByPloggingId(plogging.getId())
+                .orElseThrow(() -> new IllegalArgumentException("게시물을 찾을 수 없습니다."));
+
+        // 5. PartyActivity 완료 처리
+        activity.complete(plogging);
+
+        // 6. 응답 생성
+        return new ActivityCompleteResponse(
+                activity.getId(),
+                activity.getPartyId(),
+                activity.getUserId(),
+                activity.getStatus(),
+                activity.getEndedAt(),
+                plogging.getId(),
+                plogging.getDistance(),
+                plogging.getTimes(),
+                post.getPostId(),
+                post.getBeforeImageUrl(),
+                post.getAfterImageUrl(),
+                post.getMapImageUrl()
         );
     }
 }

@@ -16,24 +16,21 @@ public class PartyMember {
     @JoinColumn(name = "party_id", nullable = false)
     private Party party;
 
-    @Column(name = "user_id", nullable = false)
-    private Long userId;
+    @Column(name = "user_id", nullable = false, length = 50)
+    private String userId;
 
     @Column(name = "joined_at", nullable = false)
     private LocalDateTime joinedAt;
 
-    // JPA 기본 생성자
     protected PartyMember() {
     }
 
-    // 비즈니스 생성자
-    public PartyMember(Party party, Long userId) {
+    public PartyMember(Party party, String userId) {
         this.party = party;
         this.userId = userId;
         this.joinedAt = LocalDateTime.now();
     }
 
-    // Getters
     public Long getId() {
         return id;
     }
@@ -42,7 +39,7 @@ public class PartyMember {
         return party;
     }
 
-    public Long getUserId() {
+    public String getUserId() {
         return userId;
     }
 

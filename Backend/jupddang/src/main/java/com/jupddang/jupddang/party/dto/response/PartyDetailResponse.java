@@ -1,4 +1,4 @@
-package com.jupddang.jupddang.party.dto;
+package com.jupddang.jupddang.party.dto.response;
 
 import com.jupddang.jupddang.party.domain.PartyStatus;
 import java.time.LocalDateTime;
@@ -18,7 +18,7 @@ public record PartyDetailResponse(
      * 방장 정보
      */
     public record PartyLeaderInfo(
-            Long userId,
+            String  userId,
             boolean isCurrentUser  // 현재 요청한 사용자가 방장인지
     ) {}
 
@@ -35,7 +35,7 @@ public record PartyDetailResponse(
      * 개별 멤버 정보
      */
     public record MemberDto(
-            Long userId,
+            String  userId,
             boolean isLeader,
             LocalDateTime joinedAt
     ) {}

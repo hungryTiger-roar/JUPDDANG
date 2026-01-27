@@ -1,5 +1,6 @@
 package com.jupddang.jupddang.party.domain;
 
+import com.jupddang.jupddang.plogging.domain.Plogging;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
@@ -14,8 +15,8 @@ public class PartyActivity {
     @Column(name = "party_id", nullable = false)
     private Long partyId;
 
-    @Column(name = "user_id", nullable = false)
-    private Long userId;
+    @Column(name = "user_id", nullable = false, length = 50)
+    private String userId;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
@@ -28,29 +29,31 @@ public class PartyActivity {
     private LocalDateTime endedAt;
 
     @Column(name = "distance")
-    private Double distance;  // 이동 거리 (km)
+    private Double distance;
 
     @Column(name = "trash_count")
-    private Integer trashCount;  // 수거한 쓰레기 개수
+    private Integer trashCount;
 
-    // JPA 기본 생성자
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "plogging_id")
+    private Plogging plogging;
+
     protected PartyActivity() {
     }
 
-    // 비즈니스 생성자
-    public PartyActivity(Long partyId, Long userId) {
+    public PartyActivity(Long partyId, String userId) {
         this.partyId = partyId;
         this.userId = userId;
         this.status = ActivityStatus.IN_PROGRESS;
         this.startedAt = LocalDateTime.now();
     }
 
-    // 비즈니스 메서드 - 활동 완료
-    public void complete(Double distance, Integer trashCount) {
+    public void complete(Plogging plogging) {
         this.status = ActivityStatus.COMPLETED;
         this.endedAt = LocalDateTime.now();
-        this.distance = distance;
-        this.trashCount = trashCount;
+        this.plogging = plogging;
+        this.distance = plogging.getDistance();
+        // trashCount는 나중에 계산 (Plogging에서 가져오거나 별도 로직)
     }
 
     // Getters
@@ -62,7 +65,7 @@ public class PartyActivity {
         return partyId;
     }
 
-    public Long getUserId() {
+    public String getUserId() {
         return userId;
     }
 
@@ -84,5 +87,9 @@ public class PartyActivity {
 
     public Integer getTrashCount() {
         return trashCount;
+    }
+
+    public Plogging getPlogging() {
+        return plogging;
     }
 }

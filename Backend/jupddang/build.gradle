@@ -34,7 +34,7 @@ dependencies {
     implementation 'com.uber:h3:4.4.0'
     implementation 'io.github.cdimascio:java-dotenv:5.2.2'
 
-    // Lombok 설정정
+    // Lombok 설정
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
     testCompileOnly 'org.projectlombok:lombok'
@@ -61,9 +61,9 @@ dependencies {
     testImplementation 'org.springframework.security:spring-security-test'
 
     // JWT
-    implementation 'io.jsonwebtoken:jjwt-api:0.11.5' // 토큰 생성 및 파싱 API
-    runtimeOnly  'io.jsonwebtoken:jjwt-impl:0.11.5' // 실제 구현체
-    runtimeOnly  'io.jsonwebtoken:jjwt-jackson:0.11.5' // JSON 직렬화 (claims 처리)
+    implementation 'io.jsonwebtoken:jjwt-api:0.11.5'
+    runtimeOnly  'io.jsonwebtoken:jjwt-impl:0.11.5'
+    runtimeOnly  'io.jsonwebtoken:jjwt-jackson:0.11.5'
 
     // Swagger
     implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.5.0'
@@ -75,10 +75,26 @@ dependencies {
     testImplementation 'it.ozimov:embedded-redis:0.7.3'
     testRuntimeOnly 'com.h2database:h2'
 
+    // CSV 파싱 라이브러리
+    implementation 'com.opencsv:opencsv:5.9'
+}
+
+
+// 컴파일 인코딩 설정
+
+tasks.withType(JavaCompile) {
+    options.encoding = 'UTF-8'
+}
+
+tasks.withType(Javadoc) {
+    options.encoding = 'UTF-8'
 }
 
 tasks.named('test') {
     useJUnitPlatform()
+    
+    // 테스트 실행 시에도 UTF-8 강제
+    systemProperty 'file.encoding', 'UTF-8'
 
     testLogging {
         events "passed", "skipped", "failed"

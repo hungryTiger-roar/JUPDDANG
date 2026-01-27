@@ -8,7 +8,6 @@ import org.springframework.messaging.handler.annotation.DestinationVariable;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.stereotype.Controller;
-
 import java.security.Principal;
 
 @Slf4j
@@ -68,6 +67,7 @@ public class PloggingSocketController {
 
         // 4. 서비스 호출
         log.debug("Party Location Update: User={}, Party={}, Lat={}, Lon={}", userId, partyId, request.getLat(), request.getLon());
+
         ploggingService.processLocation(userId, request);
     }
 }

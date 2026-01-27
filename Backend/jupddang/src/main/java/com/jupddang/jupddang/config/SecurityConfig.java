@@ -1,5 +1,6 @@
 package com.jupddang.jupddang.config;
 
+import org.springframework.http.HttpMethod;
 import com.jupddang.jupddang.security.JwtAuthenticationFilter;
 import com.jupddang.jupddang.security.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
@@ -59,7 +60,10 @@ public class SecurityConfig {
                                 "/error"
                         ).permitAll()
 
-                        // 4. 그 외 모든 요청은 인증 필요
+                        // 4. 쓰레기통 조회 허용 (공개 API)
+                        .requestMatchers(HttpMethod.GET, "/api/v1/trashcans/**").permitAll()
+
+                        // 5. 그 외 모든 요청은 인증 필요
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(new JwtAuthenticationFilter(jwtTokenProvider), UsernamePasswordAuthenticationFilter.class)

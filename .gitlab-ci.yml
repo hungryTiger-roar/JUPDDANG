@@ -8,7 +8,7 @@ variables:
   ENV_ROOT: /home/gitlab-runner/app
 
 # ==================================================
-# 1. Build 단계
+# 1. Build 단계 (여기가 핵심!)
 # ==================================================
 build_image:
   stage: build
@@ -19,7 +19,7 @@ build_image:
     - dev
   script:
     - |
-      echo "🏗️ Building Docker Image for branch: $CI_COMMIT_REF_SLUG"
+      echo "🏗️ Building Docker Image (NO CACHE) for branch: $CI_COMMIT_REF_SLUG"
 
       if [ "$CI_COMMIT_REF_SLUG" == "master" ]; then
         ENV_FILE="${ENV_ROOT}/.env.prod"
@@ -29,8 +29,8 @@ build_image:
 
       cp "$ENV_FILE" .env || { echo "❌ Env file not found"; exit 1; }
 
-      # 이미지 빌드 (임시 태그: 커밋명)
-      docker build -t $IMAGE_NAME:$CI_COMMIT_REF_SLUG ./Backend/jupddang
+      # [수정됨] --no-cache 추가로 롬복 설정 변경사항 강제 반영
+      docker build --no-cache -t $IMAGE_NAME:$CI_COMMIT_REF_SLUG ./Backend/jupddang
 
 # ==================================================
 # 2. Deploy 단계
@@ -47,7 +47,6 @@ deploy_app:
     - |
       echo "🚀 Deploying to $CI_COMMIT_REF_SLUG Environment..."
 
-      # 브랜치별 타겟 설정
       if [ "$CI_COMMIT_REF_SLUG" == "master" ]; then
         TARGET_ENV="${ENV_ROOT}/.env.prod"
         TARGET_SERVICE="backend-prod"
@@ -63,12 +62,12 @@ deploy_app:
       # 1. 환경변수 준비
       cp "$TARGET_ENV" .env
 
-      # 2. 이미지 태그 변환 (commit -> prod/dev)
+      # 2. 이미지 태그 변환 (Build 단계에서 만든 이미지를 정식 태그로 변경)
       docker tag $IMAGE_NAME:$CI_COMMIT_REF_SLUG $IMAGE_NAME:$IMAGE_TAG
 
-      # 3. 배포 실행 (Zero Downtime)
-      # 해당 서비스만 빌드 및 재시작 (DB/Redis 건드리지 않음)
-      docker compose --env-file "$TARGET_ENV" -f $COMPOSE_FILE up -d --no-deps --build $TARGET_SERVICE
+      # 3. 배포 실행
+      # [수정됨] --build 제거: 위에서 이미 다 빌드했으므로, 이미지만 갈아끼우고 재시작만 하면 됨 (훨씬 빠르고 안전함)
+      docker compose --env-file "$TARGET_ENV" -f $COMPOSE_FILE up -d --no-deps $TARGET_SERVICE
 
       docker image prune -f
       echo "✅ Deployment Complete!"

@@ -1,39 +1,36 @@
-# ==========================================
 # 1. Build Stage
-# ==========================================
-# Gradle 이미지가 아니라, 그냥 JDK 이미지를 씁니다. (Wrapper가 알아서 Gradle을 설치하니까요)
 FROM eclipse-temurin:21-jdk-alpine as builder
 WORKDIR /build
 
-# [필수] Wrapper와 설정 파일들 복사
+# [필수] 윈도우 -> 리눅스 파일 변환 도구 설치
+RUN apk update && apk add --no-cache dos2unix
+
+# Wrapper 및 설정 복사
 COPY gradlew .
 COPY gradle gradle
 COPY build.gradle settings.gradle .
 
-# [중요] gradlew 실행 권한 부여
-RUN chmod +x ./gradlew
+# [핵심 해결책] 
+# 1. gradlew 파일의 줄바꿈을 리눅스용(LF)으로 강제 변환
+# 2. 실행 권한 부여
+RUN dos2unix gradlew && chmod +x gradlew
 
-# [최적화] 소스코드 없이 의존성만 먼저 다운로드 (Lombok 포함)
-# --no-daemon: CI 환경에서는 데몬을 안 쓰는 게 안정적입니다.
-RUN ./gradlew dependencies --no-daemon
+# 의존성 다운로드 (로그 레벨 높임)
+RUN ./gradlew dependencies --no-daemon --info
 
-# 소스코드 복사 및 빌드
+# 소스 복사
 COPY src ./src
-# -x test: 테스트 제외 (필요 시 제거)
-RUN ./gradlew build -x test --no-daemon
 
-# ==========================================
-# 2. Run Stage (기존과 동일)
-# ==========================================
+# [핵심 해결책] 빌드 실행 시 상세 로그 출력 (--info --stacktrace)
+# 이걸 넣어야 왜 롬복이 적용 안 되는지 '진짜 에러'가 나옵니다.
+RUN ./gradlew build -x test --no-daemon --info --stacktrace
+
+# 2. Run Stage
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
-
 ENV LANG=C.UTF-8 \
     LC_ALL=C.UTF-8
 ENV TZ=Asia/Seoul
-
 RUN apk add --no-cache tzdata
-
 COPY --from=builder /build/build/libs/*.jar app.jar
-
 ENTRYPOINT ["java", "-Dfile.encoding=UTF-8", "-Dsun.jnu.encoding=UTF-8", "-jar", "/app/app.jar"]

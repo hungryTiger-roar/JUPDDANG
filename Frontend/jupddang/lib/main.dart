@@ -8,8 +8,11 @@ void main() {
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-  static const Color _successColor = Color(0xFF17C964);
-  static const Color _successTint = Color(0x3317C964);
+  static const Color _successColor = Color(0xFF46A140);
+  static const Color _successTint = Color(0x3346A140);
+  static const Color _outerBorder = Color(0xFF532E16);
+  static const Color _parchmentLight = Color(0xFFFAF3E0);
+  static const Color _parchmentDark = Color(0xFF2D241E);
 
   ThemeData _buildTheme(Brightness brightness) {
     final bool isDark = brightness == Brightness.dark;
@@ -46,14 +49,12 @@ class MyApp extends StatelessWidget {
         brightness: brightness,
         surface: isDark ? const Color(0xFF141414) : Colors.white,
       ),
-      scaffoldBackgroundColor: isDark
-          ? const Color(0xFF141414)
-          : const Color(0xFFF8F9FA),
+      scaffoldBackgroundColor: isDark ? _parchmentDark : _parchmentLight,
       appBarTheme: AppBarTheme(
         centerTitle: true,
         elevation: 0,
-        backgroundColor: isDark ? const Color(0xFF141414) : Colors.white,
-        foregroundColor: isDark ? Colors.white : Colors.black87,
+        backgroundColor: isDark ? _parchmentDark : _parchmentLight,
+        foregroundColor: isDark ? Colors.white : _outerBorder,
         titleTextStyle: const TextStyle(
           fontSize: 18,
           fontWeight: FontWeight.w900,
@@ -69,7 +70,7 @@ class MyApp extends StatelessWidget {
           borderRadius: BorderRadius.circular(4),
           side: const BorderSide(color: Color(0xFF532E16), width: 3.0),
         ),
-        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+        color: isDark ? const Color(0xFF3D322A) : Colors.white,
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       ),
       floatingActionButtonTheme: FloatingActionButtonThemeData(
@@ -150,9 +151,34 @@ class MyApp extends StatelessWidget {
         labelStyle: TextStyle(
           color: isDark ? Colors.white70 : Colors.black54,
           fontSize: 12,
-          fontFamily: 'monospace',
           fontWeight: FontWeight.w900,
         ),
+      ),
+      snackBarTheme: SnackBarThemeData(
+        backgroundColor: Colors.black,
+        contentTextStyle: const TextStyle(color: Colors.white, fontSize: 13),
+        shape: Border(
+          top: BorderSide(
+            color: isDark ? const Color(0xFF1DCE70) : Colors.black,
+            width: 4.0,
+          ),
+        ),
+        elevation: 0,
+        behavior: SnackBarBehavior.fixed,
+      ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+        elevation: 0,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.zero,
+          side: BorderSide(color: Colors.black, width: 4.0),
+        ),
+        titleTextStyle: const TextStyle(
+          fontSize: 20,
+          fontWeight: FontWeight.w900,
+          letterSpacing: 1.0,
+        ),
+        contentTextStyle: const TextStyle(fontSize: 14),
       ),
     );
   }

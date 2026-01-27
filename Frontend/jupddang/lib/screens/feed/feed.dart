@@ -228,7 +228,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
     final double navClearance = navBarHeight + navBarMargin + bottomInset;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF141414),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       floatingActionButton: Padding(
         padding: const EdgeInsets.only(bottom: 110, right: 10),
         child: SizedBox(
@@ -299,12 +299,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
     if (_loadingAccounts) {
       return const Padding(
         padding: EdgeInsets.symmetric(horizontal: 20),
-        child: SizedBox(
-          height: 80,
-          child: Center(
-            child: CircularProgressIndicator(color: Color(0xFF17C964)),
-          ),
-        ),
+        child: SizedBox(height: 80, child: Center(child: PixelLoader())),
       );
     }
 
@@ -424,9 +419,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
       return const SliverToBoxAdapter(
         child: Padding(
           padding: EdgeInsets.only(top: 40),
-          child: Center(
-            child: CircularProgressIndicator(color: Color(0xFF17C964)),
-          ),
+          child: Center(child: PixelLoader()),
         ),
       );
     }

@@ -4,8 +4,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:pixelarticons/pixelarticons.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
 import '../../services/location_h3_service.dart';
+import '../../services/auth_service.dart';
 import '../../models/hexagon.dart';
+import '../../widgets/pixel_button.dart';
+
+enum PloggingPhase { idle, plogging, paused, summary }
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
@@ -19,20 +26,43 @@ class _MapScreenState extends State<MapScreen> {
   final LocationH3Service _h3Service = LocationH3Service();
 
   List<Polygon> _hexagons = [];
-  // 초기 위치를 서울 시청으로 기본 설정 (GPS 수신 전에도 표시)
-  LatLng? _currentPosition = const LatLng(37.5665, 126.9780);
+  LatLng? _currentPosition; // Start null to detect first fix
+  bool _isInitialCenterSet = false;
   StreamSubscription<Position>? _positionStream;
   Timer? _debounceTimer;
   bool _isLoading = false;
 
-  // 점령 로직 관련 변수
   String? _currentH3Index;
   Timer? _stayTimer;
   bool _isManualMode = false;
+  PloggingPhase _phase = PloggingPhase.idle;
   double _occupyProgress = 0.0; // 0.0 ~ 1.0
   List<HexagonModel> _visibleHexagonModels = [];
 
-  // 헥사곤 표시 최소 줌 레벨
+  // Image Picker
+  final ImagePicker _picker = ImagePicker();
+  XFile? _beforeImage;
+  XFile? _afterImage;
+
+  // Map Customization
+  Color _selectedGridColor = const Color(0xFF46A140);
+  double _gridOpacity = 0.5;
+  final List<Color> _paletteColors = [
+    const Color(0xFF46A140),
+    const Color(0xFF3B82F6),
+    const Color(0xFFEF4444),
+    const Color(0xFF8B5CF6),
+    const Color(0xFFF59E0B),
+    const Color(0xFF6B7280),
+  ];
+
+  // Session Stats
+  Stopwatch _sessionStopwatch = Stopwatch();
+  double _totalDistance = 0.0;
+  List<LatLng> _pathPoints = [];
+  int _coinsGained = 0;
+  Timer? _statsTimer;
+
   static const double _minZoomLevel = 15.0;
 
   @override
@@ -45,76 +75,163 @@ class _MapScreenState extends State<MapScreen> {
   void dispose() {
     _positionStream?.cancel();
     _debounceTimer?.cancel();
-    _stayTimer?.cancel(); // 타이머 해제
+    _stayTimer?.cancel();
     _mapController.dispose();
     super.dispose();
   }
 
   Future<void> _initLocation() async {
-    // H3 라이브러리 초기화 (비동기)
     await _h3Service.init();
-
     bool hasPermission = await _h3Service.checkPermission();
     if (hasPermission) {
+      try {
+        // 1. Get current position immediately
+        Position position = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high,
+        );
+        _updateCurrentPosition(LatLng(position.latitude, position.longitude));
+      } catch (e) {
+        debugPrint("Initial location error: $e");
+      }
+
+      // 2. Listen for updates
       _positionStream = _h3Service.getPositionStream().listen((
         Position position,
       ) {
-        // 수동 모드일 때는 GPS 업데이트 무시
         if (_isManualMode) return;
-
         _updateCurrentPosition(LatLng(position.latitude, position.longitude));
       });
     }
   }
 
-  // 위치 업데이트 및 점령 로직 처리 (GPS/수동 공통)
+  void _centerToCurrentLocation() {
+    if (_currentPosition != null) {
+      _mapController.move(_currentPosition!, 16.0);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("현위치를 찾을 수 없습니다. GPS를 확인해주세요.")),
+      );
+    }
+  }
+
   void _updateCurrentPosition(LatLng newPos) {
     if (!mounted) return;
-
-    setState(() {
-      _currentPosition = newPos;
-    });
-
-    // 처음 위치 잡혔을 때 지도로 이동
-    if (_hexagons.isEmpty) {
-      _mapController.move(_currentPosition!, 16.0);
+    if (_isPlogging && _currentPosition != null) {
+      final distance = const Distance().distance(_currentPosition!, newPos);
+      _totalDistance += distance;
+      _pathPoints.add(newPos);
     }
 
-    // --- 점령 로직 ---
-    final h3Index = _h3Service.latLngToH3(newPos);
+    _currentPosition = newPos;
 
+    if (!_isInitialCenterSet &&
+        _currentPosition != null &&
+        _mapController.camera.zoom > 0) {
+      // Only move if not already moved and map is ready
+      _mapController.move(_currentPosition!, 16.0);
+      _isInitialCenterSet = true;
+    }
+
+    final h3Index = _h3Service.latLngToH3(newPos);
     if (h3Index != null) {
       if (_currentH3Index != h3Index) {
-        // 새로운 셀 진입
         _currentH3Index = h3Index;
-        _startOccupationTimer();
+        if (_phase == PloggingPhase.plogging) _startOccupationTimer();
       }
     } else {
-      // 변환 실패 시 리셋
       _stopOccupationTimer();
       _currentH3Index = null;
     }
+    setState(() {});
+  }
+
+  bool get _isPlogging =>
+      _phase == PloggingPhase.plogging || _phase == PloggingPhase.paused;
+
+  void _startPlogging() {
+    setState(() {
+      _phase = PloggingPhase.plogging;
+      _sessionStopwatch.start();
+      _totalDistance = 0.0;
+      _pathPoints = [_currentPosition!];
+      _coinsGained = 0;
+      _statsTimer = Timer.periodic(
+        const Duration(seconds: 1),
+        (t) => setState(() {}),
+      );
+      if (_currentH3Index != null) _startOccupationTimer();
+    });
+  }
+
+  void _pausePlogging() {
+    setState(() {
+      _phase = PloggingPhase.paused;
+      _sessionStopwatch.stop();
+      _stopOccupationTimer();
+    });
+  }
+
+  void _resumePlogging() {
+    setState(() {
+      _phase = PloggingPhase.plogging;
+      _sessionStopwatch.start();
+      if (_currentH3Index != null) _startOccupationTimer();
+    });
+  }
+
+  void _finishPlogging() {
+    setState(() {
+      _phase = PloggingPhase.summary;
+      _sessionStopwatch.stop();
+      _statsTimer?.cancel();
+      _stopOccupationTimer();
+    });
+  }
+
+  void _resetPlogging() {
+    setState(() {
+      _phase = PloggingPhase.idle;
+      _sessionStopwatch.reset();
+      _beforeImage = null;
+      _afterImage = null;
+      _pathPoints = [];
+    });
+  }
+
+  Future<void> _pickImage(bool isBefore) async {
+    final picked = await _picker.pickImage(source: ImageSource.gallery);
+    if (picked != null) {
+      setState(() {
+        if (isBefore)
+          _beforeImage = picked;
+        else
+          _afterImage = picked;
+      });
+    }
+  }
+
+  void _zoomIn() {
+    final newZoom = _mapController.camera.zoom + 1;
+    _mapController.move(_mapController.camera.center, newZoom);
+  }
+
+  void _zoomOut() {
+    final newZoom = _mapController.camera.zoom - 1;
+    _mapController.move(_mapController.camera.center, newZoom);
   }
 
   void _startOccupationTimer() {
     _stopOccupationTimer();
     _occupyProgress = 0.0;
-
-    // 1초마다 갱신 (60초 = 100%)
     _stayTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (!mounted) return;
-      setState(() {
-        _occupyProgress += (1.0 / 60.0);
-
-        if (_occupyProgress >= 1.0) {
-          _occupyProgress = 1.0;
-          _stopOccupationTimer();
-          if (_currentH3Index != null) _conquerHexagon(_currentH3Index!);
-        }
-
-        // 진행률에 따라 색상 갱신
-        _generatePolygons();
-      });
+      _occupyProgress += (1.0 / 60.0);
+      if (_occupyProgress >= 1.0) {
+        _occupyProgress = 1.0;
+        _stopOccupationTimer();
+        if (_currentH3Index != null) _conquerHexagon(_currentH3Index!);
+      }
+      _generatePolygons();
     });
   }
 
@@ -130,37 +247,25 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   void _conquerHexagon(String h3Index) {
-    // 점령 처리
-    // debugPrint("헥사곤 점령 성공! $h3Index");
-
-    // 내 땅(파란색)으로 등록
     _h3Service.occupyHexagon(h3Index, "my_user_id", 0x990000FF);
-
-    // UI 갱신 (현재 보고 있는 영역 다시 로드)
     _updateHexagons(_mapController.camera.visibleBounds);
-
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(const SnackBar(content: Text("땅을 점령했습니다! (1분 체류 달성)")));
   }
 
-  // 수동 이동 함수
   void _moveManually(double latDelta, double lngDelta) {
     if (_currentPosition == null) return;
-
-    _isManualMode = true; // 수동 모드 활성화 (GPS 무시)
-
+    _isManualMode = true;
     final newPos = LatLng(
       _currentPosition!.latitude + latDelta,
       _currentPosition!.longitude + lngDelta,
     );
-
     _updateCurrentPosition(newPos);
     _mapController.move(newPos, _mapController.camera.zoom);
   }
 
   void _onMapPositionChanged(MapCamera camera, bool hasGesture) {
-    // 줌 레벨 체크
     if (camera.zoom < _minZoomLevel) {
       if (_hexagons.isNotEmpty) {
         setState(() {
@@ -169,10 +274,7 @@ class _MapScreenState extends State<MapScreen> {
       }
       return;
     }
-
-    // Debounce: 카메라 이동 멈추고 0.5초 뒤 연산
     if (_debounceTimer?.isActive ?? false) _debounceTimer!.cancel();
-
     _debounceTimer = Timer(const Duration(milliseconds: 500), () {
       _updateHexagons(camera.visibleBounds);
     });
@@ -180,63 +282,68 @@ class _MapScreenState extends State<MapScreen> {
 
   Future<void> _updateHexagons(LatLngBounds bounds) async {
     if (!mounted) return;
+    // Check if bounds are valid (avoiding empty bounds crash)
+    if (bounds.southWest.latitude == 0 && bounds.northEast.latitude == 0)
+      return;
 
-    // 1. 화면 영역 내 H3 ID 계산
     final List<String> h3Indices = _h3Service.getHexagonsInBounds(
       bounds.southWest,
       bounds.northEast,
     );
-
-    print("지도 영역 내 헥사곤 개수: ${h3Indices.length}");
-
     if (h3Indices.isEmpty) return;
-
-    // 2. 서버(Mock)에서 소유자 정보 가져오기
-    // 실제로는 계산된 ID 리스트를 보냄
     final owners = await _h3Service.fetchHexagonOwners(h3Indices);
-
     if (!mounted) return;
-
-    // 3. Polygon 생성 (별도 함수로 분리)
     _visibleHexagonModels = owners;
     _generatePolygons();
   }
 
   void _generatePolygons() {
-    final newPolygons = _visibleHexagonModels.map((model) {
-      final boundary = _h3Service.getHexagonBoundary(model.h3Index);
-      final points = boundary
-          .map((coord) => LatLng(coord.lat, coord.lon))
-          .toList();
+    final newPolygons = _visibleHexagonModels
+        .map((model) {
+          final boundary = _h3Service.getHexagonBoundary(model.h3Index);
+          if (boundary.isEmpty) return null;
 
-      Color fillColor = Color(model.color);
+          final points = boundary
+              .map((coord) => LatLng(coord.lat, coord.lon))
+              .toList();
 
-      // 현재 밟고 있는 땅이면 진행률에 따라 색상 오버레이
-      if (model.h3Index == _currentH3Index && _occupyProgress > 0) {
-        // 이미 내 땅이면 굳이? -> 그래도 점령 유지 보너스 느낌으로 보여줄 수 있음.
-        // 여기서는 미점령(흰색/투명) -> 파란색으로 차오르는 효과
+          // Apply customization
+          Color baseColor;
+          if (model.ownerId == null) {
+            // Unowned lands: Fixed subtle gray (the "default" look)
+            baseColor = Colors.black.withOpacity(0.05 * _gridOpacity);
+          } else {
+            // Owned lands: Use the color selected from the palette
+            baseColor = _selectedGridColor.withOpacity(_gridOpacity);
+          }
 
-        // 투명(0x33FFFFFF) -> 파랑(0x990000FF)
-        // 보간: 기본색과 타겟색(파랑) 사이를 progress만큼 섞음
-        // 단, 기존 색이 이미 파랑이면 의미 없음.
+          Color fillColor = baseColor;
+          if (model.h3Index == _currentH3Index && _occupyProgress > 0) {
+            // While occupying, fade from the unowned color to the SELECTED palette color
+            final targetColor = _selectedGridColor
+                .withOpacity(_gridOpacity * 1.5)
+                .withAlpha((_gridOpacity * 1.5 * 255).toInt().clamp(0, 255));
+            fillColor =
+                Color.lerp(fillColor, targetColor, _occupyProgress) ??
+                fillColor;
+          }
+          return Polygon(
+            points: points,
+            color: fillColor,
+            borderColor: model.h3Index == _currentH3Index
+                ? Colors.white.withOpacity(0.8)
+                : Colors.black.withOpacity(0.4 * _gridOpacity),
+            borderStrokeWidth: model.h3Index == _currentH3Index ? 3.0 : 2.0,
+          );
+        })
+        .whereType<Polygon>()
+        .toList();
 
-        // 점령 중 색상: 파란색
-        final targetColor = Colors.blueAccent.withOpacity(0.6);
-        fillColor =
-            Color.lerp(fillColor, targetColor, _occupyProgress) ?? fillColor;
-      }
-
-      return Polygon(
-        points: points,
-        color: fillColor,
-        borderColor: Colors.black.withOpacity(0.2),
-        borderStrokeWidth: 1.0,
-      );
-    }).toList();
-
-    setState(() {
-      _hexagons = newPolygons;
-    });
+    if (mounted) {
+      setState(() {
+        _hexagons = newPolygons;
+      });
+    }
   }
 
   @override
@@ -245,11 +352,14 @@ class _MapScreenState extends State<MapScreen> {
       body: FlutterMap(
         mapController: _mapController,
         options: MapOptions(
-          initialCenter: const LatLng(37.5665, 126.9780), // 서울 시청
+          initialCenter: const LatLng(37.5665, 126.9780),
           initialZoom: 16.0,
           minZoom: 5.0,
           maxZoom: 19.0,
           onPositionChanged: _onMapPositionChanged,
+          onMapReady: () {
+            _updateHexagons(_mapController.camera.visibleBounds);
+          },
           interactionOptions: const InteractionOptions(
             flags: InteractiveFlag.all,
           ),
@@ -257,9 +367,23 @@ class _MapScreenState extends State<MapScreen> {
         children: [
           TileLayer(
             urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-            userAgentPackageName: 'com.ssafy.jupddang.jupddang',
           ),
-          PolygonLayer(polygons: _hexagons),
+          if (_pathPoints.isNotEmpty)
+            PolylineLayer(
+              polylines: [
+                Polyline(
+                  points: _pathPoints,
+                  color: _selectedGridColor.withOpacity(0.6),
+                  strokeWidth: 5.0,
+                  borderColor: Colors.white,
+                  borderStrokeWidth: 2.0,
+                ),
+              ],
+            ),
+          PolygonLayer(
+            key: ValueKey('grid_${_selectedGridColor.value}_$_gridOpacity'),
+            polygons: _hexagons,
+          ),
           if (_currentPosition != null)
             MarkerLayer(
               markers: [
@@ -267,20 +391,15 @@ class _MapScreenState extends State<MapScreen> {
                   point: _currentPosition!,
                   width: 40,
                   height: 40,
-                  child: const Icon(
-                    Icons.directions_walk,
-                    color: Colors.blueAccent,
-                    size: 40,
-                  ),
+                  child: Icon(Pixel.user, color: _selectedGridColor, size: 40),
                 ),
-                // 점령 진행률 텍스트 (항상 표시, null이면 대기중)
                 if (_currentH3Index != null)
                   Marker(
                     point: _currentPosition!,
-                    width: 100,
-                    height: 40,
+                    width: 120,
+                    height: 50,
                     child: Transform.translate(
-                      offset: const Offset(0, -45),
+                      offset: const Offset(0, -50),
                       child: Container(
                         alignment: Alignment.center,
                         padding: const EdgeInsets.symmetric(
@@ -288,23 +407,28 @@ class _MapScreenState extends State<MapScreen> {
                           vertical: 4,
                         ),
                         decoration: BoxDecoration(
-                          color: Colors.black.withOpacity(0.7),
-                          borderRadius: BorderRadius.circular(12),
+                          color: Colors.black,
                           border: Border.all(
                             color: _occupyProgress > 0
-                                ? Colors.blueAccent
+                                ? _selectedGridColor
                                 : Colors.grey,
-                            width: 2,
+                            width: 3,
                           ),
+                          boxShadow: const [
+                            BoxShadow(
+                              color: Colors.black,
+                              offset: Offset(4, 4),
+                            ),
+                          ],
                         ),
                         child: Text(
                           _occupyProgress > 0
-                              ? "점령중 ${(_occupyProgress * 100).toInt()}%"
-                              : "진입 완료",
+                              ? "OCCUPYING ${(_occupyProgress * 100).toInt()}%"
+                              : "READY",
                           style: const TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
-                            fontSize: 12,
+                            fontSize: 10,
                           ),
                         ),
                       ),
@@ -312,62 +436,473 @@ class _MapScreenState extends State<MapScreen> {
                   ),
               ],
             ),
-
-          // 상단 상태 정보 패널 (디버깅용)
-          Positioned(
-            top: 10,
-            left: 10,
-            right: 10,
-            child: Card(
-              color: Colors.white.withOpacity(0.9),
-              child: Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: Column(
+          // Stats Overlay (Top)
+          if (_isPlogging)
+            Positioned(
+              top: 100,
+              left: 20,
+              right: 20,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  vertical: 16,
+                  horizontal: 20,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.8),
+                  border: Border.all(color: const Color(0xFFF9D698), width: 3),
+                  boxShadow: const [
+                    BoxShadow(color: Colors.black54, offset: Offset(4, 4)),
+                  ],
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
-                    Text("현재 위치: ${_currentH3Index ?? '인식 불가'}"),
-                    LinearProgressIndicator(value: _occupyProgress),
-                    Text("진행률: ${(_occupyProgress * 100).toStringAsFixed(1)}%"),
+                    _buildStatColumn(
+                      Pixel.clock,
+                      _formatDuration(_sessionStopwatch.elapsed),
+                      "TIME",
+                    ),
+                    _buildStatColumn(
+                      Pixel.user,
+                      "${(_totalDistance / 1000).toStringAsFixed(2)}km",
+                      "DIST",
+                    ),
+                    _buildStatColumn(Pixel.coin, "$_coinsGained", "GOLD"),
                   ],
                 ),
               ),
             ),
+
+          Positioned(
+            top: 20,
+            left: 20,
+            right: 20,
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.black,
+                border: Border.all(color: Colors.white24, width: 2.0),
+                boxShadow: const [
+                  BoxShadow(color: Colors.black, offset: Offset(4, 4)),
+                ],
+              ),
+              padding: const EdgeInsets.all(12.0),
+              child: Column(
+                children: [
+                  Text(
+                    "LOCATION: ${_currentH3Index ?? '???'}",
+                    style: const TextStyle(color: Colors.white, fontSize: 10),
+                  ),
+                  if (_isPlogging) ...[
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      height: 8,
+                      child: LinearProgressIndicator(
+                        value: _occupyProgress,
+                        backgroundColor: Colors.white12,
+                        valueColor: AlwaysStoppedAnimation(_selectedGridColor),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+          // Zoom & My Location Controls
+          Positioned(
+            right: 20,
+            top: MediaQuery.of(context).size.height * 0.35,
+            child: Column(
+              children: [
+                _manualMoveButton(Pixel.plus, "zoom_in", _zoomIn),
+                const SizedBox(height: 12),
+                _manualMoveButton(Pixel.minus, "zoom_out", _zoomOut),
+                const SizedBox(height: 24),
+                _manualMoveButton(
+                  Pixel.gps,
+                  "my_location",
+                  _centerToCurrentLocation,
+                ),
+              ],
+            ),
           ),
 
-          // 수동 조작 컨트롤러 (웹 또는 디버그 모드에서 표시)
+          // Map Customization Controls (Left Side)
+          Positioned(left: 20, top: 220, child: _buildMapCustomizer()),
+
+          // Contextual Controls (Start/Pause/Resume/Stop)
+          Positioned(
+            bottom: 120,
+            left: 20,
+            right: 20,
+            child: Center(
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 300),
+                child: _buildPloggingControls(),
+              ),
+            ),
+          ),
+
           if (kIsWeb || kDebugMode)
             Positioned(
-              bottom: 30,
+              bottom: 110,
               right: 20,
               child: Column(
                 children: [
-                  FloatingActionButton.small(
-                    heroTag: "move_up",
-                    onPressed: () => _moveManually(0.0002, 0),
-                    child: const Icon(Icons.arrow_upward),
+                  _manualMoveButton(
+                    Pixel.arrowup,
+                    "move_up",
+                    () => _moveManually(0.0002, 0),
                   ),
                   Row(
                     children: [
-                      FloatingActionButton.small(
-                        heroTag: "move_left",
-                        onPressed: () => _moveManually(0, -0.0002),
-                        child: const Icon(Icons.arrow_back),
+                      _manualMoveButton(
+                        Pixel.arrowleft,
+                        "move_left",
+                        () => _moveManually(0, -0.0002),
                       ),
-                      const SizedBox(width: 40), // 가운데 비움
-                      FloatingActionButton.small(
-                        heroTag: "move_right",
-                        onPressed: () => _moveManually(0, 0.0002),
-                        child: const Icon(Icons.arrow_forward),
+                      const SizedBox(width: 40),
+                      _manualMoveButton(
+                        Pixel.arrowright,
+                        "move_right",
+                        () => _moveManually(0, 0.0002),
                       ),
                     ],
                   ),
-                  FloatingActionButton.small(
-                    heroTag: "move_down",
-                    onPressed: () => _moveManually(-0.0002, 0),
-                    child: const Icon(Icons.arrow_downward),
+                  _manualMoveButton(
+                    Pixel.arrowdown,
+                    "move_down",
+                    () => _moveManually(-0.0002, 0),
                   ),
                 ],
               ),
             ),
+
+          // Summary Overlay
+          if (_phase == PloggingPhase.summary) _buildSummaryOverlay(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPloggingControls() {
+    if (_phase == PloggingPhase.idle) {
+      return SizedBox(
+        width: 200,
+        child: PixelButton(
+          text: "START JUPKING",
+          isGreen: true,
+          onPressed: _startPlogging,
+        ),
+      );
+    } else if (_phase == PloggingPhase.plogging) {
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: 140,
+            child: PixelButton(
+              text: "PAUSE",
+              color: Colors.orange,
+              onPressed: _pausePlogging,
+            ),
+          ),
+          const SizedBox(width: 16),
+          SizedBox(
+            width: 140,
+            child: PixelButton(
+              text: "FINISH",
+              color: Colors.red,
+              onPressed: _finishPlogging,
+            ),
+          ),
+        ],
+      );
+    } else if (_phase == PloggingPhase.paused) {
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: 140,
+            child: PixelButton(
+              text: "RESUME",
+              isGreen: true,
+              onPressed: _resumePlogging,
+            ),
+          ),
+          const SizedBox(width: 16),
+          SizedBox(
+            width: 140,
+            child: PixelButton(
+              text: "FINISH",
+              color: Colors.red,
+              onPressed: _finishPlogging,
+            ),
+          ),
+        ],
+      );
+    }
+    return const SizedBox.shrink();
+  }
+
+  Widget _buildSummaryOverlay() {
+    return Container(
+      color: Colors.black.withOpacity(0.85),
+      child: Center(
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.all(32.0),
+            child: Container(
+              decoration: BoxDecoration(
+                color: Theme.of(context).scaffoldBackgroundColor,
+                border: Border.all(color: Colors.black, width: 4),
+                boxShadow: const [
+                  BoxShadow(color: Colors.black, offset: Offset(8, 8)),
+                ],
+              ),
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    "SESSION REVIEW",
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 2,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      _buildStatColumn(
+                        Pixel.clock,
+                        _formatDuration(_sessionStopwatch.elapsed),
+                        "TIME",
+                      ),
+                      _buildStatColumn(
+                        Pixel.user,
+                        "${(_totalDistance / 1000).toStringAsFixed(2)}km",
+                        "DIST",
+                      ),
+                      _buildStatColumn(Pixel.coin, "$_coinsGained", "GOLD"),
+                    ],
+                  ),
+                  const SizedBox(height: 32),
+                  const Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      "BEFORE / AFTER PHOTOS",
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildPhotoSlot(
+                          "BEFORE",
+                          _beforeImage,
+                          () => _pickImage(true),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _buildPhotoSlot(
+                          "AFTER",
+                          _afterImage,
+                          () => _pickImage(false),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 40),
+                  PixelButton(
+                    text: "PUBLISH RECORD",
+                    isGreen: true,
+                    onPressed: () {
+                      if (AuthService.accessToken == null) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text("로그인 회원만 기록을 저장할 수 있습니다."),
+                            backgroundColor: Colors.redAccent,
+                          ),
+                        );
+                        return;
+                      }
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text("기록이 업로드되었습니다!")),
+                      );
+                      _resetPlogging();
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  TextButton(
+                    onPressed: _resetPlogging,
+                    child: const Text(
+                      "CLOSE WITHOUT SAVING",
+                      style: TextStyle(color: Colors.grey, fontSize: 10),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPhotoSlot(String label, XFile? file, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AspectRatio(
+        aspectRatio: 1,
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.black12,
+            border: Border.all(color: Colors.black, width: 2),
+          ),
+          child: file == null
+              ? Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Pixel.camera, color: Colors.grey),
+                    const SizedBox(height: 4),
+                    Text(
+                      label,
+                      style: const TextStyle(fontSize: 10, color: Colors.grey),
+                    ),
+                  ],
+                )
+              : Image.file(File(file.path), fit: BoxFit.cover),
+        ),
+      ),
+    );
+  }
+
+  Widget _manualMoveButton(IconData icon, String tag, VoidCallback onPressed) {
+    return FloatingActionButton.small(
+      heroTag: tag,
+      onPressed: onPressed,
+      backgroundColor: Colors.black,
+      shape: const BeveledRectangleBorder(borderRadius: BorderRadius.zero),
+      child: Icon(icon, color: Colors.white),
+    );
+  }
+
+  Widget _buildStatColumn(IconData icon, String value, String label) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, color: _selectedGridColor.withOpacity(0.9), size: 18),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        Text(label, style: const TextStyle(color: Colors.grey, fontSize: 8)),
+      ],
+    );
+  }
+
+  String _formatDuration(Duration d) {
+    String twoDigits(int n) => n.toString().padLeft(2, "0");
+    String mm = twoDigits(d.inMinutes.remainder(60));
+    String ss = twoDigits(d.inSeconds.remainder(60));
+    return "$mm:$ss";
+  }
+
+  Widget _buildMapCustomizer() {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.black.withOpacity(0.7),
+        border: Border.all(color: const Color(0xFFF9D698), width: 2),
+        boxShadow: const [
+          BoxShadow(color: Colors.black45, offset: Offset(4, 4)),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            "GRID OPACITY",
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 8,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            width: 120,
+            height: 20,
+            child: SliderTheme(
+              data: SliderTheme.of(context).copyWith(
+                thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
+                trackHeight: 2,
+                activeTrackColor: const Color(0xFFF9D698),
+                inactiveTrackColor: Colors.white24,
+                thumbColor: Colors.white,
+              ),
+              child: Slider(
+                value: _gridOpacity,
+                onChanged: (val) {
+                  setState(() {
+                    _gridOpacity = val;
+                    _generatePolygons();
+                  });
+                },
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            "COLOR PALETTE",
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 8,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: _paletteColors.map((color) {
+              final isSelected = _selectedGridColor == color;
+              return GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _selectedGridColor = color;
+                    _generatePolygons();
+                  });
+                },
+                child: Container(
+                  width: 24,
+                  height: 24,
+                  decoration: BoxDecoration(
+                    color: color,
+                    border: Border.all(
+                      color: isSelected ? Colors.white : Colors.black,
+                      width: isSelected ? 3 : 1,
+                    ),
+                    boxShadow: isSelected
+                        ? [const BoxShadow(color: Colors.white, blurRadius: 4)]
+                        : [],
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
         ],
       ),
     );

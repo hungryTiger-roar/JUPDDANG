@@ -10,7 +10,7 @@ class IntroScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF141414), // Dark Background
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor, // Dark Background
       body: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 24.0),
         child: Column(

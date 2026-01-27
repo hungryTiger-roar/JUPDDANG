@@ -19,13 +19,12 @@ class CustomBottomNavbar extends StatelessWidget {
     final double barWidth = screenWidth - 32;
     const double barHeight = 84.0;
 
-    // 인디케이터(선택 원) 크기를 좀 더 키워서 강조
+    // 인디케이터 크기
     const double indicatorOuterSize = 64.0;
     const double indicatorInnerSize = 46.0;
 
     // [아이콘 리스트]
-    // 비활성 상태 (테두리만 - PixelArtIcons는 단일 스타일이 많으므로 동일하게 사용하거나 크기/색으로 구분)
-    final List<IconData> unselectedIcons = [
+    final List<IconData> icons = [
       Pixel.message,
       Pixel.moodhappy,
       Pixel.map,
@@ -33,113 +32,113 @@ class CustomBottomNavbar extends StatelessWidget {
       Pixel.sliders,
     ];
 
-    // 활성 상태
-    final List<IconData> selectedIcons = [
-      Pixel.message,
-      Pixel.moodhappy,
-      Pixel.map,
-      Pixel.trophy,
-      Pixel.sliders,
-    ];
-
-    double itemWidth = (barWidth - 40) / unselectedIcons.length;
+    double itemWidth = (barWidth - 40) / icons.length;
+    const Color outerBorder = Color(0xFF532E16);
+    const Color innerHighlight = Color(0xFFF9D698);
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
 
     return SafeArea(
       child: Container(
         width: barWidth,
         height: barHeight,
-        margin: const EdgeInsets.only(bottom: 20, left: 16, right: 16),
+        margin: const EdgeInsets.only(bottom: 12, left: 16, right: 16),
         decoration: BoxDecoration(
-          color: const Color(0xFF000000), // 배경: 블랙
-          border: const Border(
-            top: BorderSide(color: Colors.black, width: 4.0),
-          ),
-          boxShadow: const [
-            BoxShadow(color: Colors.black, offset: Offset(0, -4)),
+          color: outerBorder,
+          borderRadius: BorderRadius.circular(4),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.4),
+              offset: const Offset(0, 4),
+              blurRadius: 0, // Solid pixel shadow
+            ),
           ],
         ),
-        child: Stack(
-          alignment: Alignment.centerLeft,
-          children: [
-            // ---------------------------------------------------
-            // [Layer 1] 움직이는 활성 표시기 (Double Circle + Glow)
-            // ---------------------------------------------------
-            AnimatedPositioned(
-              duration: const Duration(milliseconds: 400),
-              curve: Curves.elasticOut, // 통통 튀는 애니메이션
-              left:
-                  20.0 +
-                  (currentIndex * itemWidth) +
-                  (itemWidth / 2 - indicatorOuterSize / 2),
-              child: SizedBox(
-                width: indicatorOuterSize,
-                height: indicatorOuterSize,
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    // 외부 하얀 상자 (Square)
-                    Container(
-                      width: indicatorOuterSize,
-                      height: indicatorOuterSize,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        border: Border.all(color: Colors.black, width: 2.0),
+        padding: const EdgeInsets.all(4),
+        child: Container(
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF2D241E) : const Color(0xFFFAF3E0),
+            border: Border.all(
+              color: innerHighlight.withOpacity(0.5),
+              width: 2.0,
+            ),
+          ),
+          child: Stack(
+            children: [
+              // [Layer 1] Active Indicator
+              AnimatedPositioned(
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeOutCubic,
+                left:
+                    16.0 +
+                    (currentIndex * itemWidth) +
+                    (itemWidth / 2 - indicatorOuterSize / 2),
+                top: (barHeight - 8 - indicatorOuterSize) / 2,
+                child: Container(
+                  width: indicatorOuterSize,
+                  height: indicatorOuterSize,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF46A140),
+                    border: Border.all(color: outerBorder, width: 2.0),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.2),
+                        offset: const Offset(2, 2),
                       ),
-                    ),
-                    // 내부 검정 상자 (Square)
-                    Container(
+                    ],
+                  ),
+                  child: Center(
+                    child: Container(
                       width: indicatorInnerSize,
                       height: indicatorInnerSize,
-                      decoration: const BoxDecoration(color: Color(0xFF111111)),
-                      // 활성 아이콘
+                      decoration: BoxDecoration(
+                        border: Border.all(
+                          color: innerHighlight.withOpacity(0.3),
+                          width: 1.0,
+                        ),
+                      ),
                       child: Icon(
-                        selectedIcons[currentIndex],
-                        color: const Color(0xFF17C964),
-                        size: 26,
+                        icons[currentIndex],
+                        color: Colors.white,
+                        size: 24,
                       ),
                     ),
-                  ],
+                  ),
                 ),
               ),
-            ),
-
-            // ---------------------------------------------------
-            // [Layer 2] 아이콘 버튼들
-            // ---------------------------------------------------
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: List.generate(unselectedIcons.length, (index) {
-                  return GestureDetector(
-                    onTap: () => onTap(index),
-                    behavior: HitTestBehavior.opaque,
-                    child: SizedBox(
-                      width: itemWidth,
-                      height: barHeight,
-                      child: Center(
-                        // 선택 여부에 따른 애니메이션
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          // 선택되지 않은 아이콘은 작게, 선택된 건 사라지게(투명) 처리하되 scale 조절
-                          transform: Matrix4.identity()
-                            ..scale(currentIndex == index ? 0.0 : 1.0),
-                          child: Opacity(
-                            opacity: currentIndex == index ? 0.0 : 1.0,
-                            child: Icon(
-                              unselectedIcons[index],
-                              color: Colors.grey[400], // 비활성: 약간 어두운 회색
-                              size: 24,
+              // [Layer 2] Icons / Hit Areas
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: List.generate(icons.length, (index) {
+                    final isSelected = currentIndex == index;
+                    return Expanded(
+                      child: GestureDetector(
+                        onTap: () => onTap(index),
+                        behavior: HitTestBehavior.opaque,
+                        child: SizedBox(
+                          height: barHeight,
+                          child: Center(
+                            child: AnimatedOpacity(
+                              duration: const Duration(milliseconds: 200),
+                              opacity: isSelected ? 0.0 : 1.0,
+                              child: Icon(
+                                icons[index],
+                                color: isDark
+                                    ? const Color(0xFFC4A484)
+                                    : const Color(0xFF8B4513),
+                                size: 24,
+                              ),
                             ),
                           ),
                         ),
                       ),
-                    ),
-                  );
-                }),
+                    );
+                  }),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

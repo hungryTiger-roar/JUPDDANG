@@ -12,8 +12,6 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 public class RankingListResponseDto {
-    // 상단에 고정으로 보여줄 1,2,3등
-    private List<RankingResponseDto> topRankers;
-    // 하단에 보여줄 내 주변 랭킹 (나 ± 2명)
-    private List<RankingResponseDto> myRankWindow; // 내 등수
+    private List<RankingResponseDto> topRankings; // 1등부터 설정한 등수까지 리스트
+    private RankingResponseDto myRanking; // 내 등수
 }

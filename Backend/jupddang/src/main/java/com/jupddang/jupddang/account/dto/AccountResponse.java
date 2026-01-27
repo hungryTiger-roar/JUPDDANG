@@ -18,8 +18,6 @@ public class AccountResponse {
     private String address;
     String profileImage;
     String intro;
-    private long totalScore;
-    private String tier;
     private LocalDateTime createdAt;
 
     public static AccountResponse from(Account account) {
@@ -30,8 +28,6 @@ public class AccountResponse {
                 account.getRegion(),
                 account.getProfileImage(),
                 account.getIntro(),
-                account.getTotalScore(),
-                account.getTier(),
                 account.getCreatedAt()
         );
     }

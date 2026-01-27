@@ -16,6 +16,7 @@ class AuthService {
 
   static String? accessToken;
   static String? userId;
+  static String? nickname;
 
   final Dio _dio =
       Dio(
@@ -48,6 +49,9 @@ class AuthService {
         final account = data['account'];
         if (account is Map && account['userId'] != null) {
           userId = account['userId'].toString();
+        }
+        if (account is Map && account['nickname'] != null) {
+          nickname = account['nickname'].toString();
         }
       }
       return response.data;
@@ -144,6 +148,19 @@ class AuthService {
       return response.data;
     } catch (e) {
       print('Add Comment Error: $e');
+      rethrow;
+    }
+  }
+
+  // 댓글 삭제
+  Future<void> deleteComment(String postId, String commentId) async {
+    try {
+      await _dio.delete(
+        '$postsBase/$postId/$commentId',
+        options: Options(headers: _authHeaders()),
+      );
+    } catch (e) {
+      print('Delete Comment Error: $e');
       rethrow;
     }
   }

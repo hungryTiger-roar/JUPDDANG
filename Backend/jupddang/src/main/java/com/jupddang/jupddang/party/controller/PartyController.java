@@ -1,13 +1,16 @@
 package com.jupddang.jupddang.party.controller;
 
 import com.jupddang.jupddang.party.dto.InviteCodeResponse;
+import com.jupddang.jupddang.party.dto.PartyCreateRequest;
+import com.jupddang.jupddang.party.dto.PartyCreateResponse;
+import com.jupddang.jupddang.party.dto.PartyJoinRequest;
+import com.jupddang.jupddang.party.dto.PartyJoinResponse;
 import com.jupddang.jupddang.party.service.PartyService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/party")
@@ -19,6 +22,8 @@ public class PartyController {
     public PartyController(PartyService partyService) {
         this.partyService = partyService;
     }
+
+    // === 기존 엔드포인트 유지 ===
 
     /**
      * 초대 코드 생성 API
@@ -32,6 +37,36 @@ public class PartyController {
         String inviteCode = partyService.generateUniqueInviteCode();
         InviteCodeResponse response = InviteCodeResponse.of(inviteCode);
 
+        return ResponseEntity.ok(response);
+    }
+
+    // === 새로운 엔드포인트 추가 ===
+
+    /**
+     * 파티 생성
+     * POST /api/party
+     */
+    @PostMapping
+    @Operation(summary = "파티 생성")
+    public ResponseEntity<PartyCreateResponse> createParty(
+            @RequestBody PartyCreateRequest request,
+            @RequestHeader("User-Id") Long userId
+    ) {
+        PartyCreateResponse response = partyService.createParty(request, userId);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    /**
+     * 파티 참여
+     * POST /api/party/join
+     */
+    @PostMapping("/join")
+    @Operation(summary = "파티 참여")
+    public ResponseEntity<PartyJoinResponse> joinParty(
+            @RequestBody PartyJoinRequest request,
+            @RequestHeader("User-Id") Long userId
+    ) {
+        PartyJoinResponse response = partyService.joinParty(request, userId);
         return ResponseEntity.ok(response);
     }
 }

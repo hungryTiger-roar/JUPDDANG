@@ -14,9 +14,6 @@ import org.springframework.web.multipart.MaxUploadSizeExceededException;
 @Slf4j
 public class GlobalExceptionHandler {
 
-    /**
-     * 이미지 업로드 예외 처리
-     */
     @ExceptionHandler(ImageUploadException.class)
     public ResponseEntity<ErrorResponse> handleImageUploadException(
             ImageUploadException e
@@ -29,9 +26,6 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest().body(response);
     }
 
-    /**
-     * 파일 크기 초과 예외 처리
-     */
     @ExceptionHandler(MaxUploadSizeExceededException.class)
     public ResponseEntity<ErrorResponse> handleMaxUploadSizeExceeded(
             MaxUploadSizeExceededException e
@@ -45,9 +39,6 @@ public class GlobalExceptionHandler {
                 .body(response);
     }
 
-    /**
-     * IllegalArgumentException 예외 처리
-     */
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ErrorResponse> handleIllegalArgumentException(
             IllegalArgumentException e
@@ -60,9 +51,6 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest().body(response);
     }
 
-    /**
-     * 일반 예외 처리
-     */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleException(Exception e) {
         log.error("Unexpected error", e);
@@ -74,7 +62,6 @@ public class GlobalExceptionHandler {
                 .body(response);
     }
 
-    // TrashcanNotFoundException 처리
     @ExceptionHandler(TrashcanNotFoundException.class)
     public ResponseEntity<ErrorResponse> handleTrashcanNotFound(TrashcanNotFoundException ex) {
         log.error("Trashcan not found: {}", ex.getMessage());
@@ -82,7 +69,6 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
     }
 
-    // TrashcanAlreadyVerifiedException 처리
     @ExceptionHandler(TrashcanAlreadyVerifiedException.class)
     public ResponseEntity<ErrorResponse> handleTrashcanAlreadyVerified(TrashcanAlreadyVerifiedException ex) {
         log.error("Trashcan already verified: {}", ex.getMessage());
@@ -90,11 +76,26 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
     }
 
-    // DuplicateVerificationException 처리
     @ExceptionHandler(DuplicateVerificationException.class)
     public ResponseEntity<ErrorResponse> handleDuplicateVerification(DuplicateVerificationException ex) {
         log.error("Duplicate verification: {}", ex.getMessage());
         ErrorResponse error = new ErrorResponse("CONFLICT", ex.getMessage());
         return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+    }
+
+    /**
+     * IllegalStateException 처리
+     * - 비즈니스 규칙 위반 (중복 참여, 인원 초과, 이미 시작된 파티 등)
+     */
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<ErrorResponse> handleIllegalStateException(
+            IllegalStateException e
+    ) {
+        log.error("IllegalStateException: {}", e.getMessage());
+        ErrorResponse response = new ErrorResponse(
+                "CONFLICT",
+                e.getMessage()
+        );
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
     }
 }

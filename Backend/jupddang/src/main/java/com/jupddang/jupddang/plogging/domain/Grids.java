@@ -19,7 +19,7 @@ public class Grids {
 
     // [수정] Long -> String 변경
     @Column(name = "user_id", nullable = false)
-    private String userId; 
+    private String userId;
 
     @Column(name = "party_id")
     private Long partyId;
@@ -35,6 +35,26 @@ public class Grids {
         this.occupiedAt = occupiedAt;
     }
 
+    /**
+     * 점령 가능 여부 확인 (3시간 보호막)
+     * @param attackerId 공격하는 유저 ID
+     * @param now 현재 시간
+     */
+    public boolean isClaimable(String attackerId, LocalDateTime now) {
+        // 1. 주인이 없는 땅이면 즉시 점령 가능
+        if (this.userId == null) return true;
+
+        // 2. 이미 내가 점령한 땅이면 점령 불가 (중복 점령 방지)
+        if (this.userId.equals(attackerId)) return false;
+
+        // 3. 보호막 체크: 점령 후 3시간이 지났는지 확인
+        // (점령 시간 + 3시간)이 현재 시간보다 이전이어야 함
+        return this.occupiedAt.plusHours(3).isBefore(now);
+    }
+
+    /**
+     * 주인 변경 (땅 뺏기 성공)
+     */
     // [수정] 점령 가능 여부 체크 시 파라미터도 String userId로
     public boolean isClaimable(String userId, LocalDateTime now) {
         // 내 땅이면 보호막 시간 갱신만, 남의 땅이면 3분 지났는지 체크 등 로직

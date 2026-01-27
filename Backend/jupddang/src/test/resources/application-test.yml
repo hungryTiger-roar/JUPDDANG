@@ -1,0 +1,33 @@
+spring:
+  profiles:
+    active: test
+
+  # H2 인메모리 DB
+  datasource:
+    url: jdbc:h2:mem:testdb;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+
+  # JPA 설정
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.H2Dialect
+
+  # Redis (동적으로 설정됨)
+  data:
+    redis:
+      host: localhost
+      port: ${spring.data.redis.port:6370}
+
+  # 로깅
+logging:
+  level:
+    com.jupddang.jupddang: DEBUG
+    org.springframework.web: INFO
+    org.hibernate.SQL: DEBUG

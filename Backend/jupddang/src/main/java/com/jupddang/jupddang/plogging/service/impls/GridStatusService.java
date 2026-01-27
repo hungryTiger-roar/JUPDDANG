@@ -15,6 +15,7 @@ public class GridStatusService {
 
     private final GridRepository gridRepository;
 
+
     // [수정] 파라미터 타입 변경: Long userId -> String userId
     public boolean checkClaimability(String userId, String h3Index) {
         

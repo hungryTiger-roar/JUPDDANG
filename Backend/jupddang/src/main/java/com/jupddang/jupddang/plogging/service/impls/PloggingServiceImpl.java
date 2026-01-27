@@ -15,6 +15,7 @@ import com.jupddang.jupddang.plogging.repository.GridRepository;
 import com.jupddang.jupddang.plogging.repository.PloggingRedisRepository;
 import com.jupddang.jupddang.plogging.repository.PloggingRepository;
 import com.jupddang.jupddang.plogging.service.PloggingService;
+import com.jupddang.jupddang.raid.service.RaidService;
 import com.uber.h3core.H3Core;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,6 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
+import java.util.Set;
 
 @Service
 @Slf4j
@@ -38,6 +40,7 @@ public class PloggingServiceImpl implements PloggingService {
     private final ApplicationEventPublisher eventPublisher;
     private final H3Core h3Core;
     private final SimpMessagingTemplate messagingTemplate;
+    private final RaidService raidService;
 
     private static final int H3_RESOLUTION = 9;
     private static final long OCCUPY_THRESHOLD_MS = 180 * 1000L; // 3분
@@ -55,7 +58,7 @@ public class PloggingServiceImpl implements PloggingService {
             // 1. Redis 상태 조회 (Redis Key도 String이므로 호환됨)
             UserPloggingStatus lastStatus = redisRepository.getUserState(userId);
 
-            // CASE A: 새로운 그리드 진입 (혹은 최초 시작)
+            // CASE A: 새로운 그리드 진입
             if (lastStatus == null || !lastStatus.h3Index().equals(currentH3)) {
                 redisRepository.updateUserState(userId, currentH3, currentTime, false);
                 return;
@@ -63,6 +66,14 @@ public class PloggingServiceImpl implements PloggingService {
 
             // CASE B: 이미 점령 완료한 그리드
             if (lastStatus.isOccupied()) {
+                return;
+            }
+
+            // CASE C: 동일 그리드 체류 중 -> 시간 체크
+            long timeElapsed = currentTime - lastStatus.entryTime();
+
+            if (timeElapsed >= OCCUPY_THRESHOLD_MS) {
+                // 3분 경과 -> 점령 시도
                 return; 
             }
 
@@ -75,6 +86,7 @@ public class PloggingServiceImpl implements PloggingService {
 
                 if (success) {
                     redisRepository.updateUserState(userId, currentH3, lastStatus.entryTime(), true);
+                    // 점령 목록(Captured)에 추가 -> 종료 시 정산용
                     redisRepository.addCapturedGrid(userId, currentH3);
                 }
             }
@@ -85,7 +97,6 @@ public class PloggingServiceImpl implements PloggingService {
         }
     }
 
-    // [변경] Long -> String userId
     private boolean handleOccupationAttempt(String userId, String h3Index, Long partyId) {
         LocalDateTime now = LocalDateTime.now();
         
@@ -99,7 +110,7 @@ public class PloggingServiceImpl implements PloggingService {
             }
             return false;
         }).orElseGet(() -> {
-            // [변경] Grids 생성 시 userId 타입 String으로
+          // [변경] Grids 생성 시 userId 타입 String으로
             Grids newGrid = Grids.builder()
                     .id(h3Index)
                     .userId(userId) 
@@ -113,7 +124,6 @@ public class PloggingServiceImpl implements PloggingService {
         });
     }
 
-    // [변경] Long -> String userId
     private void notifyParty(Long partyId, String h3Index, String userId) {
         if (partyId != null) {
             messagingTemplate.convertAndSend("/topic/party/" + partyId,
@@ -123,6 +133,29 @@ public class PloggingServiceImpl implements PloggingService {
 
     @Override
     @Transactional
+    public PloggingResultResponse endPlogging(String userId, PloggingEndRequest request,
+                                              MultipartFile before, MultipartFile after, MultipartFile map) {
+
+        Plogging savedPlogging = ploggingRepository.save(Plogging.builder()
+                .userId(userId)
+                .distance(request.distance())
+                .times(request.endTime())
+                .build());
+
+        // 2. Redis 점령 목록 조회
+        Set<String> capturedGrids = redisRepository.getCapturedGrids(userId);
+        int occupiedCount = capturedGrids.size();
+
+        // 3. RaidService 호출 (String userId 전달)
+        int totalRaidScore = 0;
+        if (!capturedGrids.isEmpty()) {
+            totalRaidScore = raidService.applyRaidScore(userId, capturedGrids);
+        }
+
+        // 4. 이벤트 발행 (RaidScore 포함)
+        PloggingCompletedEvent event = PloggingCompletedEvent.builder()
+                .ploggingId(savedPlogging.getId())
+                .userId(userId) // String
     // [변경] Long userId -> String userId
     public PloggingResultResponse endPlogging(String userId, PloggingEndRequest request,
                                               MultipartFile before, MultipartFile after, MultipartFile map) {
@@ -153,11 +186,23 @@ public class PloggingServiceImpl implements PloggingService {
                 .ploggingId(savedPlogging.getId())
                 .userId(userId) // String 그대로 전달
                 .occupiedGridCnt(occupiedCount)
+                .raidScore(totalRaidScore) // [NEW]
                 .beforeImage(before).afterImage(after).mapImage(map)
                 .build();
 
         eventPublisher.publishEvent(event);
 
+        // 5. Redis 정리
+        redisRepository.deleteUserState(userId);
+
+        log.info("플로깅 종료: userId={}, captured={}, raidScore={}", userId, occupiedCount, totalRaidScore);
+
+        return new PloggingResultResponse(
+                "종료되었습니다.",
+                request.distance(),
+                occupiedCount,
+                totalRaidScore
+        );
         // 7. Redis 정리
         redisRepository.deleteUserState(userId);
         

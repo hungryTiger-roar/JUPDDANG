@@ -1,33 +1,42 @@
 spring:
-  profiles:
-    active: test
-
-  # H2 인메모리 DB
+  # 1. H2 인메모리 DB (PostgreSQL 모드)
   datasource:
     url: jdbc:h2:mem:testdb;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
     driver-class-name: org.h2.Driver
     username: sa
     password:
 
-  # JPA 설정
+  # 2. JPA 설정 (로그 노이즈 제거)
   jpa:
     hibernate:
       ddl-auto: create-drop
-    show-sql: true
+    show-sql: false       # [중요] 콘솔에 SQL 출력 끄기
     properties:
       hibernate:
-        format_sql: true
+        format_sql: false # SQL 포맷팅 끄기 (한 줄로 나오게 하거나 아예 안 보임)
         dialect: org.hibernate.dialect.H2Dialect
 
-  # Redis (동적으로 설정됨)
+  # 3. Redis 설정
   data:
     redis:
       host: localhost
-      port: ${spring.data.redis.port:6370}
+      port: 6379 # Embedded Redis 기본 포트
 
-  # 로깅
+  # 4. [핵심] GCP 자동 설정 비활성화 (테스트 에러 방지)
+  cloud:
+    gcp:
+      core:
+        enabled: false    # GCP Core 비활성화
+      storage:
+        enabled: false    # GCP Storage 비활성화
+      credentials:
+        location: classpath:non-existent.json # 더미 경로 설정 (혹시 모를 호출 대비)
+
+# 5. 로깅 레벨 최적화
 logging:
   level:
-    com.jupddang.jupddang: DEBUG
-    org.springframework.web: INFO
-    org.hibernate.SQL: DEBUG
+    root: INFO
+    com.jupddang: INFO                     # 작성한 시나리오 로그(log.info)는 출력
+    org.hibernate.SQL: OFF                 # 실제 쿼리문 로그 끄기
+    org.hibernate.type.descriptor.sql: OFF # 쿼리 파라미터 바인딩 로그 끄기
+    org.springframework.web: INFO          # 웹 관련 잡다한 DEBUG 로그 끄기

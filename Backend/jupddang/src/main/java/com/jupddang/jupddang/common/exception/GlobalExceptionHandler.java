@@ -7,8 +7,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
 
 @RestControllerAdvice
 @Slf4j
@@ -83,19 +85,10 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
     }
 
-    /**
-     * IllegalStateException 처리
-     * - 비즈니스 규칙 위반 (중복 참여, 인원 초과, 이미 시작된 파티 등)
-     */
-    @ExceptionHandler(IllegalStateException.class)
-    public ResponseEntity<ErrorResponse> handleIllegalStateException(
-            IllegalStateException e
-    ) {
-        log.error("IllegalStateException: {}", e.getMessage());
-        ErrorResponse response = new ErrorResponse(
-                "CONFLICT",
-                e.getMessage()
-        );
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+    @ExceptionHandler(MissingServletRequestPartException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST) // 400으로 응답 설정
+    public ResponseEntity<String> handleMissingPart(MissingServletRequestPartException e) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body("필수 파일이 누락되었습니다: " + e.getRequestPartName());
     }
 }

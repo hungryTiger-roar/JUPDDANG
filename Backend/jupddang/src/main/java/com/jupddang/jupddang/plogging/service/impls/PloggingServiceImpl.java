@@ -191,6 +191,7 @@ public class PloggingServiceImpl implements PloggingService {
 
     private void validateCoordinate(Double lat, Double lon) {
         if (lat == null || lon == null || lat < -90 || lat > 90 || lon < -180 || lon > 180) {
+            // [중요] 이 예외가 발생해야 엣지 테스트 통과
             throw new PloggingException(PloggingErrorCode.INVALID_COORDINATE);
         }
     }

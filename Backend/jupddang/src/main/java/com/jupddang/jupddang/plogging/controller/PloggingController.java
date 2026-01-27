@@ -30,7 +30,7 @@ public class PloggingController {
             @RequestPart("beforeImage") MultipartFile beforeImage,
             @RequestPart("afterImage") MultipartFile afterImage,
             @RequestPart("mapImage") MultipartFile mapImage,
-            @RequestHeader("userId") Long userId
+            @RequestHeader("userId") String userId
     ) {
         // 서비스 호출
         PloggingResultResponse response = ploggingService.endPlogging(

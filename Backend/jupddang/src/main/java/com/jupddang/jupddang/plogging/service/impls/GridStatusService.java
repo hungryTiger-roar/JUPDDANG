@@ -15,7 +15,7 @@ public class GridStatusService {
 
     private final GridRepository gridRepository;
 
-    public boolean checkClaimability(Long userId, String h3Index) {
+    public boolean checkClaimability(String userId, String h3Index) {
         // DB에 없으면(빈 땅) true, 있으면 3시간 보호막 로직 체크
         return gridRepository.findById(h3Index)
                 .map(grid -> grid.isClaimable(userId, LocalDateTime.now()))

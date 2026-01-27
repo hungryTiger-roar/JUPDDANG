@@ -23,7 +23,7 @@ public class Plogging {
     private Long id;
 
     @Column(nullable = true)
-    private Long userId;
+    private String userId;
 
     // 이동 거리
     private Double distance;

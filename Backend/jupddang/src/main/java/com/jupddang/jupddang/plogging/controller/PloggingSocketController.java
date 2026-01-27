@@ -27,11 +27,20 @@ public class PloggingSocketController {
             @Payload LocationRequest request,
             Principal principal
     ) {
-        Long userId = 1L; // TODO: principal.getName() 등으로 실제 ID 추출
+        // 1. 인증 정보 검증
+        if (principal == null) {
+            log.warn("Unauthenticated user attempted to send location.");
+            return;
+        }
 
-        // 개인 모드이므로 partyId는 null로 명시
+        // 2. 실제 ID 추출 (Spring Security 설정에 따라 String 형태의 PK 반환)
+        String userId = principal.getName();
+
+        // 3. 개인 모드 설정
         request.setPartyId(null);
 
+        // 4. 서비스 호출
+        log.debug("Solo Location Update: User={}, Lat={}, Lon={}", userId, request.getLat(), request.getLon());
         ploggingService.processLocation(userId, request);
     }
 
@@ -45,11 +54,20 @@ public class PloggingSocketController {
             @Payload LocationRequest request,
             Principal principal
     ) {
-        Long userId = 1L; // TODO: principal.getName() 등으로 실제 ID 추출
+        // 1. 인증 정보 검증
+        if (principal == null) {
+            log.warn("Unauthenticated user attempted to send party location.");
+            return;
+        }
 
-        // 경로변수에서 받은 partyId 주입
+        // 2. 실제 ID 추출
+        String userId = principal.getName();
+
+        // 3. 파티 ID 주입
         request.setPartyId(partyId);
 
+        // 4. 서비스 호출
+        log.debug("Party Location Update: User={}, Party={}, Lat={}, Lon={}", userId, partyId, request.getLat(), request.getLon());
         ploggingService.processLocation(userId, request);
     }
 }

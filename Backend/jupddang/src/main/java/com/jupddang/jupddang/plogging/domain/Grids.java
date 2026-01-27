@@ -21,7 +21,7 @@ public class Grids {
     private String id;
 
     @Column(name = "user_id", nullable = false)
-    private Long userId;
+    private String userId;
 
     @Column(name = "party_id")
     private Long partyId;
@@ -30,7 +30,7 @@ public class Grids {
     private LocalDateTime occupiedAt;
 
     @Builder
-    public Grids(String id, Long userId, Long partyId, LocalDateTime occupiedAt) {
+    public Grids(String id, String userId, Long partyId, LocalDateTime occupiedAt) {
         this.id = id;
         this.userId = userId;
         this.partyId = partyId;
@@ -44,7 +44,7 @@ public class Grids {
      * @param attackerId 공격하는 유저 ID
      * @param now 현재 시간
      */
-    public boolean isClaimable(Long attackerId, LocalDateTime now) {
+    public boolean isClaimable(String attackerId, LocalDateTime now) {
         // 1. 주인이 없는 땅이면 즉시 점령 가능
         if (this.userId == null) return true;
 
@@ -59,7 +59,7 @@ public class Grids {
     /**
      * 주인 변경 (땅 뺏기 성공)
      */
-    public void changeOwner(Long newUserId, Long newPartyId, LocalDateTime now) {
+    public void changeOwner(String newUserId, Long newPartyId, LocalDateTime now) {
         this.userId = newUserId;
         this.partyId = newPartyId;
         this.occupiedAt = now; // 점령 시간 갱신 (보호막 초기화)

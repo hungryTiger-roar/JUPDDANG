@@ -19,7 +19,7 @@ public class GridStatusController {
     @GetMapping("/status")
     public ResponseEntity<GridStatusResponse> checkGridStatus(
             @RequestParam String h3Index,
-            @RequestHeader("userId") Long userId
+            @RequestHeader("userId") String userId
     ) {
         boolean isClaimable = gridStatusService.checkClaimability(userId, h3Index);
         return ResponseEntity.ok(new GridStatusResponse(h3Index, isClaimable));

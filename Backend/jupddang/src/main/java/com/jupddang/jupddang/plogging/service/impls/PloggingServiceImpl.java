@@ -13,6 +13,7 @@ import com.jupddang.jupddang.plogging.repository.GridRepository;
 import com.jupddang.jupddang.plogging.repository.PloggingRedisRepository;
 import com.jupddang.jupddang.plogging.repository.PloggingRepository;
 import com.jupddang.jupddang.plogging.service.PloggingService;
+import com.jupddang.jupddang.raid.service.RaidService;
 import com.uber.h3core.H3Core;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -23,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
+import java.util.Set;
 
 @Service
 @Slf4j
@@ -35,51 +37,44 @@ public class PloggingServiceImpl implements PloggingService {
     private final ApplicationEventPublisher eventPublisher;
     private final H3Core h3Core;
     private final SimpMessagingTemplate messagingTemplate;
+    private final RaidService raidService;
 
     private static final int H3_RESOLUTION = 9;
     private static final long OCCUPY_THRESHOLD_MS = 180 * 1000L; // 3분
 
     @Override
     @Transactional
-    public void processLocation(Long userId, LocationRequest request) {
+    public void processLocation(String userId, LocationRequest request) {
         validateCoordinate(request.getLat(), request.getLon());
 
         try {
             String currentH3 = h3Core.latLngToCellAddress(request.getLat(), request.getLon(), H3_RESOLUTION);
             long currentTime = System.currentTimeMillis();
 
-            // 1. Redis 상태 조회
             UserPloggingStatus lastStatus = redisRepository.getUserState(userId);
 
-            // CASE A: 새로운 그리드 진입 (혹은 최초 시작)
+            // CASE A: 새로운 그리드 진입
             if (lastStatus == null || !lastStatus.h3Index().equals(currentH3)) {
-                // [FIX] 객체(new UserPloggingStatus)가 아니라 개별 인자로 전달
                 redisRepository.updateUserState(userId, currentH3, currentTime, false);
                 return;
             }
 
-            // CASE B: 이미 점령 완료한 그리드에 계속 머무는 중
+            // CASE B: 이미 점령 완료한 그리드
             if (lastStatus.isOccupied()) {
-                return; // DB 부하 방지
+                return;
             }
 
-            // CASE C: 동일 그리드 체류 중 + 아직 점령 안함 -> 시간 체크
+            // CASE C: 동일 그리드 체류 중 -> 시간 체크
             long timeElapsed = currentTime - lastStatus.entryTime();
 
             if (timeElapsed >= OCCUPY_THRESHOLD_MS) {
-                // 3분이 지남 -> 실제 DB 조회하여 점령 시도 (보호막 체크 포함)
+                // 3분 경과 -> 점령 시도
                 boolean success = handleOccupationAttempt(userId, currentH3, request.getPartyId());
 
                 if (success) {
-                    // 1) 상태 업데이트: occupied=true (중복 DB 접근 차단)
-                    // [FIX] 여기서도 개별 인자로 전달해야 합니다.
                     redisRepository.updateUserState(userId, currentH3, lastStatus.entryTime(), true);
-
-                    // 2) [Account Logic] 이번 세션 점령 목록에 추가 (카운팅용)
+                    // 점령 목록(Captured)에 추가 -> 종료 시 정산용
                     redisRepository.addCapturedGrid(userId, currentH3);
-                } else {
-                    // 점령 실패 (보호막 등). 재시도 여부는 기획에 따라 결정.
-                    // 현재는 상태 유지 (다음 좌표 수신 시 다시 체크)
                 }
             }
 
@@ -89,10 +84,9 @@ public class PloggingServiceImpl implements PloggingService {
         }
     }
 
-    private boolean handleOccupationAttempt(Long userId, String h3Index, Long partyId) {
+    private boolean handleOccupationAttempt(String userId, String h3Index, Long partyId) {
         LocalDateTime now = LocalDateTime.now();
         return gridRepository.findById(h3Index).map(existingGrid -> {
-            // 1. 이미 존재하는 땅 -> 보호막 체크
             if (existingGrid.isClaimable(userId, now)) {
                 existingGrid.changeOwner(userId, partyId, now);
                 log.info("Grid {} ownership taken by {}", h3Index, userId);
@@ -101,7 +95,6 @@ public class PloggingServiceImpl implements PloggingService {
             }
             return false;
         }).orElseGet(() -> {
-            // 2. 빈 땅 -> 즉시 점령
             Grids newGrid = Grids.builder()
                     .id(h3Index)
                     .userId(userId)
@@ -115,7 +108,7 @@ public class PloggingServiceImpl implements PloggingService {
         });
     }
 
-    private void notifyParty(Long partyId, String h3Index, Long userId) {
+    private void notifyParty(Long partyId, String h3Index, String userId) {
         if (partyId != null) {
             messagingTemplate.convertAndSend("/topic/party/" + partyId,
                     "유저 " + userId + "님이 " + h3Index + " 구역을 점령했습니다!");
@@ -124,35 +117,47 @@ public class PloggingServiceImpl implements PloggingService {
 
     @Override
     @Transactional
-    public PloggingResultResponse endPlogging(Long userId, PloggingEndRequest request,
+    public PloggingResultResponse endPlogging(String userId, PloggingEndRequest request,
                                               MultipartFile before, MultipartFile after, MultipartFile map) {
 
-        // 1. 플로깅 기록 저장
         Plogging savedPlogging = ploggingRepository.save(Plogging.builder()
                 .userId(userId)
                 .distance(request.distance())
                 .times(request.endTime())
                 .build());
 
-        // 2. [Account Logic] Redis에서 이번 세션 점령 개수 조회
-        int occupiedCount = redisRepository.getCapturedCount(userId);
+        // 2. Redis 점령 목록 조회
+        Set<String> capturedGrids = redisRepository.getCapturedGrids(userId);
+        int occupiedCount = capturedGrids.size();
 
-        // 3. 이벤트 발행 (점수 계산 및 Account 반영 위임)
+        // 3. RaidService 호출 (String userId 전달)
+        int totalRaidScore = 0;
+        if (!capturedGrids.isEmpty()) {
+            totalRaidScore = raidService.applyRaidScore(userId, capturedGrids);
+        }
+
+        // 4. 이벤트 발행 (RaidScore 포함)
         PloggingCompletedEvent event = PloggingCompletedEvent.builder()
                 .ploggingId(savedPlogging.getId())
-                .userId(String.valueOf(userId))
-                // Listener가 DB(Plogging)를 조회하여 distance/times를 가져가므로 여기선 ID와 Count가 중요
+                .userId(userId) // String
                 .occupiedGridCnt(occupiedCount)
+                .raidScore(totalRaidScore) // [NEW]
                 .beforeImage(before).afterImage(after).mapImage(map)
                 .build();
 
         eventPublisher.publishEvent(event);
 
-        // 4. Redis 상태 정리 (필수)
+        // 5. Redis 정리
         redisRepository.deleteUserState(userId);
-        log.info("플로깅 종료: userId={}, occupied={}", userId, occupiedCount);
 
-        return new PloggingResultResponse("종료되었습니다.", 0, occupiedCount);
+        log.info("플로깅 종료: userId={}, captured={}, raidScore={}", userId, occupiedCount, totalRaidScore);
+
+        return new PloggingResultResponse(
+                "종료되었습니다.",
+                request.distance(),
+                occupiedCount,
+                totalRaidScore
+        );
     }
 
     private void validateCoordinate(Double lat, Double lon) {

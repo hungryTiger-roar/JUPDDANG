@@ -10,7 +10,7 @@ class AuthService {
 
   // static const String baseUrl = 'http://127.0.0.1:8080/api/account';
   // 실제 기기 테스트를 위해 호스트 PC의 로컬 IP 사용
-  static const String apiBase = 'http://10.195.208.228:8080/api';
+  static const String apiBase = 'https://i14d208.p.ssafy.io/dev-api/api';
   static const String accountBase = '$apiBase/account';
   static const String postsBase = '$apiBase/posts';
 

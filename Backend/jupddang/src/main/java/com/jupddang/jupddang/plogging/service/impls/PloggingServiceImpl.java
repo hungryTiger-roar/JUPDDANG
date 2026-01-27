@@ -1,5 +1,7 @@
 package com.jupddang.jupddang.plogging.service.impls;
 
+import com.jupddang.jupddang.account.entity.Account; // [Import]
+import com.jupddang.jupddang.account.repository.AccountRepository; // [Import]
 import com.jupddang.jupddang.plogging.domain.Grids;
 import com.jupddang.jupddang.plogging.domain.Plogging;
 import com.jupddang.jupddang.plogging.domain.event.PloggingCompletedEvent;
@@ -34,6 +36,7 @@ public class PloggingServiceImpl implements PloggingService {
     private final PloggingRepository ploggingRepository;
     private final PloggingRedisRepository redisRepository;
     private final GridRepository gridRepository;
+    private final AccountRepository accountRepository; // [NEW] Account 조회를 위해 추가
     private final ApplicationEventPublisher eventPublisher;
     private final H3Core h3Core;
     private final SimpMessagingTemplate messagingTemplate;
@@ -53,27 +56,22 @@ public class PloggingServiceImpl implements PloggingService {
 
             UserPloggingStatus lastStatus = redisRepository.getUserState(userId);
 
-            // CASE A: 새로운 그리드 진입
             if (lastStatus == null || !lastStatus.h3Index().equals(currentH3)) {
                 redisRepository.updateUserState(userId, currentH3, currentTime, false);
                 return;
             }
 
-            // CASE B: 이미 점령 완료한 그리드
             if (lastStatus.isOccupied()) {
                 return;
             }
 
-            // CASE C: 동일 그리드 체류 중 -> 시간 체크
             long timeElapsed = currentTime - lastStatus.entryTime();
 
             if (timeElapsed >= OCCUPY_THRESHOLD_MS) {
-                // 3분 경과 -> 점령 시도
                 boolean success = handleOccupationAttempt(userId, currentH3, request.getPartyId());
 
                 if (success) {
                     redisRepository.updateUserState(userId, currentH3, lastStatus.entryTime(), true);
-                    // 점령 목록(Captured)에 추가 -> 종료 시 정산용
                     redisRepository.addCapturedGrid(userId, currentH3);
                 }
             }
@@ -120,34 +118,41 @@ public class PloggingServiceImpl implements PloggingService {
     public PloggingResultResponse endPlogging(String userId, PloggingEndRequest request,
                                               MultipartFile before, MultipartFile after, MultipartFile map) {
 
+        // 1. [수정됨] Account 조회 (getReferenceById는 프록시만 가져오므로 성능상 유리함)
+        // userId는 이미 String이므로 변환 불필요
+        Account account = accountRepository.getReferenceById(userId);
+
+        // 2. [수정됨] Plogging 저장 (Account 객체 연결)
+        // Plogging 엔티티에 score 필드가 추가되었으므로 초기값을 설정합니다. (여기선 0, 필요시 계산 로직 추가)
         Plogging savedPlogging = ploggingRepository.save(Plogging.builder()
-                .userId(userId)
+                .account(account)   // [핵심] .userId(Long) -> .account(Account) 변경
                 .distance(request.distance())
                 .times(request.endTime())
+                .score(0)           // score 필드 초기화 (int 기본값)
                 .build());
 
-        // 2. Redis 점령 목록 조회
+        // 3. Redis 점령 목록 조회
         Set<String> capturedGrids = redisRepository.getCapturedGrids(userId);
         int occupiedCount = capturedGrids.size();
 
-        // 3. RaidService 호출 (String userId 전달)
+        // 4. RaidService 호출
         int totalRaidScore = 0;
         if (!capturedGrids.isEmpty()) {
             totalRaidScore = raidService.applyRaidScore(userId, capturedGrids);
         }
 
-        // 4. 이벤트 발행 (RaidScore 포함)
+        // 5. 이벤트 발행
         PloggingCompletedEvent event = PloggingCompletedEvent.builder()
                 .ploggingId(savedPlogging.getId())
-                .userId(userId) // String
+                .userId(userId)
                 .occupiedGridCnt(occupiedCount)
-                .raidScore(totalRaidScore) // [NEW]
+                .raidScore(totalRaidScore)
                 .beforeImage(before).afterImage(after).mapImage(map)
                 .build();
 
         eventPublisher.publishEvent(event);
 
-        // 5. Redis 정리
+        // 6. Redis 정리
         redisRepository.deleteUserState(userId);
 
         log.info("플로깅 종료: userId={}, captured={}, raidScore={}", userId, occupiedCount, totalRaidScore);

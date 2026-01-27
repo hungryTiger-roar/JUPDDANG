@@ -37,13 +37,10 @@ public class Account implements UserDetails {
     @Column(nullable = false)
     private String intro;
 
-    @Column(name = "address", nullable = false)
-    private String region;
-
     @Column(nullable = false, unique = true)
     private String email;
 
-    @Column(nullable = false)
+    @Column(nullable = true)
     private String color;
 
     @Column(nullable = false)
@@ -63,7 +60,6 @@ public class Account implements UserDetails {
         this.pw = pw;
         this.email = email;
         this.nickname = nickname;
-        this.region = region;
         this.color = color;
         this.score = score;
         this.profileImage = "https://storage.googleapis.com/jupddang-images/default/default-profile.png";
@@ -82,9 +78,6 @@ public class Account implements UserDetails {
         }
         if (intro != null) {
             this.intro = intro;
-        }
-        if (region != null) {
-            this.region = region;
         }
         if (email != null) {
             this.email = email;

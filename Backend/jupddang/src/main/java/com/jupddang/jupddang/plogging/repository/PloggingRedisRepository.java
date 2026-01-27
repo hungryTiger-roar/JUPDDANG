@@ -4,6 +4,7 @@ import com.jupddang.jupddang.plogging.dto.UserPloggingStatus;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.stereotype.Repository;
 
 import java.time.Duration;
@@ -207,6 +208,87 @@ public class PloggingRedisRepository {
         } catch (Exception e) {
             log.error("Redis 존재 확인 실패: userId={}", userId, e);
             return false;
+        }
+    }
+
+    // [랭킹]
+    /**
+     * 랭킹 점수 업데이트 (누적 & 월간 동시에 반영))
+     * @param userId 사용자 ID
+     * @param totalScore 현재 누적 총점 (Account.totalScore)
+     * @param monthlyKey 이번 달 랭킹 키 (예: ranking:monthly:202601)
+     * @param monthlyScore 이번 달 점수 합계
+     */
+    public void updateRankScore(String userId, long totalScore, String monthlyKey, long monthlyScore) {
+        String totalKey = "ranking:total"; // 전체(누적) 랭킹 키
+
+        try {
+            // 전체 랭킹 : 누적 점수로 저장 (덮어쓰기)
+            redisTemplate.opsForZSet().add(totalKey, userId, totalScore);
+
+            // 월간 랭킹 : 해당 월 키에 점수 저장
+            if (monthlyKey != null) {
+                redisTemplate.opsForZSet().add(monthlyKey, userId, monthlyScore);
+                // 월간 랭킹 키 40일 뒤 자동 삭제 (메모리 관리용)
+                redisTemplate.expire(monthlyKey, Duration.ofDays(40));
+            }
+
+            log.debug("랭킹 업데이트 완료: User={}, Total={}, Monthly={}", userId, totalScore, monthlyScore);
+
+        } catch (Exception e) {
+            log.error("랭킹 점수 업데이트 실패: userId={}", userId, e);
+        }
+    }
+
+    /**
+     * 상위권(Top N) 조회
+     * @param key 랭킹 키 (전체 or 월간)
+     * @param limit 가져올 명수 (예: 3)
+     */
+    public Set<ZSetOperations.TypedTuple<Object>> getTopRankers(String key, int limit) {
+        try {
+            // 점수 높은 순으로 조회 ( 0등~(limit-1)등 => 1등~limit등)
+            return redisTemplate.opsForZSet().reverseRangeWithScores(key, 0, limit -1);
+        } catch (Exception e) {
+            log.error("Top 랭커 조회 실패: key={}", key, e);
+            return Collections.emptySet();
+        }
+    }
+
+    /**
+     * 내 등수 조회
+     */
+    public Long getMyRank(String key, String userId) {
+        try{
+            return redisTemplate.opsForZSet().reverseRank(key, userId);
+        } catch (Exception e) {
+            log.error("내 등수 조회 실패: key={}, userId={}", key, userId, e);
+            return null;
+        }
+    }
+
+    /**
+     * 내 점수 조회
+     */
+    public Double getMyScore(String key, String userId) {
+        try {
+            return redisTemplate.opsForZSet().score(key, userId);
+        } catch (Exception e) {
+            log.error("내 점수 조회 실패: key={}, userId={}", key, userId, e);
+            return null;
+        }
+    }
+
+    /**
+     * 특정 범위(Window) 조회 (Start등 ~ End등)
+     * 내 등수 앞뒤 2명을 구할 때 사용
+     */
+    public Set<ZSetOperations.TypedTuple<Object>> getRankWindow(String key, long start, long end) {
+        try {
+            return redisTemplate.opsForZSet().reverseRangeWithScores(key, start, end);
+        } catch (Exception e) {
+            log.error("랭킹 윈도우 조회 실패: key={}", key, e);
+            return Collections.emptySet();
         }
     }
 }

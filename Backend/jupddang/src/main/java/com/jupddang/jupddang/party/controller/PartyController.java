@@ -1,10 +1,6 @@
 package com.jupddang.jupddang.party.controller;
 
-import com.jupddang.jupddang.party.dto.InviteCodeResponse;
-import com.jupddang.jupddang.party.dto.PartyCreateRequest;
-import com.jupddang.jupddang.party.dto.PartyCreateResponse;
-import com.jupddang.jupddang.party.dto.PartyJoinRequest;
-import com.jupddang.jupddang.party.dto.PartyJoinResponse;
+import com.jupddang.jupddang.party.dto.*;
 import com.jupddang.jupddang.party.service.PartyService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -36,7 +32,6 @@ public class PartyController {
     public ResponseEntity<InviteCodeResponse> createInviteCode() {
         String inviteCode = partyService.generateUniqueInviteCode();
         InviteCodeResponse response = InviteCodeResponse.of(inviteCode);
-
         return ResponseEntity.ok(response);
     }
 
@@ -67,6 +62,17 @@ public class PartyController {
             @RequestHeader("User-Id") Long userId
     ) {
         PartyJoinResponse response = partyService.joinParty(request, userId);
+        return ResponseEntity.ok(response);
+    }
+
+    // 새로 추가
+    @GetMapping("/{partyId}")
+    @Operation(summary = "파티 상세 조회")
+    public ResponseEntity<PartyDetailResponse> getPartyDetail(
+            @PathVariable Long partyId,
+            @RequestHeader("User-Id") Long userId
+    ) {
+        PartyDetailResponse response = partyService.getPartyDetail(partyId, userId);
         return ResponseEntity.ok(response);
     }
 }

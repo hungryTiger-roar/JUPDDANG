@@ -5,6 +5,7 @@ import com.jupddang.jupddang.party.domain.PartyMember;
 import com.jupddang.jupddang.party.domain.PartyStatus;
 import com.jupddang.jupddang.party.dto.PartyCreateRequest;
 import com.jupddang.jupddang.party.dto.PartyCreateResponse;
+import com.jupddang.jupddang.party.dto.PartyDetailResponse;
 import com.jupddang.jupddang.party.dto.PartyJoinRequest;
 import com.jupddang.jupddang.party.dto.PartyJoinResponse;
 import com.jupddang.jupddang.party.exception.InviteCodeGenerationException;
@@ -14,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.security.SecureRandom;
+import java.util.List;
 
 @Service
 public class PartyService {
@@ -31,8 +33,7 @@ public class PartyService {
         this.partyMemberRepository = partyMemberRepository;
     }
 
-    // === 기존 코드 유지 ===
-
+    // 초대 코드 생성
     public String generateUniqueInviteCode() {
         int attempts = 0;
 
@@ -56,13 +57,7 @@ public class PartyService {
         return String.format("%0" + CODE_LENGTH + "d", code);
     }
 
-    // === 새로운 메서드 추가 ===
-
-    /**
-     * 파티 생성
-     * - 초대 코드 자동 생성 (6자리 숫자)
-     * - 방장을 자동으로 멤버에 추가
-     */
+    // 파티 생성
     @Transactional
     public PartyCreateResponse createParty(PartyCreateRequest request, Long userId) {
         // 1. 초대 코드 생성 (기존 메서드 재사용)
@@ -80,17 +75,11 @@ public class PartyService {
                 savedParty.getId(),
                 savedParty.getInviteCode(),
                 savedParty.getName(),
-                true  // 생성자는 항상 방장
+                true
         );
     }
 
-    /**
-     * 파티 참여
-     * - 초대 코드로 파티 찾기
-     * - 중복 참여 방지
-     * - 인원 제한 체크
-     * - 파티 상태 체크 (대기 중만 참여 가능)
-     */
+    // 파티 참여
     @Transactional
     public PartyJoinResponse joinParty(PartyJoinRequest request, Long userId) {
         // 1. 초대 코드로 파티 찾기
@@ -127,6 +116,50 @@ public class PartyService {
                 party.isLeader(userId),
                 (int) currentMembers,
                 party.getMaxMembers()
+        );
+    }
+
+    // 파티 상세 조회 (새로 추가)
+    @Transactional(readOnly = true)
+    public PartyDetailResponse getPartyDetail(Long partyId, Long currentUserId) {
+        Party party = partyRepository.findById(partyId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 파티입니다."));
+
+        if (!partyMemberRepository.existsByPartyIdAndUserId(partyId, currentUserId)) {
+            throw new IllegalStateException("파티에 참여하지 않은 사용자입니다.");
+        }
+
+        List<PartyMember> members = partyMemberRepository.findByPartyId(partyId);
+
+        List<PartyDetailResponse.MemberDto> memberDtos = members.stream()
+                .map(m -> new PartyDetailResponse.MemberDto(
+                        m.getUserId(),
+                        party.isLeader(m.getUserId()),
+                        m.getJoinedAt()
+                ))
+                .sorted((a, b) -> {
+                    if (a.isLeader()) return -1;
+                    if (b.isLeader()) return 1;
+                    return a.joinedAt().compareTo(b.joinedAt());
+                })
+                .toList();
+
+        return new PartyDetailResponse(
+                party.getId(),
+                party.getInviteCode(),
+                party.getName(),
+                party.getStatus(),
+                new PartyDetailResponse.PartyLeaderInfo(
+                        party.getLeaderId(),
+                        party.isLeader(currentUserId)
+                ),
+                new PartyDetailResponse.PartyMembersInfo(
+                        members.size(),
+                        party.getMaxMembers(),
+                        memberDtos
+                ),
+                party.getCreatedAt(),
+                party.getStartedAt()
         );
     }
 }

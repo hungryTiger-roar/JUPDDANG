@@ -199,6 +199,18 @@ class AuthService {
     }
   }
 
+  Future<void> deletePost(String postId) async {
+    try {
+      await _dio.delete(
+        '$postsBase/$postId',
+        options: Options(headers: _authHeaders()),
+      );
+    } catch (e) {
+      print('Delete Post Error: $e');
+      rethrow;
+    }
+  }
+
   Map<String, String> _authHeaders() {
     if (accessToken == null || accessToken!.isEmpty) {
       return {};

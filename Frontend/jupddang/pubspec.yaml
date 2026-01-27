@@ -41,6 +41,7 @@ dependencies:
   h3_flutter: ^0.7.1
   image_picker: ^1.2.1
   pixelarticons: ^0.4.0
+  geocoding: ^4.0.0
 
 dev_dependencies:
   flutter_test:

@@ -143,6 +143,45 @@ class _CommunityScreenState extends State<CommunityScreen> {
     });
   }
 
+  Future<void> _deletePost(String postId) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1F1F1F),
+        title: const Text('삭제하시겠습니까?', style: TextStyle(color: Colors.white)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('취소', style: TextStyle(color: Colors.white54)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('삭제', style: TextStyle(color: Colors.redAccent)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        await _authService.deletePost(postId);
+        setState(() {
+          _remotePosts.removeWhere((p) => p.id == postId);
+          _localPosts.removeWhere((p) => p.id == postId);
+        });
+        if (mounted)
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('게시글이 삭제되었습니다.')));
+      } catch (e) {
+        if (mounted)
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('삭제에 실패했습니다.')));
+      }
+    }
+  }
+
   void _showComments(CommunityPost post) {
     showModalBottomSheet(
       context: context,
@@ -230,7 +269,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       floatingActionButton: Padding(
-        padding: const EdgeInsets.only(bottom: 110, right: 10),
+        padding: const EdgeInsets.only(bottom: 10, right: 10),
         child: SizedBox(
           width: 120,
           child: PixelButton(
@@ -510,7 +549,17 @@ class _CommunityScreenState extends State<CommunityScreen> {
                     ],
                   ),
                 ),
-                const Icon(Pixel.menu, color: Colors.white38, size: 20),
+                if (post.userId == AuthService.userId)
+                  GestureDetector(
+                    onTap: () => _deletePost(post.id),
+                    child: const Icon(
+                      Pixel.trash,
+                      color: Colors.redAccent,
+                      size: 24,
+                    ),
+                  )
+                else
+                  const Icon(Pixel.menu, color: Colors.white38, size: 20),
               ],
             ),
           ),
@@ -545,8 +594,65 @@ class _CommunityScreenState extends State<CommunityScreen> {
           // Content
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
+            child: _buildPostContent(post),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPostContent(CommunityPost post) {
+    final lines = post.content.split('\n');
+    final Map<String, List<String>> sections = {
+      'hashtags': [],
+      'body': [],
+      'record': [],
+    };
+
+    bool inRecord = false;
+    for (var line in lines) {
+      final trimmed = line.trim();
+      if (trimmed.isEmpty) continue;
+
+      if (trimmed.startsWith('#')) {
+        sections['hashtags']!.add(trimmed);
+      } else if (trimmed.startsWith('기록:')) {
+        inRecord = true;
+        sections['record']!.add(trimmed.replaceFirst('기록:', '').trim());
+      } else if (inRecord) {
+        sections['record']!.add(trimmed);
+      } else {
+        sections['body']!.add(line);
+      }
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (sections['hashtags']!.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Wrap(
+              spacing: 8,
+              children: sections['hashtags']!
+                  .map(
+                    (tag) => Text(
+                      tag,
+                      style: const TextStyle(
+                        color: Color(0xFF17C964),
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                      ),
+                    ),
+                  )
+                  .toList(),
+            ),
+          ),
+        if (sections['body']!.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
             child: Text(
-              post.content,
+              sections['body']!.join('\n'),
               style: const TextStyle(
                 color: Colors.white,
                 height: 1.5,
@@ -554,8 +660,71 @@ class _CommunityScreenState extends State<CommunityScreen> {
               ),
             ),
           ),
+        if (sections['record']!.isNotEmpty)
+          _buildRecordCard(sections['record']!.join(' ')),
+      ],
+    );
+  }
+
+  Widget _buildRecordCard(String recordText) {
+    // Expected format: Title · Date · Distance · Duration
+    final parts = recordText.split('·').map((e) => e.trim()).toList();
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.05),
+        border: const Border(
+          left: BorderSide(color: Color(0xFF17C964), width: 4),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Pixel.check, color: Color(0xFF17C964), size: 16),
+              const SizedBox(width: 8),
+              Text(
+                parts.isNotEmpty ? parts[0] : '활동 기록',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              if (parts.length > 2) ...[
+                _recordStat(Pixel.user, parts[2]),
+                const SizedBox(width: 16),
+              ],
+              if (parts.length > 3) ...[
+                _recordStat(Pixel.clock, parts[3]),
+                const SizedBox(width: 16),
+              ],
+              if (parts.length > 1) _recordStat(Pixel.calendar, parts[1]),
+            ],
+          ),
         ],
       ),
+    );
+  }
+
+  Widget _recordStat(IconData icon, String value) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, color: Colors.white38, size: 12),
+        const SizedBox(width: 4),
+        Text(
+          value,
+          style: const TextStyle(color: Colors.white70, fontSize: 11),
+        ),
+      ],
     );
   }
 
@@ -700,24 +869,21 @@ class _CommunityScreenState extends State<CommunityScreen> {
     return GestureDetector(
       onTap: () => _toggleFollow(nickname),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+        padding: const EdgeInsets.all(6),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(6),
+          color: isFollowing
+              ? Colors.white.withOpacity(0.05)
+              : const Color(0xFF17C964).withOpacity(0.1),
           border: Border.all(
             color: isFollowing ? Colors.white24 : const Color(0xFF17C964),
-            width: 1,
+            width: 1.5,
           ),
-          color: isFollowing
-              ? Colors.transparent
-              : const Color(0xFF17C964).withOpacity(0.1),
+          borderRadius: BorderRadius.circular(4),
         ),
-        child: Text(
-          isFollowing ? '팔로잉' : '팔로우',
-          style: TextStyle(
-            color: isFollowing ? Colors.white54 : const Color(0xFF17C964),
-            fontSize: 10,
-            fontWeight: FontWeight.bold,
-          ),
+        child: Icon(
+          isFollowing ? Pixel.check : Pixel.userplus,
+          color: isFollowing ? Colors.white38 : const Color(0xFF17C964),
+          size: 16,
         ),
       ),
     );
@@ -881,7 +1047,12 @@ class _CommentBottomSheetState extends State<_CommentBottomSheet> {
                   ),
           ),
           Container(
-            padding: const EdgeInsets.all(20),
+            padding: EdgeInsets.fromLTRB(
+              20,
+              20,
+              20,
+              60 + MediaQuery.of(context).padding.bottom,
+            ),
             decoration: BoxDecoration(
               color: const Color(0xFF222222),
               border: Border(

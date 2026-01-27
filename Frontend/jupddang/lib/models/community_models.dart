@@ -64,6 +64,7 @@ class CommunityPostDraft {
 
 class CommunityPost {
   final String id;
+  final String? userId;
   final String nickname;
   final String content;
   final DateTime createdAt;
@@ -75,6 +76,7 @@ class CommunityPost {
 
   CommunityPost({
     required this.id,
+    this.userId,
     required this.nickname,
     required this.content,
     required this.createdAt,
@@ -98,6 +100,7 @@ class CommunityPost {
         [];
     return CommunityPost(
       id: json['postId']?.toString() ?? '',
+      userId: json['userId']?.toString(),
       nickname: json['nickname']?.toString() ?? 'unknown',
       content: json['content']?.toString() ?? '',
       createdAt: createdAt,
@@ -110,6 +113,7 @@ class CommunityPost {
   factory CommunityPost.fromDraft(CommunityPostDraft draft) {
     return CommunityPost(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
+      userId: draft.userId,
       nickname: draft.nickname,
       content: draft.content,
       createdAt: DateTime.now(),
@@ -137,6 +141,7 @@ class CommunityPost {
 
   CommunityPost copyWith({
     String? id,
+    String? userId,
     String? nickname,
     String? content,
     DateTime? createdAt,
@@ -148,6 +153,7 @@ class CommunityPost {
   }) {
     return CommunityPost(
       id: id ?? this.id,
+      userId: userId ?? this.userId,
       nickname: nickname ?? this.nickname,
       content: content ?? this.content,
       createdAt: createdAt ?? this.createdAt,

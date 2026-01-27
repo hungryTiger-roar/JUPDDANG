@@ -41,7 +41,6 @@ class _CommunityComposeScreenState extends State<CommunityComposeScreen> {
   static const Color _navAccent = Color(0xFF17C964);
   static const Color _borderColor = Colors.black;
 
-  final TextEditingController _titleController = TextEditingController();
   final TextEditingController _hashtagController = TextEditingController();
   final TextEditingController _contentController = TextEditingController();
   final ImagePicker _picker = ImagePicker();
@@ -86,7 +85,6 @@ class _CommunityComposeScreenState extends State<CommunityComposeScreen> {
 
   @override
   void dispose() {
-    _titleController.dispose();
     _hashtagController.dispose();
     _contentController.dispose();
     super.dispose();
@@ -163,10 +161,9 @@ class _CommunityComposeScreenState extends State<CommunityComposeScreen> {
       _showMessage('작성자를 확인해 주세요.');
       return;
     }
-    final title = _titleController.text.trim();
     final body = _contentController.text.trim();
-    if (title.isEmpty || body.isEmpty) {
-      _showMessage('제목과 내용을 입력해 주세요.');
+    if (body.isEmpty) {
+      _showMessage('내용을 입력해 주세요.');
       return;
     }
     setState(() {
@@ -196,15 +193,11 @@ class _CommunityComposeScreenState extends State<CommunityComposeScreen> {
   }
 
   String _composeContent() {
-    final title = _titleController.text.trim();
     final hashtags = _normalizeHashtags(_hashtagController.text);
     final body = _contentController.text.trim();
     final record = _selectedRecord;
     final buffer = StringBuffer();
 
-    if (title.isNotEmpty) {
-      buffer.writeln(title);
-    }
     if (hashtags.isNotEmpty) {
       buffer.writeln(hashtags);
     }
@@ -255,10 +248,6 @@ class _CommunityComposeScreenState extends State<CommunityComposeScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const SizedBox(height: 10),
-                  _buildLabel('제목'),
-                  const SizedBox(height: 8),
-                  _buildTitleField(),
-                  const SizedBox(height: 18),
                   _buildLabel('해시태그'),
                   const SizedBox(height: 8),
                   _buildHashtagField(),
@@ -300,18 +289,6 @@ class _CommunityComposeScreenState extends State<CommunityComposeScreen> {
         fontSize: 14,
 
         letterSpacing: 1.0,
-      ),
-    );
-  }
-
-  Widget _buildTitleField() {
-    return _buildInputContainer(
-      TextField(
-        controller: _titleController,
-        decoration: const InputDecoration(
-          hintText: '제목을 입력하세요',
-          border: InputBorder.none,
-        ),
       ),
     );
   }

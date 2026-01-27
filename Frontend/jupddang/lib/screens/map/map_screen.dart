@@ -6,6 +6,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:pixelarticons/pixelarticons.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:geocoding/geocoding.dart';
 import 'dart:io';
 import '../../services/location_h3_service.dart';
 import '../../services/auth_service.dart';
@@ -34,8 +35,8 @@ class _MapScreenState extends State<MapScreen> {
 
   String? _currentH3Index;
   Timer? _stayTimer;
-  bool _isManualMode = false;
   PloggingPhase _phase = PloggingPhase.idle;
+  bool _showCustomizer = false;
   double _occupyProgress = 0.0; // 0.0 ~ 1.0
   List<HexagonModel> _visibleHexagonModels = [];
 
@@ -43,6 +44,10 @@ class _MapScreenState extends State<MapScreen> {
   final ImagePicker _picker = ImagePicker();
   XFile? _beforeImage;
   XFile? _afterImage;
+
+  // Session Data
+  String? _startAddress;
+  final TextEditingController _descriptionController = TextEditingController();
 
   // Map Customization
   Color _selectedGridColor = const Color(0xFF46A140);
@@ -98,7 +103,6 @@ class _MapScreenState extends State<MapScreen> {
       _positionStream = _h3Service.getPositionStream().listen((
         Position position,
       ) {
-        if (_isManualMode) return;
         _updateCurrentPosition(LatLng(position.latitude, position.longitude));
       });
     }
@@ -151,16 +155,40 @@ class _MapScreenState extends State<MapScreen> {
   void _startPlogging() {
     setState(() {
       _phase = PloggingPhase.plogging;
+      _showCustomizer = false; // Close palette if open
       _sessionStopwatch.start();
       _totalDistance = 0.0;
       _pathPoints = [_currentPosition!];
       _coinsGained = 0;
+      _descriptionController.clear();
+      _startAddress = "Fetching address...";
       _statsTimer = Timer.periodic(
         const Duration(seconds: 1),
         (t) => setState(() {}),
       );
       if (_currentH3Index != null) _startOccupationTimer();
     });
+    _fetchStartAddress();
+  }
+
+  Future<void> _fetchStartAddress() async {
+    if (_currentPosition == null) return;
+    try {
+      List<Placemark> placemarks = await placemarkFromCoordinates(
+        _currentPosition!.latitude,
+        _currentPosition!.longitude,
+      );
+      if (placemarks.isNotEmpty) {
+        final p = placemarks.first;
+        setState(() {
+          _startAddress = "${p.locality} ${p.subLocality} ${p.thoroughfare}";
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _startAddress = "Address unavailable";
+      });
+    }
   }
 
   void _pausePlogging() {
@@ -252,17 +280,6 @@ class _MapScreenState extends State<MapScreen> {
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(const SnackBar(content: Text("땅을 점령했습니다! (1분 체류 달성)")));
-  }
-
-  void _moveManually(double latDelta, double lngDelta) {
-    if (_currentPosition == null) return;
-    _isManualMode = true;
-    final newPos = LatLng(
-      _currentPosition!.latitude + latDelta,
-      _currentPosition!.longitude + lngDelta,
-    );
-    _updateCurrentPosition(newPos);
-    _mapController.move(newPos, _mapController.camera.zoom);
   }
 
   void _onMapPositionChanged(MapCamera camera, bool hasGesture) {
@@ -467,7 +484,7 @@ class _MapScreenState extends State<MapScreen> {
                       "${(_totalDistance / 1000).toStringAsFixed(2)}km",
                       "DIST",
                     ),
-                    _buildStatColumn(Pixel.coin, "$_coinsGained", "GOLD"),
+                    _buildStatColumn(Pixel.coin, "$_coinsGained", "POINT"),
                   ],
                 ),
               ),
@@ -479,19 +496,19 @@ class _MapScreenState extends State<MapScreen> {
             right: 20,
             child: Container(
               decoration: BoxDecoration(
-                color: Colors.black,
-                border: Border.all(color: Colors.white24, width: 2.0),
-                boxShadow: const [
-                  BoxShadow(color: Colors.black, offset: Offset(4, 4)),
-                ],
+                color: _isPlogging ? Colors.black : Colors.transparent,
+                border: _isPlogging
+                    ? Border.all(color: Colors.white24, width: 2.0)
+                    : null,
+                boxShadow: _isPlogging
+                    ? const [
+                        BoxShadow(color: Colors.black, offset: Offset(4, 4)),
+                      ]
+                    : null,
               ),
               padding: const EdgeInsets.all(12.0),
               child: Column(
                 children: [
-                  Text(
-                    "LOCATION: ${_currentH3Index ?? '???'}",
-                    style: const TextStyle(color: Colors.white, fontSize: 10),
-                  ),
                   if (_isPlogging) ...[
                     const SizedBox(height: 8),
                     SizedBox(
@@ -507,6 +524,20 @@ class _MapScreenState extends State<MapScreen> {
               ),
             ),
           ),
+          // Top Left Controls (Palette) - Only visible when NOT plogging
+          if (_phase == PloggingPhase.idle)
+            Positioned(
+              left: 20,
+              top: 60,
+              child: _showCustomizer
+                  ? _buildMapCustomizer()
+                  : _manualMoveButton(
+                      Pixel.paintbucket,
+                      "palette_toggle",
+                      () => setState(() => _showCustomizer = true),
+                    ),
+            ),
+
           // Zoom & My Location Controls
           Positioned(
             right: 20,
@@ -526,9 +557,6 @@ class _MapScreenState extends State<MapScreen> {
             ),
           ),
 
-          // Map Customization Controls (Left Side)
-          Positioned(left: 20, top: 220, child: _buildMapCustomizer()),
-
           // Contextual Controls (Start/Pause/Resume/Stop)
           Positioned(
             bottom: 120,
@@ -541,41 +569,6 @@ class _MapScreenState extends State<MapScreen> {
               ),
             ),
           ),
-
-          if (kIsWeb || kDebugMode)
-            Positioned(
-              bottom: 110,
-              right: 20,
-              child: Column(
-                children: [
-                  _manualMoveButton(
-                    Pixel.arrowup,
-                    "move_up",
-                    () => _moveManually(0.0002, 0),
-                  ),
-                  Row(
-                    children: [
-                      _manualMoveButton(
-                        Pixel.arrowleft,
-                        "move_left",
-                        () => _moveManually(0, -0.0002),
-                      ),
-                      const SizedBox(width: 40),
-                      _manualMoveButton(
-                        Pixel.arrowright,
-                        "move_right",
-                        () => _moveManually(0, 0.0002),
-                      ),
-                    ],
-                  ),
-                  _manualMoveButton(
-                    Pixel.arrowdown,
-                    "move_down",
-                    () => _moveManually(-0.0002, 0),
-                  ),
-                ],
-              ),
-            ),
 
           // Summary Overlay
           if (_phase == PloggingPhase.summary) _buildSummaryOverlay(),
@@ -685,10 +678,61 @@ class _MapScreenState extends State<MapScreen> {
                         "${(_totalDistance / 1000).toStringAsFixed(2)}km",
                         "DIST",
                       ),
-                      _buildStatColumn(Pixel.coin, "$_coinsGained", "GOLD"),
+                      _buildStatColumn(Pixel.coin, "$_coinsGained", "POINT"),
                     ],
                   ),
                   const SizedBox(height: 32),
+                  if (_startAddress != null) ...[
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Row(
+                        children: [
+                          const Icon(Pixel.gps, size: 14, color: Colors.grey),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              "START: $_startAddress",
+                              style: const TextStyle(
+                                fontSize: 10,
+                                color: Colors.grey,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                  ],
+                  const Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      "DESCRIPTION",
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: _descriptionController,
+                    maxLines: 3,
+                    style: const TextStyle(fontSize: 12),
+                    decoration: InputDecoration(
+                      hintText: "오늘의 줍킹은 어땠나요?",
+                      hintStyle: const TextStyle(
+                        fontSize: 10,
+                        color: Colors.grey,
+                      ),
+                      fillColor: Colors.black.withOpacity(0.05),
+                      border: const OutlineInputBorder(
+                        borderRadius: BorderRadius.zero,
+                        borderSide: BorderSide(color: Colors.black, width: 2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
                   const Align(
                     alignment: Alignment.centerLeft,
                     child: Text(
@@ -823,16 +867,37 @@ class _MapScreenState extends State<MapScreen> {
   Widget _buildMapCustomizer() {
     return Container(
       padding: const EdgeInsets.all(12),
+      constraints: const BoxConstraints(maxWidth: 160),
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.7),
-        border: Border.all(color: const Color(0xFFF9D698), width: 2),
+        color: Colors.black.withOpacity(0.9),
+        border: Border.all(color: const Color(0xFFF9D698), width: 3),
         boxShadow: const [
           BoxShadow(color: Colors.black45, offset: Offset(4, 4)),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                "CUSTOMIZE",
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1,
+                ),
+              ),
+              GestureDetector(
+                onTap: () => setState(() => _showCustomizer = false),
+                child: const Icon(Pixel.close, color: Colors.white, size: 16),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
           const Text(
             "GRID OPACITY",
             style: TextStyle(

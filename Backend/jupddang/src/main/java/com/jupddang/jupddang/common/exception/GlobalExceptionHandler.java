@@ -1,5 +1,8 @@
 package com.jupddang.jupddang.common.exception;
 
+import com.jupddang.jupddang.trashcan.exception.DuplicateVerificationException;
+import com.jupddang.jupddang.trashcan.exception.TrashcanAlreadyVerifiedException;
+import com.jupddang.jupddang.trashcan.exception.TrashcanNotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -69,5 +72,29 @@ public class GlobalExceptionHandler {
         );
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(response);
+    }
+
+    // TrashcanNotFoundException 처리
+    @ExceptionHandler(TrashcanNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleTrashcanNotFound(TrashcanNotFoundException ex) {
+        log.error("Trashcan not found: {}", ex.getMessage());
+        ErrorResponse error = new ErrorResponse("NOT_FOUND", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
+    }
+
+    // TrashcanAlreadyVerifiedException 처리
+    @ExceptionHandler(TrashcanAlreadyVerifiedException.class)
+    public ResponseEntity<ErrorResponse> handleTrashcanAlreadyVerified(TrashcanAlreadyVerifiedException ex) {
+        log.error("Trashcan already verified: {}", ex.getMessage());
+        ErrorResponse error = new ErrorResponse("BAD_REQUEST", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+    }
+
+    // DuplicateVerificationException 처리
+    @ExceptionHandler(DuplicateVerificationException.class)
+    public ResponseEntity<ErrorResponse> handleDuplicateVerification(DuplicateVerificationException ex) {
+        log.error("Duplicate verification: {}", ex.getMessage());
+        ErrorResponse error = new ErrorResponse("CONFLICT", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
     }
 }

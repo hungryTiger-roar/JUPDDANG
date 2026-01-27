@@ -4,6 +4,7 @@ import com.jupddang.jupddang.account.entity.Account;
 import com.jupddang.jupddang.trashcan.dto.TrashcanCreateRequest;
 import com.jupddang.jupddang.trashcan.dto.TrashcanDetailDto;
 import com.jupddang.jupddang.trashcan.dto.TrashcanListResponse;
+import com.jupddang.jupddang.trashcan.entity.TrashcanStatus;
 import com.jupddang.jupddang.trashcan.service.TrashcanService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -76,6 +77,23 @@ public class TrashcanController {
                 trashcanId, account.getUserId());
 
         TrashcanDetailDto response = trashcanService.verifyTrashcan(trashcanId, account);
+
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * 내가 제안한 쓰레기통 목록 조회
+     * GET /api/v1/trashcans/my?status=PENDING
+     */
+    @GetMapping("/my")
+    public ResponseEntity<TrashcanListResponse> getMyTrashcans(
+            @RequestParam(required = false) TrashcanStatus status,
+            @AuthenticationPrincipal Account account) {
+
+        log.info("내가 제안한 쓰레기통 조회 - userId: {}, status: {}",
+                account.getUserId(), status);
+
+        TrashcanListResponse response = trashcanService.getMyTrashcans(account, status);
 
         return ResponseEntity.ok(response);
     }

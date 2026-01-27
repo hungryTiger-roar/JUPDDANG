@@ -1,6 +1,8 @@
 package com.jupddang.jupddang.trashcan.repository;
 
+import com.jupddang.jupddang.account.entity.Account;
 import com.jupddang.jupddang.trashcan.entity.Trashcan;
+import com.jupddang.jupddang.trashcan.entity.TrashcanStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -29,4 +31,21 @@ public interface TrashcanRepository extends JpaRepository<Trashcan, Long> {
             @Param("minLng") Double minLng,
             @Param("maxLng") Double maxLng
     );
+
+    /**
+     * 특정 사용자가 제안한 쓰레기통 전체 조회 (최신순)
+     *
+     * @param reportedBy 제안한 사용자
+     * @return 쓰레기통 목록
+     */
+    List<Trashcan> findByReportedByOrderByIdDesc(Account reportedBy);
+
+    /**
+     * 특정 사용자가 제안한 쓰레기통 중 특정 상태만 조회 (최신순)
+     *
+     * @param reportedBy 제안한 사용자
+     * @param status 쓰레기통 상태
+     * @return 쓰레기통 목록
+     */
+    List<Trashcan> findByReportedByAndStatusOrderByIdDesc(Account reportedBy, TrashcanStatus status);
 }

@@ -176,4 +176,40 @@ public class TrashcanService {
         // 8. DTO 변환 및 반환
         return TrashcanDetailDto.from(trashcan);
     }
+
+    /**
+     * 내가 제안한 쓰레기통 목록 조회
+     *
+     * @param account 조회하는 사용자
+     * @param status 필터링할 상태 (null이면 전체 조회)
+     * @return 쓰레기통 목록
+     */
+    @Transactional(readOnly = true)
+    public TrashcanListResponse getMyTrashcans(Account account, TrashcanStatus status) {
+
+        // 1. status에 따라 다른 조회 메서드 호출
+        List<Trashcan> trashcans;
+
+        if (status == null) {
+            // 전체 조회
+            trashcans = trashcanRepository.findByReportedByOrderByIdDesc(account);
+        } else {
+            // 특정 상태만 조회
+            trashcans = trashcanRepository.findByReportedByAndStatusOrderByIdDesc(account, status);
+        }
+
+        // 2. Entity → DTO 변환
+        List<TrashcanDto> trashcanDtos = trashcans.stream()
+                .map(trashcan -> new TrashcanDto(
+                        trashcan.getId(),
+                        trashcan.getLatitude(),
+                        trashcan.getLongitude(),
+                        trashcan.getAddress(),
+                        trashcan.getStatus()
+                ))
+                .toList();
+
+        // 3. Response 생성 및 반환
+        return new TrashcanListResponse(trashcanDtos);
+    }
 }

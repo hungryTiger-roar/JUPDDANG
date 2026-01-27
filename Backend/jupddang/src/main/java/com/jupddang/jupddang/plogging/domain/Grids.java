@@ -40,18 +40,6 @@ public class Grids {
      * @param attackerId 공격하는 유저 ID
      * @param now 현재 시간
      */
-    public boolean isClaimable(String attackerId, LocalDateTime now) {
-        // 1. 주인이 없는 땅이면 즉시 점령 가능
-        if (this.userId == null) return true;
-
-        // 2. 이미 내가 점령한 땅이면 점령 불가 (중복 점령 방지)
-        if (this.userId.equals(attackerId)) return false;
-
-        // 3. 보호막 체크: 점령 후 3시간이 지났는지 확인
-        // (점령 시간 + 3시간)이 현재 시간보다 이전이어야 함
-        return this.occupiedAt.plusHours(3).isBefore(now);
-    }
-
     /**
      * 주인 변경 (땅 뺏기 성공)
      */

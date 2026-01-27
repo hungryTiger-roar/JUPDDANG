@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:pixelarticons/pixelarticons.dart';
 
 class CustomBottomNavbar extends StatelessWidget {
   final int currentIndex;
@@ -23,22 +24,22 @@ class CustomBottomNavbar extends StatelessWidget {
     const double indicatorInnerSize = 46.0;
 
     // [아이콘 리스트]
-    // 비활성 상태 (테두리만)
+    // 비활성 상태 (테두리만 - PixelArtIcons는 단일 스타일이 많으므로 동일하게 사용하거나 크기/색으로 구분)
     final List<IconData> unselectedIcons = [
-      Icons.forum_outlined,
-      Icons.celebration_outlined,
-      Icons.map_outlined,
-      Icons.emoji_events_outlined,
-      Icons.settings_outlined,
+      Pixel.message,
+      Pixel.moodhappy,
+      Pixel.map,
+      Pixel.trophy,
+      Pixel.sliders,
     ];
 
-    // 활성 상태 (채워진 아이콘) - 티가 팍팍 나게!
+    // 활성 상태
     final List<IconData> selectedIcons = [
-      Icons.forum_rounded,
-      Icons.celebration_rounded,
-      Icons.map_rounded,
-      Icons.emoji_events_rounded,
-      Icons.settings_rounded,
+      Pixel.message,
+      Pixel.moodhappy,
+      Pixel.map,
+      Pixel.trophy,
+      Pixel.sliders,
     ];
 
     double itemWidth = (barWidth - 40) / unselectedIcons.length;
@@ -50,13 +51,11 @@ class CustomBottomNavbar extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 20, left: 16, right: 16),
         decoration: BoxDecoration(
           color: const Color(0xFF000000), // 배경: 블랙
-          borderRadius: BorderRadius.circular(999),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.4),
-              blurRadius: 20,
-              offset: const Offset(0, 10),
-            ),
+          border: const Border(
+            top: BorderSide(color: Colors.black, width: 4.0),
+          ),
+          boxShadow: const [
+            BoxShadow(color: Colors.black, offset: Offset(0, -4)),
           ],
         ),
         child: Stack(
@@ -78,44 +77,25 @@ class CustomBottomNavbar extends StatelessWidget {
                 child: Stack(
                   alignment: Alignment.center,
                   children: [
-                    // Glow 효과 (형광색 빛 번짐)
-                    Container(
-                      width: indicatorOuterSize - 10,
-                      height: indicatorOuterSize - 10,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: const Color(0xFFEAFF6A).withOpacity(0.5),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(0xFFEAFF6A).withOpacity(0.6),
-                            blurRadius: 20,
-                            spreadRadius: 2,
-                          ),
-                        ],
-                      ),
-                    ),
-                    // 외부 흰색 원
+                    // 외부 하얀 상자 (Square)
                     Container(
                       width: indicatorOuterSize,
                       height: indicatorOuterSize,
-                      decoration: const BoxDecoration(
-                        shape: BoxShape.circle,
+                      decoration: BoxDecoration(
                         color: Colors.white,
+                        border: Border.all(color: Colors.black, width: 2.0),
                       ),
                     ),
-                    // 내부 검은 원
+                    // 내부 검정 상자 (Square)
                     Container(
                       width: indicatorInnerSize,
                       height: indicatorInnerSize,
-                      decoration: const BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Color(0xFF111111),
-                      ),
-                      // 활성 아이콘 (크고 굵게!)
+                      decoration: const BoxDecoration(color: Color(0xFF111111)),
+                      // 활성 아이콘
                       child: Icon(
                         selectedIcons[currentIndex],
-                        color: const Color(0xFFEAFF6A),
-                        size: 26, // 아이콘 크기 확대
+                        color: const Color(0xFF17C964),
+                        size: 26,
                       ),
                     ),
                   ],

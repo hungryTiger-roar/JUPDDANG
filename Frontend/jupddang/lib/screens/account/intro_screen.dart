@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'login_screen.dart';
 import 'signup_screen.dart';
+import '../../widgets/pixel_button.dart';
+import '../core/main_screen.dart';
 
 class IntroScreen extends StatelessWidget {
   const IntroScreen({super.key});
@@ -29,7 +31,7 @@ class IntroScreen extends StatelessWidget {
               child: Text(
                 'Jupddang',
                 style: TextStyle(
-                  color: Color(0xFFEAFF6A),
+                  color: Color(0xFF17C964),
                   fontSize: 28,
                   fontWeight: FontWeight.bold,
                 ),
@@ -37,47 +39,41 @@ class IntroScreen extends StatelessWidget {
             ),
             const Spacer(flex: 1),
             // 로그인 버튼
-            ElevatedButton(
+            PixelButton(
+              text: 'LOGIN',
               onPressed: () {
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => const LoginScreen()),
                 );
               },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFEAFF6A),
-                foregroundColor: Colors.black,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              child: const Text(
-                '로그인하기',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
             ),
-            const SizedBox(height: 16),
-            // 회원가입 버튼
-            OutlinedButton(
+            const SizedBox(
+              height: 20,
+            ), // Changed from 24 to 20 to match snippet
+            // 회원가입 버튼 (original 'SIGN UP' button)
+            PixelButton(
+              text: 'SIGN UP',
+              isGreen: false,
               onPressed: () {
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => const SignupScreen()),
                 );
               },
-              style: OutlinedButton.styleFrom(
-                foregroundColor: Colors.white,
-                side: const BorderSide(color: Colors.white54),
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              child: const Text(
-                '회원가입하기',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
+            ),
+            const SizedBox(height: 20), // Added space for new button
+            // 로그인 없이 사용하기 버튼 (new 'GUEST MODE' button)
+            PixelButton(
+              text: 'GUEST MODE',
+              isGreen: false,
+              onPressed: () {
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(builder: (context) => const MainScreen()),
+                  (route) => false,
+                );
+              },
             ),
             const Spacer(flex: 1),
           ],

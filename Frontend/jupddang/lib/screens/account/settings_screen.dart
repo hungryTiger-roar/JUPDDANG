@@ -5,9 +5,10 @@ class SettingsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('설정')),
-      body: const Center(child: Text('설정 화면 준비 중입니다.')),
+    return const Scaffold(
+      body: Center(
+        child: Text('설정 화면 준비 중입니다.', style: TextStyle(fontSize: 20)),
+      ),
     );
   }
 }

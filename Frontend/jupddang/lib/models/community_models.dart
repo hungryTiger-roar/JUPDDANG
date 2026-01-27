@@ -12,13 +12,38 @@ class AccountSummary {
   });
 
   factory AccountSummary.fromJson(Map<String, dynamic> json) {
-    final userId = json['userId']?.toString() ?? '';
+    final userId = json['userId']?.toString() ?? json['id']?.toString() ?? '';
     final nickname = json['nickname']?.toString() ?? userId;
     return AccountSummary(
       userId: userId,
       nickname: nickname,
       email: json['email']?.toString(),
       address: json['address']?.toString(),
+    );
+  }
+}
+
+class CommunityComment {
+  final String id;
+  final String nickname;
+  final String content;
+  final DateTime createdAt;
+
+  CommunityComment({
+    required this.id,
+    required this.nickname,
+    required this.content,
+    required this.createdAt,
+  });
+
+  factory CommunityComment.fromJson(Map<String, dynamic> json) {
+    return CommunityComment(
+      id: json['commentId']?.toString() ?? '',
+      nickname: json['nickname']?.toString() ?? 'unknown',
+      content: json['content']?.toString() ?? '',
+      createdAt:
+          DateTime.tryParse(json['createdAt']?.toString() ?? '') ??
+          DateTime.now(),
     );
   }
 }
@@ -45,6 +70,7 @@ class CommunityPost {
   final int likeCount;
   final List<String> imageUrls;
   final List<String> localImagePaths;
+  final List<CommunityComment> comments;
   final bool localOnly;
 
   CommunityPost({
@@ -55,15 +81,21 @@ class CommunityPost {
     required this.likeCount,
     List<String>? imageUrls,
     List<String>? localImagePaths,
+    List<CommunityComment>? comments,
     this.localOnly = false,
-  })  : imageUrls = imageUrls ?? const [],
-        localImagePaths = localImagePaths ?? const [];
+  }) : imageUrls = imageUrls ?? const [],
+       localImagePaths = localImagePaths ?? const [],
+       comments = comments ?? const [];
 
   factory CommunityPost.fromPostJson(Map<String, dynamic> json) {
     final createdAtRaw = json['createdAt']?.toString();
-    final createdAt =
-        DateTime.tryParse(createdAtRaw ?? '') ?? DateTime.now();
+    final createdAt = DateTime.tryParse(createdAtRaw ?? '') ?? DateTime.now();
     final imageUrls = _pickImageUrls(json);
+    final comments =
+        (json['comments'] as List?)
+            ?.map((c) => CommunityComment.fromJson(c as Map<String, dynamic>))
+            .toList() ??
+        [];
     return CommunityPost(
       id: json['postId']?.toString() ?? '',
       nickname: json['nickname']?.toString() ?? 'unknown',
@@ -71,6 +103,7 @@ class CommunityPost {
       createdAt: createdAt,
       likeCount: json['like'] is int ? json['like'] as int : 0,
       imageUrls: imageUrls,
+      comments: comments,
     );
   }
 
@@ -100,5 +133,29 @@ class CommunityPost {
       }
     }
     return urls;
+  }
+
+  CommunityPost copyWith({
+    String? id,
+    String? nickname,
+    String? content,
+    DateTime? createdAt,
+    int? likeCount,
+    List<String>? imageUrls,
+    List<String>? localImagePaths,
+    List<CommunityComment>? comments,
+    bool? localOnly,
+  }) {
+    return CommunityPost(
+      id: id ?? this.id,
+      nickname: nickname ?? this.nickname,
+      content: content ?? this.content,
+      createdAt: createdAt ?? this.createdAt,
+      likeCount: likeCount ?? this.likeCount,
+      imageUrls: imageUrls ?? this.imageUrls,
+      localImagePaths: localImagePaths ?? this.localImagePaths,
+      comments: comments ?? this.comments,
+      localOnly: localOnly ?? this.localOnly,
+    );
   }
 }

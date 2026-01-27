@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../services/auth_service.dart';
 import '../core/main_screen.dart';
+import '../../widgets/pixel_button.dart';
+import 'package:pixelarticons/pixelarticons.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -58,130 +60,78 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: const Color(0xFF141414),
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
-        ),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              '다시 오셨군요!',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              '계속하려면 로그인을 진행해주세요.',
-              style: TextStyle(color: Colors.white70, fontSize: 16),
-            ),
-            const SizedBox(height: 40),
-
-            // ID 입력
-            TextField(
-              controller: _idController,
-              style: const TextStyle(color: Colors.white),
-              decoration: InputDecoration(
-                labelText: '아이디',
-                labelStyle: const TextStyle(color: Colors.white70),
-                filled: true,
-                fillColor: Colors.white10,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 28.0, vertical: 40.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'WELCOME BACK!',
+                style: TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 2,
                 ),
               ),
-            ),
-            const SizedBox(height: 16),
-
-            // PW 입력
-            TextField(
-              controller: _pwController,
-              obscureText: true,
-              style: const TextStyle(color: Colors.white),
-              decoration: InputDecoration(
-                labelText: '비밀번호',
-                labelStyle: const TextStyle(color: Colors.white70),
-                filled: true,
-                fillColor: Colors.white10,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
+              const SizedBox(height: 12),
+              Text(
+                'Please sign in to continue.',
+                style: TextStyle(
+                  color: isDark ? Colors.white70 : Colors.black54,
+                  fontSize: 14,
+                  letterSpacing: 1.0,
                 ),
               ),
-            ),
-            const SizedBox(height: 40),
+              const SizedBox(height: 56),
 
-            // 로그인 버튼
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _isLoading ? null : _login,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFEAFF6A),
-                  foregroundColor: Colors.black,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+              // ID 입력
+              TextField(
+                controller: _idController,
+                decoration: const InputDecoration(
+                  labelText: '아이디',
+                  prefixIcon: Icon(Pixel.user),
                 ),
-                child: _isLoading
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.black,
-                        ),
-                      )
-                    : const Text(
-                        '로그인',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+                keyboardType: TextInputType.emailAddress,
+                textInputAction: TextInputAction.next,
               ),
-            ),
-            const SizedBox(height: 16),
+              const SizedBox(height: 20),
 
-            // 로그인 없이 사용하기 버튼
-            SizedBox(
-              width: double.infinity,
-              child: TextButton(
+              // PW 입력
+              TextField(
+                controller: _pwController,
+                obscureText: true,
+                decoration: const InputDecoration(
+                  labelText: '비밀번호',
+                  prefixIcon: Icon(Pixel.lock),
+                ),
+                textInputAction: TextInputAction.done,
+                onSubmitted: (_) => _login(),
+              ),
+              const SizedBox(height: 48),
+
+              // 로그인 버튼
+              PixelButton(text: 'LOGIN', onPressed: _isLoading ? null : _login),
+              const SizedBox(height: 20),
+
+              // 로그인 없이 사용하기 버튼
+              PixelButton(
+                text: 'GUEST MODE',
+                isGreen: false,
                 onPressed: () {
-                  // 메인 화면으로 바로 이동 (게스트 모드)
                   Navigator.pushAndRemoveUntil(
                     context,
                     MaterialPageRoute(builder: (context) => const MainScreen()),
                     (route) => false,
                   );
                 },
-                style: TextButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                ),
-                child: const Text(
-                  '로그인 없이 사용하기',
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 16,
-                    decoration: TextDecoration.underline,
-                  ),
-                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

@@ -39,12 +39,13 @@ class _SplashScreenState extends State<SplashScreen> {
             ),
             const SizedBox(height: 20),
             const Text(
-              'Jupddang',
+              'PRESS START',
               style: TextStyle(
-                color: Color(0xFFEAFF6A), // Neon color
-                fontSize: 32,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 1.2,
+                color: Color(0xFF17C964),
+                fontSize: 24,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 4.0,
+                
               ),
             ),
           ],

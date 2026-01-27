@@ -242,19 +242,6 @@ class _MapScreenState extends State<MapScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Jupddang Main'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.my_location),
-            onPressed: () {
-              if (_currentPosition != null) {
-                _mapController.move(_currentPosition!, 16.0);
-              }
-            },
-          ),
-        ],
-      ),
       body: FlutterMap(
         mapController: _mapController,
         options: MapOptions(

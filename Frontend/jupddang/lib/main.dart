@@ -8,30 +8,161 @@ void main() {
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
+  static const Color _successColor = Color(0xFF17C964);
+  static const Color _successTint = Color(0x3317C964);
+
+  ThemeData _buildTheme(Brightness brightness) {
+    final bool isDark = brightness == Brightness.dark;
+
+    final ButtonStyle baseButtonStyle = ButtonStyle(
+      minimumSize: MaterialStateProperty.all(const Size(64, 52)),
+      textStyle: MaterialStateProperty.all(
+        const TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w900,
+          letterSpacing: 2.0,
+        ),
+      ),
+      shape: MaterialStateProperty.all(
+        const BeveledRectangleBorder(borderRadius: BorderRadius.zero),
+      ),
+      elevation: MaterialStateProperty.all(0),
+      side: MaterialStateProperty.all(
+        const BorderSide(color: Colors.black, width: 4.0),
+      ),
+      padding: MaterialStateProperty.resolveWith<EdgeInsetsGeometry>((states) {
+        if (states.contains(MaterialState.pressed)) {
+          return const EdgeInsets.fromLTRB(28, 16, 20, 8); // Shifted
+        }
+        return const EdgeInsets.symmetric(horizontal: 24, vertical: 12);
+      }),
+    );
+    return ThemeData(
+      fontFamily: 'Galmuri11',
+      useMaterial3: true,
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: const Color(0xFF6B4EFF),
+        primary: _successColor,
+        brightness: brightness,
+        surface: isDark ? const Color(0xFF141414) : Colors.white,
+      ),
+      scaffoldBackgroundColor: isDark
+          ? const Color(0xFF141414)
+          : const Color(0xFFF8F9FA),
+      appBarTheme: AppBarTheme(
+        centerTitle: true,
+        elevation: 0,
+        backgroundColor: isDark ? const Color(0xFF141414) : Colors.white,
+        foregroundColor: isDark ? Colors.white : Colors.black87,
+        titleTextStyle: const TextStyle(
+          fontSize: 18,
+          fontWeight: FontWeight.w900,
+          letterSpacing: 2.0,
+        ),
+        shape: const Border(
+          bottom: BorderSide(color: Colors.black, width: 4.0),
+        ),
+      ),
+      cardTheme: CardThemeData(
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(4),
+          side: const BorderSide(color: Color(0xFF532E16), width: 3.0),
+        ),
+        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      ),
+      floatingActionButtonTheme: FloatingActionButtonThemeData(
+        backgroundColor: const Color(0xFF1DCE70),
+        foregroundColor: Colors.white,
+        elevation: 0,
+        shape: const BeveledRectangleBorder(
+          borderRadius: BorderRadius.zero,
+          side: BorderSide(color: Colors.black, width: 4.0),
+        ),
+        extendedTextStyle: const TextStyle(
+          fontWeight: FontWeight.w900,
+          letterSpacing: 1.0,
+        ),
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: baseButtonStyle.copyWith(
+          backgroundColor: MaterialStateProperty.resolveWith((states) {
+            if (states.contains(MaterialState.disabled))
+              return const Color(0xFF1DCE70).withOpacity(0.5);
+            return const Color(0xFF1DCE70);
+          }),
+          foregroundColor: MaterialStateProperty.all(Colors.white),
+          overlayColor: MaterialStateProperty.all(Colors.white10),
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: baseButtonStyle.copyWith(
+          backgroundColor: MaterialStateProperty.all(const Color(0xFF1F1F1F)),
+          foregroundColor: MaterialStateProperty.all(Colors.white),
+          side: MaterialStateProperty.all(
+            const BorderSide(color: Colors.black, width: 4.0),
+          ),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: baseButtonStyle.copyWith(
+          minimumSize: MaterialStateProperty.all(
+            const Size(64, 44),
+          ), // Text buttons can be slightly smaller
+          foregroundColor: MaterialStateProperty.all(_successColor),
+          backgroundColor: MaterialStateProperty.all(Colors.transparent),
+          overlayColor: MaterialStateProperty.all(
+            _successColor.withOpacity(0.1),
+          ),
+        ),
+      ),
+      filledButtonTheme: FilledButtonThemeData(
+        style: baseButtonStyle.copyWith(
+          foregroundColor: MaterialStateProperty.all(_successColor),
+          backgroundColor: MaterialStateProperty.all(_successTint),
+          overlayColor: MaterialStateProperty.all(
+            _successColor.withOpacity(0.1),
+          ),
+        ),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: isDark
+            ? Colors.white.withOpacity(0.05)
+            : Colors.black.withOpacity(0.05),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 20,
+          vertical: 18,
+        ),
+        border: const OutlineInputBorder(
+          borderRadius: BorderRadius.zero,
+          borderSide: BorderSide(color: Colors.black, width: 4.0),
+        ),
+        enabledBorder: const OutlineInputBorder(
+          borderRadius: BorderRadius.zero,
+          borderSide: BorderSide(color: Colors.black, width: 4.0),
+        ),
+        focusedBorder: const OutlineInputBorder(
+          borderRadius: BorderRadius.zero,
+          borderSide: BorderSide(color: Color(0xFF1DCE70), width: 4.0),
+        ),
+        labelStyle: TextStyle(
+          color: isDark ? Colors.white70 : Colors.black54,
+          fontSize: 12,
+          fontFamily: 'monospace',
+          fontWeight: FontWeight.w900,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Jupddang',
-      theme: ThemeData(
-        useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF6B4EFF), // Vivid Purple
-          brightness: Brightness.light,
-        ),
-        appBarTheme: const AppBarTheme(
-          centerTitle: true,
-          elevation: 2,
-          backgroundColor: Colors.white,
-          foregroundColor: Colors.black87,
-        ),
-      ),
-      darkTheme: ThemeData(
-        useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF6B4EFF),
-          brightness: Brightness.dark,
-        ),
-      ),
+      theme: _buildTheme(Brightness.light),
+      darkTheme: _buildTheme(Brightness.dark),
       themeMode: ThemeMode.system,
       home: const SplashScreen(),
       debugShowCheckedModeBanner: false,

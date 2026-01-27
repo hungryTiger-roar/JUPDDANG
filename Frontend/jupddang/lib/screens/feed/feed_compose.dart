@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../models/community_models.dart';
+import '../../widgets/pixel_button.dart';
+import 'package:pixelarticons/pixelarticons.dart';
 
 class CommunityComposeScreen extends StatefulWidget {
   final List<AccountSummary> accounts;
@@ -19,57 +21,140 @@ class CommunityComposeScreen extends StatefulWidget {
   State<CommunityComposeScreen> createState() => _CommunityComposeScreenState();
 }
 
+class _PloggingRecord {
+  final String id;
+  final String title;
+  final String date;
+  final String distance;
+  final String duration;
+
+  const _PloggingRecord({
+    required this.id,
+    required this.title,
+    required this.date,
+    required this.distance,
+    required this.duration,
+  });
+}
+
 class _CommunityComposeScreenState extends State<CommunityComposeScreen> {
-  final List<String> _categories = [
-    '브랜드 세일',
-    '공지',
-    '모임',
-    '자유',
-  ];
-  final TextEditingController _urlController = TextEditingController();
+  static const Color _navAccent = Color(0xFF17C964);
+  static const Color _borderColor = Colors.black;
+
   final TextEditingController _titleController = TextEditingController();
+  final TextEditingController _hashtagController = TextEditingController();
   final TextEditingController _contentController = TextEditingController();
   final ImagePicker _picker = ImagePicker();
-  final List<XFile> _images = [];
 
   AccountSummary? _selectedAccount;
-  String _selectedCategory = '브랜드 세일';
+  _PloggingRecord? _selectedRecord;
+  XFile? _beforeImage;
+  XFile? _afterImage;
   bool _submitting = false;
+
+  final List<_PloggingRecord> _records = const [
+    _PloggingRecord(
+      id: '1',
+      title: '한강 플로깅',
+      date: '2024-11-02',
+      distance: '3.2km',
+      duration: '32분',
+    ),
+    _PloggingRecord(
+      id: '2',
+      title: '캠퍼스 러닝',
+      date: '2024-10-29',
+      distance: '2.1km',
+      duration: '24분',
+    ),
+    _PloggingRecord(
+      id: '3',
+      title: '동네 산책 플로깅',
+      date: '2024-10-24',
+      distance: '1.4km',
+      duration: '18분',
+    ),
+  ];
 
   @override
   void initState() {
     super.initState();
-    _selectedAccount = widget.initialAccount ??
+    _selectedAccount =
+        widget.initialAccount ??
         (widget.accounts.isNotEmpty ? widget.accounts.first : null);
   }
 
   @override
   void dispose() {
-    _urlController.dispose();
     _titleController.dispose();
+    _hashtagController.dispose();
     _contentController.dispose();
     super.dispose();
   }
 
-  Future<void> _pickImages() async {
-    if (_images.length >= 5) {
-      _showMessage('사진은 최대 5장까지 선택할 수 있어요.');
+  Future<void> _pickImage({required bool isBefore}) async {
+    final picked = await _picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 85,
+    );
+    if (picked == null) {
       return;
     }
-    final picked = await _picker.pickMultiImage(imageQuality: 85);
-    if (picked.isEmpty) {
-      return;
-    }
-    final remaining = 5 - _images.length;
     setState(() {
-      _images.addAll(picked.take(remaining));
+      if (isBefore) {
+        _beforeImage = picked;
+      } else {
+        _afterImage = picked;
+      }
     });
   }
 
-  void _removeImage(int index) {
+  void _removeImage({required bool isBefore}) {
     setState(() {
-      _images.removeAt(index);
+      if (isBefore) {
+        _beforeImage = null;
+      } else {
+        _afterImage = null;
+      }
     });
+  }
+
+  void _openRecordPicker() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: ListView.separated(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            itemCount: _records.length,
+            separatorBuilder: (_, __) => const Divider(height: 1),
+            itemBuilder: (context, index) {
+              final record = _records[index];
+              final selected = _selectedRecord?.id == record.id;
+              return ListTile(
+                title: Text(record.title),
+                subtitle: Text(
+                  '${record.date} · ${record.distance} · ${record.duration}',
+                ),
+                trailing: selected
+                    ? const Icon(Icons.check_circle, color: _navAccent)
+                    : const Icon(Icons.circle_outlined),
+                onTap: () {
+                  setState(() {
+                    _selectedRecord = record;
+                  });
+                  Navigator.pop(context);
+                },
+              );
+            },
+          ),
+        );
+      },
+    );
   }
 
   void _submit() {
@@ -80,41 +165,48 @@ class _CommunityComposeScreenState extends State<CommunityComposeScreen> {
     }
     final title = _titleController.text.trim();
     final body = _contentController.text.trim();
-    if (title.isEmpty && body.isEmpty) {
-      _showMessage('제목 또는 내용을 입력해 주세요.');
+    if (title.isEmpty || body.isEmpty) {
+      _showMessage('제목과 내용을 입력해 주세요.');
       return;
     }
     setState(() {
       _submitting = true;
     });
     final content = _composeContent();
+    final imagePaths = <String>[];
+    if (_beforeImage != null) {
+      imagePaths.add(_beforeImage!.path);
+    }
+    if (_afterImage != null) {
+      imagePaths.add(_afterImage!.path);
+    }
     final draft = CommunityPostDraft(
       userId: _selectedAccount!.userId,
       nickname: _selectedAccount!.nickname,
       content: content,
-      localImagePaths: _images.map((image) => image.path).toList(),
+      localImagePaths: imagePaths,
     );
     Navigator.pop(context, draft);
   }
 
   void _showMessage(String message) {
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   String _composeContent() {
     final title = _titleController.text.trim();
-    final url = _urlController.text.trim();
+    final hashtags = _normalizeHashtags(_hashtagController.text);
     final body = _contentController.text.trim();
+    final record = _selectedRecord;
     final buffer = StringBuffer();
-    if (_selectedCategory.isNotEmpty) {
-      buffer.writeln('[${_selectedCategory}]');
-    }
+
     if (title.isNotEmpty) {
       buffer.writeln(title);
     }
-    if (url.isNotEmpty) {
-      buffer.writeln(url);
+    if (hashtags.isNotEmpty) {
+      buffer.writeln(hashtags);
     }
     if (body.isNotEmpty) {
       if (buffer.isNotEmpty) {
@@ -122,62 +214,64 @@ class _CommunityComposeScreenState extends State<CommunityComposeScreen> {
       }
       buffer.write(body);
     }
+    if (record != null) {
+      buffer.writeln();
+      buffer.writeln();
+      buffer.write(
+        '기록: ${record.title} · ${record.date} · ${record.distance} · ${record.duration}',
+      );
+    }
     return buffer.toString().trim();
+  }
+
+  String _normalizeHashtags(String raw) {
+    final items = raw
+        .replaceAll(',', ' ')
+        .split(' ')
+        .map((tag) => tag.trim())
+        .where((tag) => tag.isNotEmpty)
+        .map((tag) => tag.startsWith('#') ? tag : '#$tag')
+        .toList();
+    return items.join(' ');
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF6F7FB),
+      backgroundColor: const Color(0xFF141414),
       appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
+        title: const Text('NEW POST'),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: Colors.black87),
+          icon: const Icon(Icons.close_rounded, size: 24),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
-          '글쓰기',
-          style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold),
-        ),
-        centerTitle: true,
-        actions: [
-          TextButton(
-            onPressed: () {},
-            child: const Text(
-              '가이드',
-              style: TextStyle(color: Colors.black54),
-            ),
-          ),
-        ],
       ),
       body: Column(
         children: [
           Expanded(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
+              padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildAuthorRow(),
-                  const SizedBox(height: 16),
-                  _buildLabel('주제'),
-                  const SizedBox(height: 8),
-                  _buildCategoryField(),
-                  const SizedBox(height: 18),
-                  _buildLabel('URL'),
-                  const SizedBox(height: 8),
-                  _buildUrlField(),
-                  const SizedBox(height: 18),
+                  const SizedBox(height: 10),
                   _buildLabel('제목'),
                   const SizedBox(height: 8),
                   _buildTitleField(),
+                  const SizedBox(height: 18),
+                  _buildLabel('해시태그'),
+                  const SizedBox(height: 8),
+                  _buildHashtagField(),
                   const SizedBox(height: 18),
                   _buildLabel('내용'),
                   const SizedBox(height: 8),
                   _buildContentField(),
                   const SizedBox(height: 18),
-                  _buildImageSection(),
+                  _buildLabel('Before · After'),
+                  const SizedBox(height: 10),
+                  _buildBeforeAfterGrid(),
+                  const SizedBox(height: 18),
+                  _buildRecordSection(),
                 ],
               ),
             ),
@@ -186,23 +280,9 @@ class _CommunityComposeScreenState extends State<CommunityComposeScreen> {
             top: false,
             child: Padding(
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-              child: SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _submitting ? null : _submit,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFE940B6),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                  ),
-                  child: const Text(
-                    '쓰기 완료',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
-                ),
+              child: PixelButton(
+                text: 'PUBLISH',
+                onPressed: _submitting ? null : _submit,
               ),
             ),
           ),
@@ -211,99 +291,15 @@ class _CommunityComposeScreenState extends State<CommunityComposeScreen> {
     );
   }
 
-  Widget _buildAuthorRow() {
-    final nickname = _selectedAccount?.nickname ?? 'Guest';
-    return Row(
-      children: [
-        CircleAvatar(
-          radius: 20,
-          backgroundColor: const Color(0xFFE940B6),
-          child: Text(
-            _initial(nickname),
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              '작성자',
-              style: TextStyle(color: Colors.black54, fontSize: 12),
-            ),
-            Text(
-              nickname,
-              style: const TextStyle(
-                color: Colors.black87,
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
   Widget _buildLabel(String label) {
     return Text(
       label,
       style: const TextStyle(
-        color: Colors.black87,
-        fontWeight: FontWeight.w600,
-      ),
-    );
-  }
-
-  Widget _buildCategoryField() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E6EF)),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: _selectedCategory,
-          items: _categories
-              .map(
-                (category) => DropdownMenuItem(
-                  value: category,
-                  child: Text(category),
-                ),
-              )
-              .toList(),
-          onChanged: (value) {
-            if (value == null) return;
-            setState(() {
-              _selectedCategory = value;
-            });
-          },
-        ),
-      ),
-    );
-  }
+        fontWeight: FontWeight.w900,
+        fontSize: 14,
 
-  Widget _buildUrlField() {
-    return _buildInputContainer(
-      TextField(
-        controller: _urlController,
-        decoration: InputDecoration(
-          hintText: 'https://example.com',
-          border: InputBorder.none,
-          suffixIcon: Container(
-            margin: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(color: const Color(0xFFCFD6E4)),
-            ),
-            child: const Icon(Icons.link, size: 18, color: Colors.black54),
-          ),
-        ),
+        letterSpacing: 1.0,
       ),
     );
   }
@@ -314,6 +310,18 @@ class _CommunityComposeScreenState extends State<CommunityComposeScreen> {
         controller: _titleController,
         decoration: const InputDecoration(
           hintText: '제목을 입력하세요',
+          border: InputBorder.none,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHashtagField() {
+    return _buildInputContainer(
+      TextField(
+        controller: _hashtagController,
+        decoration: const InputDecoration(
+          hintText: '#플로깅 #환경',
           border: InputBorder.none,
         ),
       ),
@@ -331,112 +339,214 @@ class _CommunityComposeScreenState extends State<CommunityComposeScreen> {
           border: InputBorder.none,
           counterText: '',
         ),
-        buildCounter: (
-          context, {
-          required currentLength,
-          required isFocused,
-          maxLength,
-        }) {
-          final limit = maxLength ?? 1000;
-          return Align(
-            alignment: Alignment.centerRight,
-            child: Text(
-              '$currentLength / 최대 $limit자',
-              style: const TextStyle(color: Colors.black45, fontSize: 12),
-            ),
-          );
-        },
+        buildCounter:
+            (context, {required currentLength, required isFocused, maxLength}) {
+              final limit = maxLength ?? 1000;
+              return Align(
+                alignment: Alignment.centerRight,
+                child: Text(
+                  '$currentLength / 최대 $limit자',
+                  style: const TextStyle(color: Colors.black45, fontSize: 12),
+                ),
+              );
+            },
       ),
     );
   }
 
-  Widget _buildImageSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildBeforeAfterGrid() {
+    return Row(
       children: [
-        Row(
-          children: [
-            _buildLabel('사진'),
-            const Spacer(),
-            Text(
-              '${_images.length}/5',
-              style: const TextStyle(color: Colors.black45),
-            ),
-          ],
+        Expanded(
+          child: _buildImageTile(
+            label: 'Before',
+            image: _beforeImage,
+            onTap: () => _pickImage(isBefore: true),
+            onRemove: () => _removeImage(isBefore: true),
+          ),
         ),
-        const SizedBox(height: 12),
-        Wrap(
-          spacing: 12,
-          runSpacing: 12,
-          children: [
-            _buildAddImageTile(),
-            for (final entry in _images.asMap().entries)
-              _buildImagePreview(entry.key, entry.value),
-          ],
+        const SizedBox(width: 12),
+        Expanded(
+          child: _buildImageTile(
+            label: 'After',
+            image: _afterImage,
+            onTap: () => _pickImage(isBefore: false),
+            onRemove: () => _removeImage(isBefore: false),
+          ),
         ),
       ],
     );
   }
 
-  Widget _buildAddImageTile() {
+  Widget _buildImageTile({
+    required String label,
+    required XFile? image,
+    required VoidCallback onTap,
+    required VoidCallback onRemove,
+  }) {
     return GestureDetector(
-      onTap: _pickImages,
-      child: Container(
-        width: 76,
-        height: 76,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFFE2E6EF)),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: const [
-            Icon(Icons.camera_alt_outlined, color: Colors.black54),
-            SizedBox(height: 4),
-            Text('추가', style: TextStyle(fontSize: 12, color: Colors.black54)),
-          ],
+      onTap: onTap,
+      child: AspectRatio(
+        aspectRatio: 1,
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            border: Border.all(color: _borderColor, width: 2.0),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.4),
+                offset: const Offset(4, 4),
+                blurRadius: 0,
+                spreadRadius: 0,
+              ),
+            ],
+            image: image == null
+                ? null
+                : DecorationImage(
+                    image: FileImage(File(image.path)),
+                    fit: BoxFit.cover,
+                  ),
+          ),
+          child: Stack(
+            children: [
+              if (image == null)
+                Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Pixel.camera, color: Colors.black54),
+                      const SizedBox(height: 6),
+                      Text(
+                        label,
+                        style: const TextStyle(color: Colors.black54),
+                      ),
+                    ],
+                  ),
+                ),
+              if (image != null)
+                Positioned(
+                  right: 8,
+                  top: 8,
+                  child: GestureDetector(
+                    onTap: onRemove,
+                    child: Container(
+                      width: 24,
+                      height: 24,
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.6),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Pixel.close,
+                        color: Colors.white,
+                        size: 14,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildImagePreview(int index, XFile image) {
-    return Stack(
-      clipBehavior: Clip.none,
+  Widget _buildRecordSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Container(
-          width: 76,
-          height: 76,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFFE2E6EF)),
-            image: DecorationImage(
-              image: FileImage(File(image.path)),
-              fit: BoxFit.cover,
+        Row(
+          children: [
+            _buildLabel('기록 불러오기'),
+            const Spacer(),
+            TextButton(
+              onPressed: _openRecordPicker,
+              child: const Text('기록 선택'),
+            ),
+          ],
+        ),
+        if (_selectedRecord != null)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              border: Border.all(color: _borderColor, width: 2.0),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.4),
+                  offset: const Offset(4, 4),
+                  blurRadius: 0,
+                  spreadRadius: 0,
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: _navAccent.withOpacity(0.2),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.4),
+                        offset: const Offset(4, 4),
+                        blurRadius: 0,
+                        spreadRadius: 0,
+                      ),
+                    ],
+                  ),
+                  child: const Icon(Pixel.arrowright, color: Colors.black87),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _selectedRecord!.title,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black87,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '${_selectedRecord!.date} · ${_selectedRecord!.distance} · ${_selectedRecord!.duration}',
+                        style: const TextStyle(color: Colors.black54),
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  onPressed: () => setState(() => _selectedRecord = null),
+                  icon: const Icon(Pixel.close, color: Colors.black54),
+                ),
+              ],
+            ),
+          )
+        else
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              border: Border.all(color: _borderColor, width: 2.0),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.4),
+                  offset: const Offset(4, 4),
+                  blurRadius: 0,
+                  spreadRadius: 0,
+                ),
+              ],
+            ),
+            child: const Text(
+              '플로깅 기록을 선택하면 게시글에 함께 올라갑니다.',
+              style: TextStyle(color: Colors.black45),
             ),
           ),
-        ),
-        Positioned(
-          right: -6,
-          top: -6,
-          child: GestureDetector(
-            onTap: () => _removeImage(index),
-            child: Container(
-              width: 22,
-              height: 22,
-              decoration: const BoxDecoration(
-                color: Colors.black87,
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.close,
-                color: Colors.white,
-                size: 14,
-              ),
-            ),
-          ),
-        ),
       ],
     );
   }
@@ -445,18 +555,18 @@ class _CommunityComposeScreenState extends State<CommunityComposeScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E6EF)),
+        color: const Color(0xFF1F1F1F),
+        border: Border.all(color: _borderColor, width: 2.0),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.4),
+            offset: const Offset(4, 4),
+            blurRadius: 0,
+            spreadRadius: 0,
+          ),
+        ],
       ),
       child: child,
     );
-  }
-
-  String _initial(String value) {
-    if (value.isEmpty) {
-      return '?';
-    }
-    return value.substring(0, 1).toUpperCase();
   }
 }

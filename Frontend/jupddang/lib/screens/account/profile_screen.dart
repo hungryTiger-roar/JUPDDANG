@@ -5,9 +5,8 @@ class ProfileScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('프로필')),
-      body: const Center(
+    return const Scaffold(
+      body: Center(
         child: Text('프로필 화면 준비 중입니다.', style: TextStyle(fontSize: 20)),
       ),
     );

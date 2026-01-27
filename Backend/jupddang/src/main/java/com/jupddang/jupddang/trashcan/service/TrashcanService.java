@@ -9,10 +9,17 @@ import com.jupddang.jupddang.trashcan.dto.TrashcanListResponse;
 import com.jupddang.jupddang.trashcan.entity.Trashcan;
 import com.jupddang.jupddang.trashcan.entity.TrashcanStatus;
 import com.jupddang.jupddang.trashcan.repository.TrashcanRepository;
+import com.jupddang.jupddang.trashcan.repository.TrashcanVerificationRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.jupddang.jupddang.trashcan.exception.TrashcanNotFoundException;
+import com.jupddang.jupddang.trashcan.exception.TrashcanAlreadyVerifiedException;
+import com.jupddang.jupddang.trashcan.exception.DuplicateVerificationException;
+import com.jupddang.jupddang.trashcan.repository.TrashcanVerificationRepository;
+import com.jupddang.jupddang.trashcan.entity.TrashcanVerification;
+import java.time.LocalDateTime;
 
 import java.util.List;
 
@@ -24,6 +31,7 @@ public class TrashcanService {
 
     private final TrashcanRepository trashcanRepository;
     private final AccountRepository accountRepository;
+    private final TrashcanVerificationRepository verificationRepository;
 
     /**
      * 지도 영역 내의 쓰레기통 조회
@@ -120,4 +128,52 @@ public class TrashcanService {
         return TrashcanDetailDto.from(saved);
     }
 
+    /**
+     * 쓰레기통 검증
+     *
+     * @param trashcanId 검증할 쓰레기통 ID
+     * @param account 검증하는 사용자
+     * @return 검증 후 쓰레기통 정보
+     */
+    @Transactional
+    public TrashcanDetailDto verifyTrashcan(Long trashcanId, Account account) {
+
+        // 1. 쓰레기통 조회
+        Trashcan trashcan = trashcanRepository.findById(trashcanId)
+                .orElseThrow(() -> new TrashcanNotFoundException(trashcanId));
+
+        // 2. 이미 검증 완료된 쓰레기통인지 확인
+        if (trashcan.getStatus() == TrashcanStatus.VERIFIED) {
+            throw new TrashcanAlreadyVerifiedException(trashcanId);
+        }
+
+        // 3. 중복 검증 확인 (같은 사용자가 이미 검증했는지)
+        boolean alreadyVerified = verificationRepository
+                .existsByTrashcan_IdAndUser(trashcanId, account);
+
+        if (alreadyVerified) {
+            throw new DuplicateVerificationException(trashcanId, account.getUserId());
+        }
+
+        // 4. 검증 레코드 생성
+        TrashcanVerification verification = TrashcanVerification.builder()
+                .trashcan(trashcan)
+                .user(account)
+                .build();
+        verificationRepository.save(verification);
+
+        // 5. 검증 횟수 증가
+        trashcan.setVerificationCount(trashcan.getVerificationCount() + 1);
+
+        // 6. 3회 이상 검증되면 상태를 VERIFIED로 변경
+        if (trashcan.getVerificationCount() >= 3) {
+            trashcan.setStatus(TrashcanStatus.VERIFIED);
+        }
+
+        // 7. 변경사항 저장 (dirty checking으로 자동 저장됨)
+        trashcanRepository.save(trashcan);
+
+        // 8. DTO 변환 및 반환
+        return TrashcanDetailDto.from(trashcan);
+    }
 }

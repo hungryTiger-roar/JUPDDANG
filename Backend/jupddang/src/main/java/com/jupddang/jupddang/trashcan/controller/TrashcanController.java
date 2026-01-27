@@ -12,6 +12,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.PathVariable;
 
 @Slf4j
 @RestController
@@ -60,5 +61,22 @@ public class TrashcanController {
         TrashcanDetailDto response = trashcanService.createTrashcan(request, userId);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    /**
+     * 쓰레기통 검증
+     * POST /api/v1/trashcans/{trashcanId}/verify
+     */
+    @PostMapping("/{trashcanId}/verify")
+    public ResponseEntity<TrashcanDetailDto> verifyTrashcan(
+            @PathVariable Long trashcanId,
+            @AuthenticationPrincipal Account account) {
+
+        log.info("쓰레기통 검증 요청 - trashcanId: {}, userId: {}",
+                trashcanId, account.getUserId());
+
+        TrashcanDetailDto response = trashcanService.verifyTrashcan(trashcanId, account);
+
+        return ResponseEntity.ok(response);
     }
 }

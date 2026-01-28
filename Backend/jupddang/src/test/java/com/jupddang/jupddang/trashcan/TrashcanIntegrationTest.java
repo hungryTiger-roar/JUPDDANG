@@ -109,7 +109,6 @@ class TrashcanIntegrationTest {
                 .nickname(nickname)
                 .pw("password")
                 .color("#000000")
-                .score(0)
                 .build());
     }
 
@@ -170,7 +169,7 @@ class TrashcanIntegrationTest {
                 new TrashcanCreateRequest(37.5, 127.0, "핫플"), reporter.getUserId());
 
         for (int i = 0; i < userCount; i++) {
-            accountRepository.save(Account.builder().userId("u" + i).email("u" + i + "@t.c").nickname("u" + i).pw("pw").color("#0").score(0).build());
+            accountRepository.save(Account.builder().userId("u" + i).email("u" + i + "@t.c").nickname("u" + i).pw("pw").color("#0").build());
         }
 
         long start = System.currentTimeMillis();
@@ -230,7 +229,7 @@ class TrashcanIntegrationTest {
         }
 
         for (int i = 0; i < userCount; i++) {
-            accountRepository.save(Account.builder().userId("m" + i).email("m" + i + "@t.c").nickname("m" + i).pw("pw").color("#0").score(0).build());
+            accountRepository.save(Account.builder().userId("m" + i).email("m" + i + "@t.c").nickname("m" + i).pw("pw").color("#0").build());
         }
 
         for (int i = 0; i < userCount; i++) {

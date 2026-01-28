@@ -45,7 +45,7 @@ public class Account implements UserDetails {
     private String color;
 
     @Column(name = "total_score", nullable = false)
-    private long totalScore;
+    private Long totalScore;
 
     @Column(nullable = false)
     private String tier;
@@ -58,52 +58,38 @@ public class Account implements UserDetails {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
+    // [빌더 적용된 생성자]
+    // Service에서 .color()를 호출하면 이 생성자의 color 파라미터로 들어옵니다.
     @Builder
-    public Account(String userId, String pw, String email, String nickname, String region, String color) {
+    public Account(String userId, String pw, String email, String nickname, String color) {
         this.userId = userId;
         this.pw = pw;
         this.email = email;
         this.nickname = nickname;
-        this.color = color;
+
+        // [중요] Service에서 null을 보내더라도 여기서 기본값을 처리합니다.
+        this.color = (color != null && !color.isBlank()) ? color : "#111111";
+
         this.totalScore = 0L;
         this.tier = PloggingLevel.BRONZE_5.getLabel();
         this.profileImage = "https://storage.googleapis.com/jupddang-images/default/default-profile.png";
         this.intro = "안녕하세요!";
-
     }
 
-    public void update(String pw, String nickname, String profileImage, String intro, String region, String email, String color) {
-        if (pw != null) {
-            this.pw = pw;
-        }
-        if (nickname != null) {
-            this.nickname = nickname;
-        }
-        if (profileImage != null) {
-            this.profileImage = profileImage;
-        }
-        if (intro != null) {
-            this.intro = intro;
-        }
-        if (email != null) {
-            this.email = email;
-        }
-        if (color != null) {
-            this.color = color;
-        }
+    // [수정 메서드] region 삭제됨
+    public void update(String pw, String nickname, String profileImage, String intro, String email, String color) {
+        if (pw != null) this.pw = pw;
+        if (nickname != null) this.nickname = nickname;
+        if (profileImage != null) this.profileImage = profileImage;
+        if (intro != null) this.intro = intro;
+        if (email != null) this.email = email;
+        if (color != null) this.color = color;
     }
 
-    /**
-     * 점수 누적 및 티어 갱신 메서드
-     * @param point 획득한 점수
-     */
     public void addScore(int point) {
         this.totalScore += point;
-
-        // 점수에 따라 티어도 같이 다시 계산해서 넣기
         this.tier = PloggingLevel.findByScore(this.totalScore).getLabel();
     }
-
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
@@ -111,32 +97,20 @@ public class Account implements UserDetails {
     }
 
     @Override
-    public String getPassword() {
-        return this.pw;
-    }
+    public String getPassword() { return this.pw; }
 
     @Override
-    public String getUsername() {
-        return this.userId;
-    }
+    public String getUsername() { return this.userId; }
 
     @Override
-    public boolean isAccountNonExpired() {
-        return true;
-    }
+    public boolean isAccountNonExpired() { return true; }
 
     @Override
-    public boolean isAccountNonLocked() {
-        return true;
-    }
+    public boolean isAccountNonLocked() { return true; }
 
     @Override
-    public boolean isCredentialsNonExpired() {
-        return true;
-    }
+    public boolean isCredentialsNonExpired() { return true; }
 
     @Override
-    public boolean isEnabled() {
-        return true;
-    }
+    public boolean isEnabled() { return true; }
 }

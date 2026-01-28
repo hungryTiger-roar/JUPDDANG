@@ -93,7 +93,6 @@ class PloggingIntegrationTest {
                 .nickname("플로거")
                 .pw("password")
                 .color("#000000") // [필수] NOT NULL 제약조건 준수
-                .score(0)
                 .build());
 
         // 3. 외부 서비스 Mock
@@ -218,7 +217,6 @@ class PloggingIntegrationTest {
                     .nickname("n" + i)
                     .pw("pw")
                     .color("#FFFFFF") // [필수]
-                    .score(0)
                     .build());
         }
         log.info("유저 100명 생성 완료.");

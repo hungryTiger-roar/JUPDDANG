@@ -4,6 +4,7 @@ import com.jupddang.jupddang.account.dto.*;
 import com.jupddang.jupddang.account.entity.Account;
 import com.jupddang.jupddang.account.service.AccountService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter; // [필수] 이거 없으면 에러남
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -50,8 +51,10 @@ public class AccountController {
     // 내 프로필 조회
     @GetMapping("/myprofile")
     @Operation(summary = "내 프로필 조회")
-    public ResponseEntity<AccountResponse> getAccount(@AuthenticationPrincipal Account account) {
-        // 불필요한 로그 제거됨
+    public ResponseEntity<AccountResponse> getAccount(
+            // [수정] Swagger가 Account 객체를 분석하지 못하게 숨김 처리
+            @Parameter(hidden = true) @AuthenticationPrincipal Account account
+    ) {
         AccountResponse myAccount = accountService.getAccount(account.getUserId());
         return ResponseEntity.ok(myAccount);
     }
@@ -62,7 +65,8 @@ public class AccountController {
     public ResponseEntity<AccountResponse> updateAccount(
             @RequestPart(value = "data", required = false) AccountUpdateRequest request,
             @RequestPart(value = "image", required = false) MultipartFile image,
-            @AuthenticationPrincipal Account account
+            // [수정] Swagger 숨김 처리
+            @Parameter(hidden = true) @AuthenticationPrincipal Account account
     ) {
         AccountResponse accountResponse = accountService.updateAccount(account.getUserId(), request, image);
         return ResponseEntity.ok(accountResponse);
@@ -71,11 +75,11 @@ public class AccountController {
     // 회원 탈퇴
     @DeleteMapping("/delete")
     @Operation(summary = "회원 탈퇴")
-    public ResponseEntity<AccountResponse> deleteAccount(@AuthenticationPrincipal Account account) {
+    public ResponseEntity<AccountResponse> deleteAccount(
+            // [수정] Swagger 숨김 처리
+            @Parameter(hidden = true) @AuthenticationPrincipal Account account
+    ) {
         AccountResponse accountResponse = accountService.deleteAccount(account.getUserId());
         return ResponseEntity.ok(accountResponse);
     }
-
-    // [삭제됨] uploadProfileImage
-    // 이유: Service 리팩토링 과정에서 updateAccount 메서드로 기능이 통합되었습니다.
 }

@@ -127,6 +127,10 @@ public class PloggingServiceImpl implements PloggingService {
         // userId는 이미 String이므로 변환 불필요
         Account account = accountRepository.getReferenceById(userId);
 
+        log.info("distance : {}", request.distance());
+        log.info("times : {}", request.endTime());
+        log.info("content : {}", request.content());
+
         // 2. [수정됨] Plogging 저장 (Account 객체 연결)
         // Plogging 엔티티에 score 필드가 추가되었으므로 초기값을 설정합니다. (여기선 0, 필요시 계산 로직 추가)
         Plogging savedPlogging = ploggingRepository.save(Plogging.builder()
@@ -159,7 +163,7 @@ public class PloggingServiceImpl implements PloggingService {
                 .beforeImageUrl(beforeUrl)
                 .afterImageUrl(afterUrl)
                 .mapImageUrl(mapUrl)
-                .content("플로깅 완료!")
+                .content(request.content())
                 .likeCount(0)
                 .build());
 

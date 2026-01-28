@@ -1,7 +1,8 @@
 # ========================================================
 # 1. Build Stage (빌드 환경)
 # ========================================================
-FROM openjdk:21-jdk-slim AS builder
+# [수정] openjdk -> eclipse-temurin (Java 21 공식 권장 이미지)
+FROM eclipse-temurin:21-jdk AS builder
 WORKDIR /app
 
 # 1-1. Gradle 빌드에 필요한 파일만 먼저 복사 (캐시 활용)
@@ -14,22 +15,21 @@ COPY settings.gradle .
 RUN chmod +x ./gradlew
 
 # 1-3. 의존성 다운로드 (소스코드 복사 전에 수행하여 빌드 속도 향상)
-# --no-daemon 옵션으로 CI 환경 최적화
 RUN ./gradlew dependencies --no-daemon
 
 # 1-4. 소스 코드 복사 및 빌드 수행
 COPY src src
-# 테스트는 CI 단계에서 따로 하거나 생략하여 속도 향상 (-x test)
+# 테스트 제외(-x test)하고 빌드하여 속도 향상
 RUN ./gradlew clean build -x test --no-daemon
 
 # ========================================================
 # 2. Run Stage (실행 환경)
 # ========================================================
-FROM openjdk:21-jdk-slim
+# [수정] 실행 환경도 동일한 베이스 이미지 사용
+FROM eclipse-temurin:21-jdk
 WORKDIR /app
 
-# 2-1. 빌드 스테이지에서 생성된 JAR 파일만 가져옴 (가볍게 유지)
-# COPY --from=builder [빌드된경로] [새이름]
+# 2-1. 빌드 스테이지에서 생성된 JAR 파일만 가져옴
 COPY --from=builder /app/build/libs/*.jar app.jar
 
 # 2-2. 실행 설정

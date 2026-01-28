@@ -11,6 +11,7 @@ import java.time.Duration;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Repository
@@ -168,12 +169,13 @@ public class PloggingRedisRepository {
                 return Collections.emptySet();
             }
 
-            Set<String> result = members.stream()
-                    .map(Object::toString)
-                    .collect(java.util.stream.Collectors.toSet());
-
-            log.debug("Redis 점령 목록 조회: userId={}, count={}", userId, result.size());
-            return result;
+            return members.stream()
+                    .map(obj -> {
+                        // JSON 직렬화로 인해 따옴표가 붙어나오는 경우 처리
+                        String s = obj.toString();
+                        return s.startsWith("\"") && s.endsWith("\"") ? s.substring(1, s.length()-1) : s;
+                    })
+                    .collect(Collectors.toSet());
 
         } catch (Exception e) {
             log.error("Redis 점령 목록 조회 실패: userId={}", userId, e);

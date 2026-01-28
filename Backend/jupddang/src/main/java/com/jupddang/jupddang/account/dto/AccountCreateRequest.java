@@ -2,11 +2,13 @@ package com.jupddang.jupddang.account.dto;
 
 import com.fasterxml.jackson.annotation.JsonAlias;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 @Getter
 public class AccountCreateRequest {
 
@@ -15,6 +17,5 @@ public class AccountCreateRequest {
     private String pw;
     private String email;
     private String nickname;
-    private String region;
-
+    private String color;
 }

@@ -195,7 +195,8 @@ public class JwtTokenProvider {
         try {
             byte[] decoded = Decoders.BASE64.decode(secret);
             return Keys.hmacShaKeyFor(decoded);
-        } catch (IllegalArgumentException ex) {
+        } catch (IllegalArgumentException | io.jsonwebtoken.io.DecodingException ex) { // ✅ DecodingException 추가
+            // Base64 디코딩 실패 시 UTF-8로 처리
             byte[] raw = secret.getBytes(StandardCharsets.UTF_8);
             try {
                 return Keys.hmacShaKeyFor(raw);

@@ -23,25 +23,36 @@ services:
   prometheus:
     container_name: jupddang-prometheus
     image: prom/prometheus
+    restart: always  
     volumes:
       - /home/gitlab-runner/config/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - /home/gitlab-runner/data/prometheus:/prometheus  
     networks:
       - jupddang-net
+    ports:
+      - "127.0.0.1:9090:9090"
 
   grafana:
     container_name: jupddang-grafana
     image: grafana/grafana
+    restart: always 
+    environment:
+      - GF_SERVER_ROOT_URL=http://localhost/monitor/
+      - GF_SERVER_SERVE_FROM_SUB_PATH=true
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
     volumes:
       - /home/gitlab-runner/data/grafana:/var/lib/grafana
     networks:
       - jupddang-net
+    ports:
+      - "127.0.0.1:3000:3000"
 
   # ===========================
   # [2] Production Stack
   # ===========================
   backend-prod:
     container_name: jupddang-backend-prod
-    # [수정] 빌드 컨텍스트 추가 (Dockerfile 변경사항 반영용)
     build:
       context: .
       dockerfile: Dockerfile
@@ -87,7 +98,6 @@ services:
   # ===========================
   backend-dev:
     container_name: jupddang-backend-dev
-    # [수정] 빌드 컨텍스트 추가 (prod와 같은 이미지 사용)
     build:
       context: .
       dockerfile: Dockerfile
@@ -109,7 +119,6 @@ services:
     image: postgis/postgis:15-3.4
     restart: always
     env_file: .env.dev
-    # [중요] DB 인코딩 강제 설정 추가
     command: postgres -c 'config_file=/etc/postgresql/postgresql.conf'
     environment:
       POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"

@@ -3,25 +3,34 @@ package com.jupddang.jupddang.common.infrastructure.storage;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.StorageOptions;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.core.io.ClassPathResource;
+import org.springframework.context.annotation.Profile;
+import org.springframework.core.io.Resource; // 중요!
 
 import java.io.IOException;
 
 @Configuration
+@Profile("!test")
 public class GcsConfig {
+
+
+    @Value("${spring.cloud.gcp.credentials.location}")
+    private Resource gcpCredentialResource;
+
+    @Value("${spring.cloud.gcp.project-id}")
+    private String projectId;
 
     @Bean
     public Storage gcsStorage() throws IOException {
-        // JSON 파일에서 credentials 로드
+        // 주입받은 Resource에서 Stream을 바로 꺼냅니다.
         GoogleCredentials credentials = GoogleCredentials
-                .fromStream(new ClassPathResource("gcp-credentials.json").getInputStream());
+                .fromStream(gcpCredentialResource.getInputStream());
 
-        // 명시적으로 credentials와 project-id 설정
         return StorageOptions.newBuilder()
                 .setCredentials(credentials)
-                .setProjectId("jupddang")
+                .setProjectId(projectId)
                 .build()
                 .getService();
     }

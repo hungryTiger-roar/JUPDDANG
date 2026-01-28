@@ -1,0 +1,48 @@
+spring:
+  # 1. H2 인메모리 DB (PostgreSQL 모드)
+  datasource:
+    url: jdbc:h2:mem:testdb;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+
+  # 2. JPA 설정 (로그 노이즈 제거)
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+        dialect: org.hibernate.dialect.H2Dialect
+
+  # 3. Redis 설정
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
+  # 4. [핵심] GCP 자동 설정 비활성화 (테스트 에러 방지)
+  cloud:
+    gcp:
+      core:
+        enabled: false
+      storage:
+        enabled: false
+      credentials:
+        location: classpath:non-existent.json
+
+# ✅ 5. JWT 설정 추가 (Security 테스트용)
+jwt:
+  secret: testSecretKeyMustBeAtLeast32BytesLongForHS256Algorithm
+  access-exp-min: 30
+  issuer: jupddang-test
+
+# 6. 로깅 레벨 최적화
+logging:
+  level:
+    root: INFO
+    com.jupddang: INFO
+    org.hibernate.SQL: OFF
+    org.hibernate.type.descriptor.sql: OFF
+    org.springframework.web: INFO

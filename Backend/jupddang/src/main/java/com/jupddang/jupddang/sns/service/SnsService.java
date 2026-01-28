@@ -1,6 +1,5 @@
 package com.jupddang.jupddang.sns.service;
 
-
 import com.jupddang.jupddang.common.infrastructure.storage.GcsImageService;
 import com.jupddang.jupddang.plogging.domain.event.PloggingCompletedEvent;
 import com.jupddang.jupddang.account.entity.Account;
@@ -37,33 +36,32 @@ public class SnsService {
      * Plogging 완료 이벤트 처리 - 피드 생성
      */
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-//    @Transactional
     public void handlePloggingCompleted(PloggingCompletedEvent event) {
-        log.info("PloggingCompletedEvent 수신 - ploggingId: {}", event.getPloggingId());
+        log.info("PloggingCompletedEvent 수신 - ploggingId: {}", event.ploggingId());
 
         try {
             // 1. 이미지 3장 GCS 업로드
             String beforeUrl = gcsImageService.uploadImage(
-                    event.getBeforeImage(), "before"
+                    event.beforeImage(), "before"
             );
             String afterUrl = gcsImageService.uploadImage(
-                    event.getAfterImage(), "after"
+                    event.afterImage(), "after"
             );
             String mapUrl = gcsImageService.uploadImage(
-                    event.getMapImage(), "map"
+                    event.mapImage(), "map"
             );
 
-            Account account = accountRepository.findByUserId(event.getUserId())  // String으로 조회
+            Account account = accountRepository.findByUserId(event.userId())
                     .orElseThrow(() -> new IllegalArgumentException("해당 유저가 없습니다."));
 
             // 2. Post(Feed) 생성
             Post post = Post.builder()
                     .account(account)
-                    .ploggingId(event.getPloggingId())
+                    .ploggingId(event.ploggingId())
                     .beforeImageUrl(beforeUrl)
                     .afterImageUrl(afterUrl)
                     .mapImageUrl(mapUrl)
-                    .content("플로깅 " + event.getOccupiedGridCnt() + "칸 정복! 🎉")
+                    .content("플로깅 " + event.occupiedGridCnt() + "칸 정복! 🎉")
                     .build();
 
             postRepository.save(post);
@@ -71,7 +69,7 @@ public class SnsService {
             log.info("피드 생성 완료 - postId: {}", post.getPostId());
 
         } catch (Exception e) {
-            log.error("피드 생성 실패 - ploggingId: {}", event.getPloggingId(), e);
+            log.error("피드 생성 실패 - ploggingId: {}", event.ploggingId(), e);
             throw new RuntimeException("피드 생성에 실패했습니다", e);
         }
     }
@@ -163,7 +161,6 @@ public class SnsService {
         postRepository.delete(post);
     }
 
-
     // 댓글 작성
     @Transactional
     public Long createComment(Long postId, CommentRequestDto requestDto) {
@@ -175,8 +172,8 @@ public class SnsService {
 
         Comment comment = Comment.builder()
                 .post(post)
-                .account(account) // userId 대신 account 객체 저장
-                .content(requestDto.getContent()) // DTO에서 받은 내용
+                .account(account)
+                .content(requestDto.getContent())
                 .build();
 
         return commentRepository.save(comment).getCommentId();
@@ -188,7 +185,6 @@ public class SnsService {
         Comment comment = commentRepository.findById(commentId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 댓글이 없습니다. id=" + commentId));
 
-        // (선택) 진짜 이 게시글의 댓글이 맞는지 확인하는 안전장치
         if (!comment.getPost().getPostId().equals(postId)) {
             throw new IllegalArgumentException("해당 게시글의 댓글이 아닙니다.");
         }

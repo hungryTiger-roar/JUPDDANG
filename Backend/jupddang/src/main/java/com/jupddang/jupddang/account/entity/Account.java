@@ -1,5 +1,6 @@
 package com.jupddang.jupddang.account.entity;
 
+import com.jupddang.jupddang.common.enums.PloggingLevel;
 import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
@@ -37,17 +38,17 @@ public class Account implements UserDetails {
     @Column(nullable = true)
     private String intro;
 
-    @Column(nullable = false)
-    private String region;
-
     @Column(nullable = false, unique = true)
     private String email;
 
-    @Column(nullable = false)
+    @Column(nullable = true)
     private String color;
 
+    @Column(name = "total_score", nullable = false)
+    private Long totalScore;
+
     @Column(nullable = false)
-    private int score;
+    private String tier;
 
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -57,39 +58,37 @@ public class Account implements UserDetails {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
+    // [빌더 적용된 생성자]
+    // Service에서 .color()를 호출하면 이 생성자의 color 파라미터로 들어옵니다.
     @Builder
-    public Account(String userId, String pw, String email, String nickname, String region, String color, int score) {
+    public Account(String userId, String pw, String email, String nickname, String color) {
         this.userId = userId;
         this.pw = pw;
         this.email = email;
         this.nickname = nickname;
-        this.region = region;
-        this.color = color;
-        this.score = score;
+
+        // [중요] Service에서 null을 보내더라도 여기서 기본값을 처리합니다.
+        this.color = (color != null && !color.isBlank()) ? color : "#111111";
+
+        this.totalScore = 0L;
+        this.tier = PloggingLevel.BRONZE_5.getLabel();
+        this.profileImage = "https://storage.googleapis.com/jupddang-images/default/default-profile.png";
+        this.intro = "안녕하세요!";
     }
 
-    public void update(String pw, String nickname, String profileImage, String intro, String region, String email, String color) {
-        if (pw != null) {
-            this.pw = pw;
-        }
-        if (nickname != null) {
-            this.nickname = nickname;
-        }
-        if (profileImage != null) {
-            this.profileImage = profileImage;
-        }
-        if (intro != null) {
-            this.intro = intro;
-        }
-        if (region != null) {
-            this.region = region;
-        }
-        if (email != null) {
-            this.email = email;
-        }
-        if (color != null) {
-            this.color = color;
-        }
+    // [수정 메서드] region 삭제됨
+    public void update(String pw, String nickname, String profileImage, String intro, String email, String color) {
+        if (pw != null) this.pw = pw;
+        if (nickname != null) this.nickname = nickname;
+        if (profileImage != null) this.profileImage = profileImage;
+        if (intro != null) this.intro = intro;
+        if (email != null) this.email = email;
+        if (color != null) this.color = color;
+    }
+
+    public void addScore(int point) {
+        this.totalScore += point;
+        this.tier = PloggingLevel.findByScore(this.totalScore).getLabel();
     }
 
     @Override
@@ -98,32 +97,20 @@ public class Account implements UserDetails {
     }
 
     @Override
-    public String getPassword() {
-        return this.pw;
-    }
+    public String getPassword() { return this.pw; }
 
     @Override
-    public String getUsername() {
-        return this.userId;
-    }
+    public String getUsername() { return this.userId; }
 
     @Override
-    public boolean isAccountNonExpired() {
-        return true;
-    }
+    public boolean isAccountNonExpired() { return true; }
 
     @Override
-    public boolean isAccountNonLocked() {
-        return true;
-    }
+    public boolean isAccountNonLocked() { return true; }
 
     @Override
-    public boolean isCredentialsNonExpired() {
-        return true;
-    }
+    public boolean isCredentialsNonExpired() { return true; }
 
     @Override
-    public boolean isEnabled() {
-        return true;
-    }
+    public boolean isEnabled() { return true; }
 }

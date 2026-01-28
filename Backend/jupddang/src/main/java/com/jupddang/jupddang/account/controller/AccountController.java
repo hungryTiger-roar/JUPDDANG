@@ -1,20 +1,17 @@
 package com.jupddang.jupddang.account.controller;
 
-import com.jupddang.jupddang.account.dto.AccountCreateRequest;
-import com.jupddang.jupddang.account.dto.AccountLoginRequest;
-import com.jupddang.jupddang.account.dto.AccountLoginResponse;
-import com.jupddang.jupddang.account.dto.AccountResponse;
-import com.jupddang.jupddang.account.dto.AccountUpdateRequest;
+import com.jupddang.jupddang.account.dto.*;
 import com.jupddang.jupddang.account.entity.Account;
 import com.jupddang.jupddang.account.service.AccountService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter; // [필수] 이거 없으면 에러남
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -31,74 +28,58 @@ public class AccountController {
     @PostMapping("/signup")
     @Operation(summary = "회원가입")
     public ResponseEntity<AccountResponse> signup(@RequestBody AccountCreateRequest request) {
-
         AccountResponse account = accountService.createAccount(request);
-
         return ResponseEntity.ok(account);
-
     }
 
     // 로그인
     @PostMapping("/login")
     @Operation(summary = "로그인")
     public ResponseEntity<AccountLoginResponse> login(@RequestBody AccountLoginRequest request) {
-
         AccountLoginResponse login = accountService.login(request);
-
         return ResponseEntity.ok(login);
     }
 
     // 전체 계정 정보 조회
     @GetMapping
     @Operation(summary = "전체 계정 목록 조회")
-    public ResponseEntity<?> getAccounts() {
-        try {
-            System.out.println("============== [DEBUG] 요청 도착: /api/account ==============");
-            List<AccountResponse> allAccounts = accountService.getAllAccounts();
-            System.out.println("============== [DEBUG] 조회 성공: " + allAccounts.size() + "건 ==============");
-            return ResponseEntity.ok(allAccounts);
-        } catch (Exception e) {
-            // 🚨 여기가 핵심! 에러가 나면 무조건 로그에 찍히게 만듭니다.
-            System.out.println("============== [ERROR] 에러 발생 ==============");
-            e.printStackTrace(); // 에러 내용을 콘솔에 강제로 출력
-            return ResponseEntity.internalServerError().body("서버 에러: " + e.getMessage());
-        }
+    public ResponseEntity<List<AccountResponse>> getAccounts() {
+        List<AccountResponse> allAccounts = accountService.getAllAccounts();
+        return ResponseEntity.ok(allAccounts);
     }
 
     // 내 프로필 조회
     @GetMapping("/myprofile")
     @Operation(summary = "내 프로필 조회")
-    public ResponseEntity<AccountResponse> getAccount(@AuthenticationPrincipal Account account) {
-
-        log.info("userId = {}", account.getUserId());
-        log.info("pw = {}", account.getPw());
-        log.info("nickname = {}", account.getNickname());
-        log.info("intro = {}", account.getIntro());
-
-        AccountResponse getAccount = accountService.getAccount(account.getUserId());
-
-        return ResponseEntity.ok(getAccount);
+    public ResponseEntity<AccountResponse> getAccount(
+            // [수정] Swagger가 Account 객체를 분석하지 못하게 숨김 처리
+            @Parameter(hidden = true) @AuthenticationPrincipal Account account
+    ) {
+        AccountResponse myAccount = accountService.getAccount(account.getUserId());
+        return ResponseEntity.ok(myAccount);
     }
 
-    // 내 프로필 수정
+    // 내 프로필 수정 (텍스트 + 이미지 동시 처리)
     @PatchMapping("/myprofile")
-    @Operation(summary = "내 프로필 수정")
-    public ResponseEntity<AccountResponse> updateAccount(@RequestBody AccountUpdateRequest request, @AuthenticationPrincipal Account account) {
-
-        AccountResponse accountResponse = accountService.updateAccount(account.getUserId(), request);
-
+    @Operation(summary = "내 프로필 수정", description = "data(JSON)와 image(File)를 함께 전송합니다.")
+    public ResponseEntity<AccountResponse> updateAccount(
+            @RequestPart(value = "data", required = false) AccountUpdateRequest request,
+            @RequestPart(value = "image", required = false) MultipartFile image,
+            // [수정] Swagger 숨김 처리
+            @Parameter(hidden = true) @AuthenticationPrincipal Account account
+    ) {
+        AccountResponse accountResponse = accountService.updateAccount(account.getUserId(), request, image);
         return ResponseEntity.ok(accountResponse);
     }
 
     // 회원 탈퇴
     @DeleteMapping("/delete")
     @Operation(summary = "회원 탈퇴")
-    public ResponseEntity<AccountResponse> deleteAccount(@AuthenticationPrincipal Account account) {
-
+    public ResponseEntity<AccountResponse> deleteAccount(
+            // [수정] Swagger 숨김 처리
+            @Parameter(hidden = true) @AuthenticationPrincipal Account account
+    ) {
         AccountResponse accountResponse = accountService.deleteAccount(account.getUserId());
-
         return ResponseEntity.ok(accountResponse);
-
     }
-
 }

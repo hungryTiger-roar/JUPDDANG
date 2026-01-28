@@ -30,11 +30,12 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
-    
+
+    // H3 & Utils
     implementation 'com.uber:h3:4.4.0'
     implementation 'io.github.cdimascio:java-dotenv:5.2.2'
 
-    // Lombok 설정정
+    // Lombok 설정
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
     testCompileOnly 'org.projectlombok:lombok'
@@ -61,15 +62,57 @@ dependencies {
     testImplementation 'org.springframework.security:spring-security-test'
 
     // JWT
-    implementation 'io.jsonwebtoken:jjwt-api:0.11.5' // 토큰 생성 및 파싱 API
-    runtimeOnly  'io.jsonwebtoken:jjwt-impl:0.11.5' // 실제 구현체
-    runtimeOnly  'io.jsonwebtoken:jjwt-jackson:0.11.5' // JSON 직렬화 (claims 처리)
+    implementation 'io.jsonwebtoken:jjwt-api:0.11.5'
+    runtimeOnly  'io.jsonwebtoken:jjwt-impl:0.11.5'
+    runtimeOnly  'io.jsonwebtoken:jjwt-jackson:0.11.5'
 
     // Swagger
     implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.5.0'
 
+    // redis
+    implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+
+    // test redis (SLF4J 충돌 방지 설정 포함)
+    testImplementation('it.ozimov:embedded-redis:0.7.3') {
+        exclude group: 'org.slf4j', module: 'slf4j-simple'
+    }
+
+    // CSV 파싱 라이브러리
+    implementation 'com.opencsv:opencsv:5.9'
 }
 
+// 컴파일 인코딩 설정
+tasks.withType(JavaCompile) {
+    options.encoding = 'UTF-8'
+}
+
+tasks.withType(Javadoc) {
+    options.encoding = 'UTF-8'
+}
+
+// [핵심] 테스트 실행 설정 리팩토링
 tasks.named('test') {
     useJUnitPlatform()
+
+    // 테스트 실행 시에도 UTF-8 강제
+    systemProperty 'file.encoding', 'UTF-8'
+
+    // 로그 출력 설정
+    testLogging {
+        // 1. 테스트 진행 상태(통과/실패)를 콘솔에 표시
+        events "passed", "skipped", "failed"
+
+        // 2. System.out.println 및 log.info 출력을 콘솔에 표시 (필수)
+        showStandardStreams = true
+
+        // 3. 예외 발생 시 상세 로그 출력
+        showExceptions = true
+        showCauses = true
+        showStackTraces = true
+        exceptionFormat = 'full'
+    }
+
+    // 4. 로그 섞임 방지 (순차 실행)
+    // 병렬 실행 시 로그가 뒤죽박죽되어 분석이 어려우므로 1로 설정
+    maxParallelForks = 1
 }

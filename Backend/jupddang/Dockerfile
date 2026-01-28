@@ -1,34 +1,37 @@
-# ==========================================
-# 1. Build Stage (Gradle + JDK 21)
-# ==========================================
-FROM gradle:8.5-jdk21-alpine as builder
-WORKDIR /build
-
-# [최적화 핵심] 라이브러리 설치 레이어 분리
-# 소스코드(src)보다 설정파일을 먼저 복사
-COPY build.gradle settings.gradle ./
-
-# 소스코드 없이 라이브러리만 먼저 다운로드 (캐싱)
-# --no-daemon: CI 환경에서 데몬 프로세스 방지
-RUN gradle dependencies --no-daemon || true
-
-# 실제 소스코드 복사 및 빌드
-COPY src ./src
-# -x test: 테스트는 CI 파이프라인(GitLab) 단계에서 수행하거나 생략하여 빌드 속도 향상
-RUN gradle build -x test --no-daemon
-
-# ==========================================
-# 2. Run Stage (JDK 21 Lightweight)
-# ==========================================
-FROM eclipse-temurin:21-jre-alpine
+# ========================================================
+# 1. Build Stage (빌드 환경)
+# ========================================================
+# [수정] openjdk -> eclipse-temurin (Java 21 공식 권장 이미지)
+FROM eclipse-temurin:21-jdk AS builder
 WORKDIR /app
 
-# 빌드 결과물 복사
-COPY --from=builder /build/build/libs/*.jar app.jar
+# 1-1. Gradle 빌드에 필요한 파일만 먼저 복사 (캐시 활용)
+COPY gradlew .
+COPY gradle gradle
+COPY build.gradle .
+COPY settings.gradle .
 
-# 타임존 설정 (KST)
+# 1-2. gradlew 실행 권한 부여
+RUN chmod +x ./gradlew
+
+# 1-3. 의존성 다운로드 (소스코드 복사 전에 수행하여 빌드 속도 향상)
+RUN ./gradlew dependencies --no-daemon
+
+# 1-4. 소스 코드 복사 및 빌드 수행
+COPY src src
+# 테스트 제외(-x test)하고 빌드하여 속도 향상
+RUN ./gradlew clean build -x test --no-daemon
+
+# ========================================================
+# 2. Run Stage (실행 환경)
+# ========================================================
+# [수정] 실행 환경도 동일한 베이스 이미지 사용
+FROM eclipse-temurin:21-jdk
+WORKDIR /app
+
+# 2-1. 빌드 스테이지에서 생성된 JAR 파일만 가져옴
+COPY --from=builder /app/build/libs/*.jar app.jar
+
+# 2-2. 실행 설정
 ENV TZ=Asia/Seoul
-RUN apk add --no-cache tzdata
-
-# 실행 (운영 프로파일 적용)
-ENTRYPOINT ["java", "-jar", "-Dspring.profiles.active=prod", "app.jar"]
+ENTRYPOINT ["java", "-Djava.security.egd=file:/dev/./urandom", "-Duser.timezone=Asia/Seoul", "-jar", "app.jar"]

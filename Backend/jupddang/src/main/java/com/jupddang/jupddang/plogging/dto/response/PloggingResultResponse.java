@@ -1,7 +1,10 @@
 package com.jupddang.jupddang.plogging.dto.response;
 
 public record PloggingResultResponse(
+        Long ploggingId,
+        Long postId,
         String message,
-        int totalScore,
-        int occupiedGridCnt
+        Double distance,
+        int occupiedGridCnt,
+        int raidScore
 ) {}

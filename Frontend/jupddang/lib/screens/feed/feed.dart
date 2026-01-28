@@ -6,6 +6,7 @@ import 'feed_compose.dart';
 import '../../widgets/pixel_button.dart';
 import '../../widgets/pixel_loader.dart';
 import 'package:pixelarticons/pixelarticons.dart';
+import '../../widgets/pixel_character.dart';
 
 class CommunityScreen extends StatefulWidget {
   const CommunityScreen({super.key});
@@ -39,14 +40,10 @@ class _CommunityScreenState extends State<CommunityScreen> {
   }
 
   Future<void> _loadAccounts() async {
-    if (AuthService.accessToken == null) {
-      setState(() {
-        _loadingAccounts = false;
-        _accounts = [];
-        _errorMessage = '로그인이 필요합니다.';
-      });
-      return;
-    }
+    setState(() {
+      _loadingAccounts = true;
+      _errorMessage = null;
+    });
 
     try {
       final data = await _authService.getAccounts();
@@ -67,12 +64,9 @@ class _CommunityScreenState extends State<CommunityScreen> {
   }
 
   Future<void> _loadPosts() async {
-    if (AuthService.accessToken == null) {
-      setState(() {
-        _loadingPosts = false;
-      });
-      return;
-    }
+    setState(() {
+      _loadingPosts = true;
+    });
 
     try {
       final data = await _authService.getPosts();
@@ -372,20 +366,16 @@ class _CommunityScreenState extends State<CommunityScreen> {
                 width: 56,
                 height: 56,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF17C964),
+                  color: const Color(0xFF1F1F1F),
                   border: Border.all(color: Colors.black, width: 3.0),
                   boxShadow: const [
                     BoxShadow(color: Colors.black, offset: Offset(4, 4)),
                   ],
                 ),
                 child: Center(
-                  child: Text(
-                    _initial(account.nickname),
-                    style: const TextStyle(
-                      color: Colors.black,
-                      fontWeight: FontWeight.w900,
-                      fontSize: 18,
-                    ),
+                  child: PixelCharacter(
+                    size: 32,
+                    color: _getColorForNickname(account.nickname),
                   ),
                 ),
               ),
@@ -505,17 +495,13 @@ class _CommunityScreenState extends State<CommunityScreen> {
                   width: 36,
                   height: 36,
                   decoration: BoxDecoration(
-                    color: const Color(0xFF17C964),
+                    color: const Color(0xFF1F1F1F),
                     border: Border.all(color: Colors.black, width: 2.0),
                   ),
                   child: Center(
-                    child: Text(
-                      _initial(post.nickname),
-                      style: const TextStyle(
-                        color: Colors.black,
-                        fontWeight: FontWeight.w900,
-                        fontSize: 13,
-                      ),
+                    child: PixelCharacter(
+                      size: 24,
+                      color: _getColorForNickname(post.nickname),
                     ),
                   ),
                 ),
@@ -534,9 +520,11 @@ class _CommunityScreenState extends State<CommunityScreen> {
                               fontSize: 14,
                             ),
                           ),
-                          const SizedBox(width: 8),
-                          // Follow/Unfollow Button
                           _followButton(post.nickname),
+                          if (post.userId == AuthService.userId) ...[
+                            const SizedBox(width: 8),
+                            _myPostTag(),
+                          ],
                         ],
                       ),
                       Text(
@@ -889,6 +877,20 @@ class _CommunityScreenState extends State<CommunityScreen> {
     );
   }
 
+  Color _getColorForNickname(String nickname) {
+    if (nickname.isEmpty) return const Color(0xFF17C964);
+    final int hash = nickname.hashCode;
+    final List<Color> palette = [
+      const Color(0xFF17C964),
+      const Color(0xFF3B82F6),
+      const Color(0xFFEF4444),
+      const Color(0xFFF59E0B),
+      const Color(0xFF8B5CF6),
+      const Color(0xFFEC4899),
+    ];
+    return palette[hash.abs() % palette.length];
+  }
+
   String _formatTime(DateTime time) {
     final now = DateTime.now();
     final diff = now.difference(time);
@@ -904,9 +906,22 @@ class _CommunityScreenState extends State<CommunityScreen> {
     return '${time.month}/${time.day}';
   }
 
-  String _initial(String value) {
-    if (value.isEmpty) return '?';
-    return value.substring(0, 1).toUpperCase();
+  Widget _myPostTag() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: const Color(0xFF17C964),
+        border: Border.all(color: Colors.black, width: 2.0),
+      ),
+      child: const Text(
+        'MY POST',
+        style: TextStyle(
+          color: Colors.black,
+          fontSize: 8,
+          fontWeight: FontWeight.w900,
+        ),
+      ),
+    );
   }
 }
 
@@ -1005,14 +1020,20 @@ class _CommentBottomSheetState extends State<_CommentBottomSheet> {
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            CircleAvatar(
-                              radius: 16,
-                              backgroundColor: Colors.white12,
-                              child: Text(
-                                comment.nickname.substring(0, 1),
-                                style: const TextStyle(
-                                  color: Colors.white70,
-                                  fontSize: 12,
+                            Container(
+                              width: 32,
+                              height: 32,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF1F1F1F),
+                                border: Border.all(
+                                  color: Colors.black,
+                                  width: 2.0,
+                                ),
+                              ),
+                              child: Center(
+                                child: PixelCharacter(
+                                  size: 20,
+                                  color: _getColorForNickname(comment.nickname),
                                 ),
                               ),
                             ),
@@ -1022,10 +1043,10 @@ class _CommentBottomSheetState extends State<_CommentBottomSheet> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    comment.nickname,
+                                    comment.nickname.toUpperCase(),
                                     style: const TextStyle(
                                       color: Colors.white,
-                                      fontWeight: FontWeight.bold,
+                                      fontWeight: FontWeight.w900,
                                       fontSize: 14,
                                     ),
                                   ),
@@ -1046,64 +1067,75 @@ class _CommentBottomSheetState extends State<_CommentBottomSheet> {
                     },
                   ),
           ),
-          Container(
-            padding: EdgeInsets.fromLTRB(
-              20,
-              20,
-              20,
-              60 + MediaQuery.of(context).padding.bottom,
-            ),
-            decoration: BoxDecoration(
-              color: const Color(0xFF222222),
-              border: Border(
-                top: BorderSide(color: Colors.white.withOpacity(0.05)),
+          _commentInput(),
+        ],
+      ),
+    );
+  }
+
+  Widget _commentInput() {
+    return Container(
+      padding: EdgeInsets.fromLTRB(
+        20,
+        20,
+        20,
+        60 + MediaQuery.of(context).padding.bottom,
+      ),
+      decoration: BoxDecoration(
+        color: const Color(0xFF222222),
+        border: Border(top: BorderSide(color: Colors.white.withOpacity(0.05))),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: TextField(
+              controller: _controller,
+              style: const TextStyle(color: Colors.white),
+              decoration: InputDecoration(
+                hintText: '댓글을 입력하세요...',
+                hintStyle: const TextStyle(color: Colors.white24, fontSize: 14),
+                border: InputBorder.none,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
+                fillColor: Colors.white.withOpacity(0.05),
+                filled: true,
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(24),
+                  borderSide: BorderSide.none,
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(24),
+                  borderSide: BorderSide.none,
+                ),
               ),
             ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _controller,
-                    style: const TextStyle(color: Colors.white),
-                    decoration: InputDecoration(
-                      hintText: '댓글을 입력하세요...',
-                      hintStyle: const TextStyle(
-                        color: Colors.white24,
-                        fontSize: 14,
-                      ),
-                      border: InputBorder.none,
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
-                      ),
-                      fillColor: Colors.white.withOpacity(0.05),
-                      filled: true,
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(24),
-                        borderSide: BorderSide.none,
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(24),
-                        borderSide: BorderSide.none,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                IconButton(
-                  onPressed: _submitComment,
-                  icon: Icon(
-                    Icons.send_rounded,
-                    color: _isSubmitting
-                        ? Colors.white24
-                        : const Color(0xFF17C964),
-                  ),
-                ),
-              ],
+          ),
+          const SizedBox(width: 12),
+          IconButton(
+            onPressed: _submitComment,
+            icon: Icon(
+              Icons.send_rounded,
+              color: _isSubmitting ? Colors.white24 : const Color(0xFF17C964),
             ),
           ),
         ],
       ),
     );
+  }
+
+  Color _getColorForNickname(String nickname) {
+    if (nickname.isEmpty) return const Color(0xFF17C964);
+    final int hash = nickname.hashCode;
+    const List<Color> palette = [
+      Color(0xFF17C964),
+      Color(0xFF3B82F6),
+      Color(0xFFEF4444),
+      Color(0xFFF59E0B),
+      Color(0xFF8B5CF6),
+      Color(0xFFEC4899),
+    ];
+    return palette[hash.abs() % palette.length];
   }
 }

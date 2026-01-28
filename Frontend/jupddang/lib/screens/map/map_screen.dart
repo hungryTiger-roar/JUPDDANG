@@ -12,6 +12,7 @@ import '../../services/location_h3_service.dart';
 import '../../services/auth_service.dart';
 import '../../models/hexagon.dart';
 import '../../widgets/pixel_button.dart';
+import '../../widgets/pixel_character.dart';
 
 enum PloggingPhase { idle, plogging, paused, summary }
 
@@ -120,6 +121,27 @@ class _MapScreenState extends State<MapScreen> {
 
   void _updateCurrentPosition(LatLng newPos) {
     if (!mounted) return;
+
+    // 1. EMA Filter (Linear Interpolation) to prevent micro-jitter
+    if (_currentPosition != null) {
+      const double lerpFactor = 0.2; // Adjust for smoothness vs responsiveness
+      newPos = LatLng(
+        _currentPosition!.latitude +
+            (newPos.latitude - _currentPosition!.latitude) * lerpFactor,
+        _currentPosition!.longitude +
+            (newPos.longitude - _currentPosition!.longitude) * lerpFactor,
+      );
+
+      // 2. Reject tiny updates to avoid jittering when stationary
+      final double distance = const Distance().distance(
+        _currentPosition!,
+        newPos,
+      );
+      if (distance < 0.5 && _phase != PloggingPhase.plogging) {
+        return;
+      }
+    }
+
     if (_isPlogging && _currentPosition != null) {
       final distance = const Distance().distance(_currentPosition!, newPos);
       _totalDistance += distance;
@@ -131,7 +153,6 @@ class _MapScreenState extends State<MapScreen> {
     if (!_isInitialCenterSet &&
         _currentPosition != null &&
         _mapController.camera.zoom > 0) {
-      // Only move if not already moved and map is ready
       _mapController.move(_currentPosition!, 16.0);
       _isInitialCenterSet = true;
     }
@@ -406,9 +427,13 @@ class _MapScreenState extends State<MapScreen> {
               markers: [
                 Marker(
                   point: _currentPosition!,
-                  width: 40,
-                  height: 40,
-                  child: Icon(Pixel.user, color: _selectedGridColor, size: 40),
+                  width: 48,
+                  height: 48,
+                  child: PixelCharacter(
+                    size: 48,
+                    color: _selectedGridColor,
+                    isMoving: _phase == PloggingPhase.plogging,
+                  ),
                 ),
                 if (_currentH3Index != null)
                   Marker(
@@ -416,7 +441,10 @@ class _MapScreenState extends State<MapScreen> {
                     width: 120,
                     height: 50,
                     child: Transform.translate(
-                      offset: const Offset(0, -50),
+                      offset: const Offset(
+                        0,
+                        -65,
+                      ), // Increased gap from -50 to -65
                       child: Container(
                         alignment: Alignment.center,
                         padding: const EdgeInsets.symmetric(
@@ -426,9 +454,7 @@ class _MapScreenState extends State<MapScreen> {
                         decoration: BoxDecoration(
                           color: Colors.black,
                           border: Border.all(
-                            color: _occupyProgress > 0
-                                ? _selectedGridColor
-                                : Colors.grey,
+                            color: _getStatusColor(),
                             width: 3,
                           ),
                           boxShadow: const [
@@ -439,9 +465,7 @@ class _MapScreenState extends State<MapScreen> {
                           ],
                         ),
                         child: Text(
-                          _occupyProgress > 0
-                              ? "OCCUPYING ${(_occupyProgress * 100).toInt()}%"
-                              : "READY",
+                          _getStatusLabel(),
                           style: const TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
@@ -466,7 +490,7 @@ class _MapScreenState extends State<MapScreen> {
                 ),
                 decoration: BoxDecoration(
                   color: Colors.black.withOpacity(0.8),
-                  border: Border.all(color: const Color(0xFFF9D698), width: 3),
+                  border: Border.all(color: _selectedGridColor, width: 3),
                   boxShadow: const [
                     BoxShadow(color: Colors.black54, offset: Offset(4, 4)),
                   ],
@@ -583,7 +607,8 @@ class _MapScreenState extends State<MapScreen> {
         width: 200,
         child: PixelButton(
           text: "START JUPKING",
-          isGreen: true,
+          isGreen: false,
+          color: _selectedGridColor,
           onPressed: _startPlogging,
         ),
       );
@@ -595,7 +620,8 @@ class _MapScreenState extends State<MapScreen> {
             width: 140,
             child: PixelButton(
               text: "PAUSE",
-              color: Colors.orange,
+              isGreen: false,
+              color: _selectedGridColor,
               onPressed: _pausePlogging,
             ),
           ),
@@ -604,7 +630,8 @@ class _MapScreenState extends State<MapScreen> {
             width: 140,
             child: PixelButton(
               text: "FINISH",
-              color: Colors.red,
+              isGreen: false,
+              color: _selectedGridColor,
               onPressed: _finishPlogging,
             ),
           ),
@@ -618,7 +645,8 @@ class _MapScreenState extends State<MapScreen> {
             width: 140,
             child: PixelButton(
               text: "RESUME",
-              isGreen: true,
+              isGreen: false,
+              color: _selectedGridColor,
               onPressed: _resumePlogging,
             ),
           ),
@@ -627,7 +655,8 @@ class _MapScreenState extends State<MapScreen> {
             width: 140,
             child: PixelButton(
               text: "FINISH",
-              color: Colors.red,
+              isGreen: false,
+              color: _selectedGridColor,
               onPressed: _finishPlogging,
             ),
           ),
@@ -766,7 +795,8 @@ class _MapScreenState extends State<MapScreen> {
                   const SizedBox(height: 40),
                   PixelButton(
                     text: "PUBLISH RECORD",
-                    isGreen: true,
+                    isGreen: false,
+                    color: _selectedGridColor,
                     onPressed: () {
                       if (AuthService.accessToken == null) {
                         ScaffoldMessenger.of(context).showSnackBar(
@@ -870,7 +900,7 @@ class _MapScreenState extends State<MapScreen> {
       constraints: const BoxConstraints(maxWidth: 160),
       decoration: BoxDecoration(
         color: Colors.black.withOpacity(0.9),
-        border: Border.all(color: const Color(0xFFF9D698), width: 3),
+        border: Border.all(color: _selectedGridColor, width: 3),
         boxShadow: const [
           BoxShadow(color: Colors.black45, offset: Offset(4, 4)),
         ],
@@ -971,5 +1001,39 @@ class _MapScreenState extends State<MapScreen> {
         ],
       ),
     );
+  }
+
+  String _getStatusLabel() {
+    if (_currentH3Index == null) return "위치 확인 중";
+
+    final currentModel = _visibleHexagonModels.firstWhere(
+      (m) => m.h3Index == _currentH3Index,
+      orElse: () => HexagonModel(h3Index: _currentH3Index!, color: 0),
+    );
+
+    if (currentModel.ownerId != null) {
+      return "플로깅 중!";
+    }
+
+    if (_occupyProgress > 0) {
+      return "점령 중 ${(_occupyProgress * 100).toInt()}%";
+    }
+
+    return "준비";
+  }
+
+  Color _getStatusColor() {
+    if (_currentH3Index == null) return Colors.grey;
+
+    final currentModel = _visibleHexagonModels.firstWhere(
+      (m) => m.h3Index == _currentH3Index,
+      orElse: () => HexagonModel(h3Index: _currentH3Index!, color: 0),
+    );
+
+    if (currentModel.ownerId != null || _occupyProgress > 0) {
+      return _selectedGridColor;
+    }
+
+    return Colors.grey;
   }
 }

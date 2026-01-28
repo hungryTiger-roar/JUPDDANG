@@ -121,15 +121,16 @@ public class PartyService {
         }
 
         // 4. 인원 제한 확인
-        if (party.isFull()) {
-            throw new IllegalStateException(
-                    "파티 인원이 가득 찼습니다. (최대 " + party.getMaxMembers() + "명)"
-            );
+        long currentCount = partyMemberRepository.countByPartyId(party.getId());
+        if (currentCount >= party.getMaxMembers()) {
+            throw new IllegalStateException("파티 인원이 가득 찼습니다.");
         }
 
         // 5. 파티에 참여
         PartyMember member = new PartyMember(party, userId);
         partyMemberRepository.save(member);
+
+        party.getMembers().add(member);
 
         // 6. 현재 인원 수 조회
         long currentMembers = partyMemberRepository.countByPartyId(party.getId());

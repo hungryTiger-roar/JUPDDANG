@@ -152,9 +152,9 @@ public class PloggingServiceImpl implements PloggingService {
 
         // 5. GCS에 이미지 업로드
         String folder = "plogging/" + userId + "/" + savedPlogging.getId();
-        String beforeUrl = gcsImageService.uploadImage(before, "plogging/" + userId);
-        String afterUrl = gcsImageService.uploadImage(after, "plogging/" + userId);
-        String mapUrl = gcsImageService.uploadImage(map, "plogging/" + userId);
+        String beforeUrl = gcsImageService.uploadImage(before, folder);
+        String afterUrl = gcsImageService.uploadImage(after, folder);
+        String mapUrl = gcsImageService.uploadImage(map, folder);
 
         // 6. Post 생성 및 저장
         Post savedPost = postRepository.save(Post.builder()

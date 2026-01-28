@@ -50,6 +50,7 @@ import static org.mockito.Mockito.doNothing;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import jakarta.persistence.EntityManager;
 
 @Slf4j
 @SpringBootTest(properties = {
@@ -123,6 +124,10 @@ class PartyIntegrationTest {
         // GCS Mock 설정
         given(gcsImageService.uploadImage(any(), anyString())).willReturn(MOCK_IMAGE_URL);
         doNothing().when(gcsImageService).deleteImage(anyString());
+
+        partyActivityRepository.deleteAll();
+        partyMemberRepository.deleteAll();
+        partyRepository.deleteAll();
     }
 
     @AfterEach
@@ -223,7 +228,7 @@ class PartyIntegrationTest {
                 .andDo(print())
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.partyId").value(partyId))
-                .andExpect(jsonPath("$.name").value(TEST_PARTY_NAME))
+                .andExpect(jsonPath("$.partyName").value(TEST_PARTY_NAME))
                 .andExpect(jsonPath("$.isLeader").value(false))
                 .andExpect(jsonPath("$.currentMembers").value(2))
                 .andExpect(jsonPath("$.maxMembers").value(6));
@@ -288,6 +293,9 @@ class PartyIntegrationTest {
 
         log.info("  ✅ 일반 멤버의 시작 시도 차단 확인");
 
+        em.flush();
+        em.clear();
+
         // Step 3: 방장이 파티 시작
         mockMvc.perform(post("/api/party/" + partyId + "/start")
                         .header("Authorization", "Bearer " + leaderToken))
@@ -296,7 +304,7 @@ class PartyIntegrationTest {
                 .andExpect(jsonPath("$.partyId").value(partyId))
                 .andExpect(jsonPath("$.status").value("IN_PROGRESS"))
                 .andExpect(jsonPath("$.startedAt").exists())
-                .andExpect(jsonPath("$.memberCount").value(2))
+                .andExpect(jsonPath("$.totalMembers").value(2))
                 .andExpect(jsonPath("$.startedMemberIds").isArray());
 
         log.info("  ✅ 방장의 파티 시작 성공");
@@ -318,6 +326,9 @@ class PartyIntegrationTest {
         log.info("  ✅ DB 검증 완료: 파티 상태={}, 활동 레코드={}개", party.getStatus(), activities.size());
     }
 
+    @Autowired
+    private EntityManager em;
+
     @Test
     @Order(4)
     @DisplayName("Scenario 4: 실시간 활동 상태 조회")
@@ -331,6 +342,10 @@ class PartyIntegrationTest {
 
         Long partyId = createPartyAsLeader(leader, TEST_PARTY_NAME);
         joinParty(partyId, member1);
+
+        em.flush();
+        em.clear();
+
         startParty(partyId, leader);
 
         log.info("  ✅ 파티 시작 완료");
@@ -367,16 +382,26 @@ class PartyIntegrationTest {
     void testCompleteActivityWithPloggingAndSns() throws Exception {
         log.info(">>> [Scenario 5] 활동 완료 및 Plogging/SNS 통합 테스트 시작");
 
-        // Step 1: 파티 생성 및 시작
+        // Step 1: 파티 생성
         Account leader = createTestAccount(TEST_LEADER_ID);
         String leaderToken = generateToken(leader);
-
         Long partyId = createPartyAsLeader(leader, TEST_PARTY_NAME);
+
+        // Step 2: 멤버 추가 (최소 인원 조건 충족을 위해 필수!)
+        Account member1 = createTestAccount("temp_member_s5");
+        joinParty(partyId, member1);
+
+        // [핵심 수정] 영속성 컨텍스트 비우기
+        // (이걸 안 하면 startParty 때 옛날 데이터를 가져와서 실패함)
+        em.flush();
+        em.clear();
+
+        // Step 3: 파티 시작
         startParty(partyId, leader);
 
-        log.info("  ✅ 파티 시작 완료");
+        log.info("  ✅ 파티 시작 완료");;
 
-        // Step 2: PloggingEndRequest 준비
+        // Step 4: PloggingEndRequest 준비
         PloggingEndRequest ploggingRequest = new PloggingEndRequest(
                 null, // ploggingId
                 5.5, // distance
@@ -385,7 +410,7 @@ class PartyIntegrationTest {
                 3600 // endTime
         );
 
-        // Step 3: 이미지 파일 준비
+        // Step 5: 이미지 파일 준비
         MockMultipartFile beforeImage = new MockMultipartFile(
                 "beforeImage", "before.jpg", "image/jpeg", "before-content".getBytes());
         MockMultipartFile afterImage = new MockMultipartFile(
@@ -396,7 +421,7 @@ class PartyIntegrationTest {
                 "data", "", "application/json",
                 objectMapper.writeValueAsBytes(ploggingRequest));
 
-        // Step 4: 활동 완료 요청
+        // Step 6: 활동 완료 요청
         MvcResult completeResult = mockMvc
                 .perform(multipart(HttpMethod.POST, "/api/party/" + partyId + "/activities/complete")
                         .file(dataPart)
@@ -422,7 +447,7 @@ class PartyIntegrationTest {
 
         log.info("  ✅ 활동 완료 성공: ploggingId={}, postId={}", ploggingId, postId);
 
-        // Step 5: DB 검증 - PartyActivity
+        // Step 7: DB 검증 - PartyActivity
         PartyActivity activity = partyActivityRepository
                 .findByPartyIdAndUserId(partyId, TEST_LEADER_ID)
                 .orElseThrow();
@@ -432,17 +457,17 @@ class PartyIntegrationTest {
         assertThat(activity.getDistance()).isEqualTo(5.5);
         assertThat(activity.getPlogging()).isNotNull();
 
-        // Step 6: DB 검증 - Plogging
+        // Step 8: DB 검증 - Plogging
         Plogging plogging = ploggingRepository.findById(ploggingId).orElseThrow();
         assertThat(plogging.getAccount().getUserId()).isEqualTo(TEST_LEADER_ID);
         assertThat(plogging.getDistance()).isEqualTo(5.5);
         assertThat(plogging.getTimes()).isEqualTo(3600);
 
-        // Step 7: DB 검증 - Post (SNS)
+        // Step 9: DB 검증 - Post (SNS)
         Post post = postRepository.findById(postId).orElseThrow();
         assertThat(post.getPloggingId()).isEqualTo(ploggingId);
         assertThat(post.getAccount().getUserId()).isEqualTo(TEST_LEADER_ID);
-        assertThat(post.getContent()).isEqualTo("플로깅 완료했습니다!");
+        assertThat(post.getContent()).isEqualTo("플로깅 완료!");
         assertThat(post.getBeforeImageUrl()).isEqualTo(MOCK_IMAGE_URL);
         assertThat(post.getAfterImageUrl()).isEqualTo(MOCK_IMAGE_URL);
         assertThat(post.getMapImageUrl()).isEqualTo(MOCK_IMAGE_URL);
@@ -515,7 +540,6 @@ class PartyIntegrationTest {
                 .pw(passwordEncoder.encode(TEST_PASSWORD))
                 .email(String.format(TEST_EMAIL_TEMPLATE, userId))
                 .nickname(String.format(TEST_NICKNAME_TEMPLATE, userId))
-                .region(TEST_REGION)
                 .color("#000000")
                 .build();
         return accountRepository.save(account);

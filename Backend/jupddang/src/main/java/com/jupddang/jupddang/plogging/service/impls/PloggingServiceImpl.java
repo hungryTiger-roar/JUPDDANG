@@ -24,6 +24,9 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+import com.jupddang.jupddang.sns.entity.Post;
+import com.jupddang.jupddang.sns.repository.PostRepository;
+import com.jupddang.jupddang.common.infrastructure.storage.GcsImageService;
 
 import java.time.LocalDateTime;
 import java.util.Set;
@@ -41,6 +44,8 @@ public class PloggingServiceImpl implements PloggingService {
     private final H3Core h3Core;
     private final SimpMessagingTemplate messagingTemplate;
     private final RaidService raidService;
+    private final PostRepository postRepository;
+    private final GcsImageService gcsImageService;
 
     private static final int H3_RESOLUTION = 9;
     private static final long OCCUPY_THRESHOLD_MS = 180 * 1000L; // 3분
@@ -141,7 +146,23 @@ public class PloggingServiceImpl implements PloggingService {
             totalRaidScore = raidService.applyRaidScore(userId, capturedGrids);
         }
 
-        // 5. 이벤트 발행
+        // 5. GCS에 이미지 업로드
+        String beforeUrl = gcsImageService.uploadImage(before, "plogging/" + userId);
+        String afterUrl = gcsImageService.uploadImage(after, "plogging/" + userId);
+        String mapUrl = gcsImageService.uploadImage(map, "plogging/" + userId);
+
+        // 6. Post 생성 및 저장
+        Post savedPost = postRepository.save(Post.builder()
+                .account(account)
+                .ploggingId(savedPlogging.getId())
+                .beforeImageUrl(beforeUrl)
+                .afterImageUrl(afterUrl)
+                .mapImageUrl(mapUrl)
+                .content("플로깅 완료!")
+                .likeCount(0)
+                .build());
+
+        // 7. 이벤트 발행 (알림 용도)
         PloggingCompletedEvent event = PloggingCompletedEvent.builder()
                 .ploggingId(savedPlogging.getId())
                 .userId(userId)
@@ -152,12 +173,15 @@ public class PloggingServiceImpl implements PloggingService {
 
         eventPublisher.publishEvent(event);
 
-        // 6. Redis 정리
+        // 8. Redis 정리
         redisRepository.deleteUserState(userId);
 
         log.info("플로깅 종료: userId={}, captured={}, raidScore={}", userId, occupiedCount, totalRaidScore);
 
+        // 9. 응답 반환
         return new PloggingResultResponse(
+                savedPlogging.getId(),
+                savedPost.getPostId(),
                 "종료되었습니다.",
                 request.distance(),
                 occupiedCount,

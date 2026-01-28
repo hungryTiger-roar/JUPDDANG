@@ -35,6 +35,7 @@ public class PloggingScoreListener {
             Plogging plogging = ploggingRepository.findById(event.ploggingId())
                     .orElseThrow(() -> new RuntimeException("Plogging info not found: " + event.ploggingId()));
 
+
             // 2. Account 조회 (Plogging 엔티티의 연관관계 활용)
             // FetchType.LAZY여도 @Transactional 안이므로 접근 가능
             Account account = plogging.getAccount();

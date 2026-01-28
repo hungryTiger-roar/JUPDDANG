@@ -6,6 +6,9 @@ import com.jupddang.jupddang.trashcan.dto.TrashcanDetailDto;
 import com.jupddang.jupddang.trashcan.dto.TrashcanListResponse;
 import com.jupddang.jupddang.trashcan.entity.TrashcanStatus;
 import com.jupddang.jupddang.trashcan.service.TrashcanService;
+import io.swagger.v3.oas.annotations.Operation; // 추가됨
+import io.swagger.v3.oas.annotations.Parameter; // [필수] 추가됨
+import io.swagger.v3.oas.annotations.tags.Tag; // 추가됨
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -17,6 +20,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/v1/trashcans")
 @RequiredArgsConstructor
+@Tag(name = "trashcan api", description = "쓰레기통 관련 API") // Swagger 태그 추가
 public class TrashcanController {
 
     private final TrashcanService trashcanService;
@@ -25,6 +29,7 @@ public class TrashcanController {
      * 지도 영역 내 쓰레기통 조회
      */
     @GetMapping
+    @Operation(summary = "영역 내 쓰레기통 조회", description = "지도 화면의 위경도 범위를 기반으로 쓰레기통을 조회합니다.")
     public ResponseEntity<TrashcanListResponse> getTrashcans(
             @RequestParam(name = "minLatitude") Double minLatitude,
             @RequestParam(name = "maxLatitude") Double maxLatitude,
@@ -45,9 +50,11 @@ public class TrashcanController {
      * 새로운 쓰레기통 위치 추가
      */
     @PostMapping
+    @Operation(summary = "쓰레기통 위치 제보/추가")
     public ResponseEntity<TrashcanDetailDto> createTrashcan(
             @RequestBody TrashcanCreateRequest request,
-            @AuthenticationPrincipal Account account) {
+            // [수정] Swagger 숨김 처리
+            @Parameter(hidden = true) @AuthenticationPrincipal Account account) {
 
         String userId = account.getUserId();
 
@@ -63,9 +70,11 @@ public class TrashcanController {
      * 쓰레기통 검증
      */
     @PostMapping("/{trashcanId}/verify")
+    @Operation(summary = "쓰레기통 검증(좋아요/인증)")
     public ResponseEntity<TrashcanDetailDto> verifyTrashcan(
             @PathVariable(name = "trashcanId") Long trashcanId,
-            @AuthenticationPrincipal Account account) {
+            // [수정] Swagger 숨김 처리
+            @Parameter(hidden = true) @AuthenticationPrincipal Account account) {
 
         log.info("쓰레기통 검증 요청 - trashcanId: {}, userId: {}",
                 trashcanId, account.getUserId());
@@ -79,9 +88,11 @@ public class TrashcanController {
      * 내가 제안한 쓰레기통 목록 조회
      */
     @GetMapping("/my")
+    @Operation(summary = "내가 제안한 쓰레기통 목록 조회")
     public ResponseEntity<TrashcanListResponse> getMyTrashcans(
             @RequestParam(name = "status", required = false) TrashcanStatus status,
-            @AuthenticationPrincipal Account account) {
+            // [수정] Swagger 숨김 처리
+            @Parameter(hidden = true) @AuthenticationPrincipal Account account) {
 
         log.info("내가 제안한 쓰레기통 조회 - userId: {}, status: {}",
                 account.getUserId(), status);

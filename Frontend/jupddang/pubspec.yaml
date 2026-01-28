@@ -42,6 +42,7 @@ dependencies:
   image_picker: ^1.2.1
   pixelarticons: ^0.4.0
   geocoding: ^4.0.0
+  rive: ^0.13.10
 
 dev_dependencies:
   flutter_test:

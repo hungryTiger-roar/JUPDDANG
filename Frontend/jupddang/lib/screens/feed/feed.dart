@@ -726,12 +726,22 @@ class _CommunityScreenState extends State<CommunityScreen> {
       onTap: onTap,
       child: Row(
         children: [
-          Icon(
-            icon,
-            color: isActive && label != "0"
-                ? const Color(0xFF17C964)
-                : Colors.white38,
-            size: 22,
+          TweenAnimationBuilder<double>(
+            duration: const Duration(milliseconds: 200),
+            tween: Tween(begin: 1.0, end: isActive ? 1.3 : 1.0),
+            curve: Curves.elasticOut,
+            builder: (context, scale, child) {
+              return Transform.scale(
+                scale: scale,
+                child: Icon(
+                  icon,
+                  color: isActive && icon == Pixel.heart
+                      ? Colors.redAccent
+                      : (isActive ? const Color(0xFF17C964) : Colors.white38),
+                  size: 22,
+                ),
+              );
+            },
           ),
           const SizedBox(width: 6),
           Text(

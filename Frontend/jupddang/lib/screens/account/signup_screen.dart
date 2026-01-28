@@ -202,7 +202,11 @@ class _SignupScreenState extends State<SignupScreen> {
             icon: Pixel.map,
           ),
           const SizedBox(height: 48),
-          PixelButton(text: 'JOIN NOW', onPressed: _isLoading ? null : _signup),
+          PixelButton(
+            text: 'JOIN NOW',
+            isPulse: true,
+            onPressed: _isLoading ? null : _signup,
+          ),
         ],
       ),
     );

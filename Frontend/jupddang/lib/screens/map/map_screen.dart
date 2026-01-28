@@ -32,7 +32,6 @@ class _MapScreenState extends State<MapScreen> {
   bool _isInitialCenterSet = false;
   StreamSubscription<Position>? _positionStream;
   Timer? _debounceTimer;
-  bool _isLoading = false;
 
   String? _currentH3Index;
   Timer? _stayTimer;

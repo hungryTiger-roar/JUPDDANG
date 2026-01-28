@@ -8,9 +8,9 @@ class AuthService {
   // For now, let's assume we are testing on emulator or web.
   // Note: Web deals with localhost differently.
 
-  static const String apiBase = 'http://i14d208.p.ssafy.io/dev-api/api';
-  static const String accountBase = '$apiBase/account';
-  static const String postsBase = '$apiBase/posts';
+  static const String apiBase = 'https://i14d208.p.ssafy.io/dev-api';
+  static const String accountBase = '$apiBase/api/account';
+  static const String postsBase = '$apiBase/api/posts';
 
   static String? accessToken;
   static String? userId;

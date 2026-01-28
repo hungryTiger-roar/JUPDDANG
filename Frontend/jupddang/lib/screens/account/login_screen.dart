@@ -115,7 +115,11 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: 48),
 
               // 로그인 버튼
-              PixelButton(text: 'LOGIN', onPressed: _isLoading ? null : _login),
+              PixelButton(
+                text: 'LOGIN',
+                isPulse: true,
+                onPressed: _isLoading ? null : _login,
+              ),
               const SizedBox(height: 20),
 
               // 로그인 없이 사용하기 버튼

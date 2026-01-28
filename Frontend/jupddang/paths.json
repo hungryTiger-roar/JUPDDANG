@@ -1,0 +1,1016 @@
+{
+  "/api/v1/trashcans": {
+    "get": {
+      "tags": [
+        "trashcan api"
+      ],
+      "summary": "\udcec\uc07a\udcec\ubfed \udceb\uada1 \udcec\ubc90\udceb\uc805\u6e72\uace0\ub13b \u8b70\uace0\uc276",
+      "description": "\uf9de\udc80\udceb\ub8c4 \udced\uc195\uf9ce\ub301\uc4fd \udcec\uc41e\u5bc3\uc388\ub8c4 \u8e30\ubdbf\uc41e\u745c\udcbc \u6e72\uacd5\ucef2\udcec\uc45d\u6fe1\udc9c \udcec\ubc90\udceb\uc805\u6e72\uace0\ub13b\udcec\uc4e3 \u8b70\uace0\uc276\udced\ube40\udceb\ub572\udceb\ub58e.",
+      "operationId": "getTrashcans",
+      "parameters": [
+        {
+          "name": "minLatitude",
+          "in": "query",
+          "required": true,
+          "schema": {
+            "type": "number",
+            "format": "double"
+          }
+        },
+        {
+          "name": "maxLatitude",
+          "in": "query",
+          "required": true,
+          "schema": {
+            "type": "number",
+            "format": "double"
+          }
+        },
+        {
+          "name": "minLongitude",
+          "in": "query",
+          "required": true,
+          "schema": {
+            "type": "number",
+            "format": "double"
+          }
+        },
+        {
+          "name": "maxLongitude",
+          "in": "query",
+          "required": true,
+          "schema": {
+            "type": "number",
+            "format": "double"
+          }
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "OK",
+          "content": {
+            "*/*": {
+              "schema": {
+                "$ref": "#/components/schemas/TrashcanListResponse"
+              }
+            }
+          }
+        }
+      }
+    },
+    "post": {
+      "tags": [
+        "trashcan api"
+      ],
+      "summary": "\udcec\ubc90\udceb\uc805\u6e72\uace0\ub13b \udcec\uc41e\u79fb\udc98 \udcec\uc823\u8e42\udcb4/\u7570\ubdbd\udcb0\udc80",
+      "operationId": "createTrashcan",
+      "requestBody": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/TrashcanCreateRequest"
+            }
+          }
+        },
+        "required": true
+      },
+      "responses": {
+        "200": {
+          "description": "OK",
+          "content": {
+            "*/*": {
+              "schema": {
+                "$ref": "#/components/schemas/TrashcanDetailDto"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "/api/v1/trashcans/{trashcanId}/verify": {
+    "post": {
+      "tags": [
+        "trashcan api"
+      ],
+      "summary": "\udcec\ubc90\udceb\uc805\u6e72\uace0\ub13b \u5bc3\udc80\uf9dd\udc9d(\u91ab\ub5ed\ube18\udcec\uc282/\udcec\uc524\uf9dd\udc9d)",
+      "operationId": "verifyTrashcan",
+      "parameters": [
+        {
+          "name": "trashcanId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "OK",
+          "content": {
+            "*/*": {
+              "schema": {
+                "$ref": "#/components/schemas/TrashcanDetailDto"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "/api/v1/plogging/end": {
+    "post": {
+      "tags": [
+        "plogging api"
+      ],
+      "summary": "\udced\ubd46\u6fe1\uc493\ud26d \u91ab\ub085\uc9ba \u8adb\udc8f \u5bc3\uaccc\ub0b5 \udcec\uae6e\udcec\uaf66",
+      "operationId": "endPlogging",
+      "parameters": [
+        {
+          "name": "userId",
+          "in": "header",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "requestBody": {
+        "content": {
+          "multipart/form-data": {
+            "schema": {
+              "required": [
+                "afterImage",
+                "beforeImage",
+                "data",
+                "mapImage"
+              ],
+              "type": "object",
+              "properties": {
+                "data": {
+                  "type": "string"
+                },
+                "beforeImage": {
+                  "type": "string",
+                  "format": "binary"
+                },
+                "afterImage": {
+                  "type": "string",
+                  "format": "binary"
+                },
+                "mapImage": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          }
+        }
+      },
+      "responses": {
+        "400": {
+          "description": "Bad Request",
+          "content": {
+            "*/*": {
+              "schema": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "200": {
+          "description": "OK",
+          "content": {
+            "*/*": {
+              "schema": {
+                "$ref": "#/components/schemas/PloggingResultResponse"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "/api/posts/{postId}/like": {
+    "post": {
+      "tags": [
+        "sns api"
+      ],
+      "summary": "\u5bc3\ub6af\ub586\u6e72\udc80 \u91ab\ub5ed\ube18\udcec\uc282",
+      "operationId": "likePost",
+      "parameters": [
+        {
+          "name": "postId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "OK",
+          "content": {
+            "*/*": {
+              "schema": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "/api/posts/{postId}/comment": {
+    "post": {
+      "tags": [
+        "sns api"
+      ],
+      "summary": "\udceb\ub64e\u6e72\udc80 \udcec\uc609\udcec\uaf66",
+      "operationId": "createComment",
+      "parameters": [
+        {
+          "name": "postId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      ],
+      "requestBody": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/CommentRequestDto"
+            }
+          }
+        },
+        "required": true
+      },
+      "responses": {
+        "200": {
+          "description": "OK",
+          "content": {
+            "*/*": {
+              "schema": {
+                "type": "integer",
+                "format": "int64"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "/api/party": {
+    "post": {
+      "tags": [
+        "party api"
+      ],
+      "summary": "\udced\ub646\udced\ub59a \udcec\uae6e\udcec\uaf66",
+      "operationId": "createParty",
+      "requestBody": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/PartyCreateRequest"
+            }
+          }
+        },
+        "required": true
+      },
+      "responses": {
+        "200": {
+          "description": "OK",
+          "content": {
+            "*/*": {
+              "schema": {
+                "$ref": "#/components/schemas/PartyCreateResponse"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "/api/party/{partyId}/start": {
+    "post": {
+      "tags": [
+        "party api"
+      ],
+      "summary": "\udced\ub646\udced\ub59a \udcec\ub586\udcec\uc609 (\u8adb\u2479\uc623 \udcec\uc7fe\udcec\uc29c)",
+      "operationId": "startParty",
+      "parameters": [
+        {
+          "name": "partyId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "OK",
+          "content": {
+            "*/*": {
+              "schema": {
+                "$ref": "#/components/schemas/PartyStartResponse"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "/api/party/{partyId}/activities/complete": {
+    "post": {
+      "tags": [
+        "party api"
+      ],
+      "summary": "\u5a9b\uc495\ud00e \udced\uc1a2\udceb\ub8de \udcec\uc17f\u7337\udc8c",
+      "operationId": "completeActivity",
+      "parameters": [
+        {
+          "name": "partyId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      ],
+      "requestBody": {
+        "content": {
+          "multipart/form-data": {
+            "schema": {
+              "required": [
+                "afterImage",
+                "beforeImage",
+                "data",
+                "mapImage"
+              ],
+              "type": "object",
+              "properties": {
+                "data": {
+                  "type": "string"
+                },
+                "beforeImage": {
+                  "type": "string",
+                  "format": "binary"
+                },
+                "afterImage": {
+                  "type": "string",
+                  "format": "binary"
+                },
+                "mapImage": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          }
+        }
+      },
+      "responses": {
+        "400": {
+          "description": "Bad Request",
+          "content": {
+            "*/*": {
+              "schema": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "200": {
+          "description": "OK",
+          "content": {
+            "*/*": {
+              "schema": {
+                "$ref": "#/components/schemas/ActivityCompleteResponse"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "/api/party/join": {
+    "post": {
+      "tags": [
+        "party api"
+      ],
+      "summary": "\udced\ub646\udced\ub59a \uf9e1\uba84\ubfec",
+      "operationId": "joinParty",
+      "requestBody": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/PartyJoinRequest"
+            }
+          }
+        },
+        "required": true
+      },
+      "responses": {
+        "200": {
+          "description": "OK",
+          "content": {
+            "*/*": {
+              "schema": {
+                "$ref": "#/components/schemas/PartyJoinResponse"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "/api/account/signup": {
+    "post": {
+      "tags": [
+        "account api"
+      ],
+      "summary": "\udced\uc276\udcec\uc35d\u5a9b\udc80\udcec\uc5ef",
+      "operationId": "signup",
+      "requestBody": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/AccountCreateRequest"
+            }
+          }
+        },
+        "required": true
+      },
+      "responses": {
+        "200": {
+          "description": "OK",
+          "content": {
+            "*/*": {
+              "schema": {
+                "$ref": "#/components/schemas/AccountResponse"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "/api/account/login": {
+    "post": {
+      "tags": [
+        "account api"
+      ],
+      "summary": "\u6fe1\uc493\ub807\udcec\uc524",
+      "operationId": "login",
+      "requestBody": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/AccountLoginRequest"
+            }
+          }
+        },
+        "required": true
+      },
+      "responses": {
+        "200": {
+          "description": "OK",
+          "content": {
+            "*/*": {
+              "schema": {
+                "$ref": "#/components/schemas/AccountLoginResponse"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "/api/account/myprofile": {
+    "get": {
+      "tags": [
+        "account api"
+      ],
+      "summary": "\udceb\uada1 \udced\ubd3d\u6fe1\uc497\ube18 \u8b70\uace0\uc276",
+      "operationId": "getAccount",
+      "responses": {
+        "200": {
+          "description": "OK",
+          "content": {
+            "*/*": {
+              "schema": {
+                "$ref": "#/components/schemas/AccountResponse"
+              }
+            }
+          }
+        }
+      }
+    },
+    "patch": {
+      "tags": [
+        "account api"
+      ],
+      "summary": "\udceb\uada1 \udced\ubd3d\u6fe1\uc497\ube18 \udcec\ub2d4\udcec\uc819",
+      "description": "data(JSON)\udcec\udc99\udc80 image(File)\u745c\udcbc \udced\ube3f\u733f\udc98 \udcec\uc7fe\udcec\ub11a\udced\ube40\udceb\ub572\udceb\ub58e.",
+      "operationId": "updateAccount",
+      "requestBody": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "data": {
+                  "$ref": "#/components/schemas/AccountUpdateRequest"
+                },
+                "image": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          }
+        }
+      },
+      "responses": {
+        "200": {
+          "description": "OK",
+          "content": {
+            "*/*": {
+              "schema": {
+                "$ref": "#/components/schemas/AccountResponse"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "/test": {
+    "get": {
+      "tags": [
+        "test api"
+      ],
+      "summary": "JPA \udced\ub012\udcec\ub4aa\udced\ub4c3 \udcec\ub58e\udced\ubefe",
+      "operationId": "runTest",
+      "responses": {
+        "200": {
+          "description": "OK",
+          "content": {
+            "*/*": {
+              "schema": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "/api/v1/trashcans/my": {
+    "get": {
+      "tags": [
+        "trashcan api"
+      ],
+      "summary": "\udceb\uada1\u5a9b\udc80 \udcec\uc823\udcec\ube1e\udced\ube33 \udcec\ubc90\udceb\uc805\u6e72\uace0\ub13b \uf9cf\u2478\uc909 \u8b70\uace0\uc276",
+      "operationId": "getMyTrashcans",
+      "parameters": [
+        {
+          "name": "status",
+          "in": "query",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "OFFICIAL",
+              "PENDING",
+              "VERIFIED"
+            ]
+          }
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "OK",
+          "content": {
+            "*/*": {
+              "schema": {
+                "$ref": "#/components/schemas/TrashcanListResponse"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "/api/v1/plogging/grid/status": {
+    "get": {
+      "tags": [
+        "grid-status-controller"
+      ],
+      "operationId": "checkGridStatus",
+      "parameters": [
+        {
+          "name": "h3Index",
+          "in": "query",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "userId",
+          "in": "header",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "OK",
+          "content": {
+            "*/*": {
+              "schema": {
+                "$ref": "#/components/schemas/GridStatusResponse"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "/api/ranking/total": {
+    "get": {
+      "tags": [
+        "ranking-controller"
+      ],
+      "operationId": "getTotalRanking",
+      "parameters": [
+        {
+          "name": "userId",
+          "in": "query",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "OK",
+          "content": {
+            "*/*": {
+              "schema": {
+                "$ref": "#/components/schemas/RankingListResponseDto"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "/api/ranking/monthly": {
+    "get": {
+      "tags": [
+        "ranking-controller"
+      ],
+      "operationId": "getMonthlyRanking",
+      "parameters": [
+        {
+          "name": "year",
+          "in": "query",
+          "required": false,
+          "schema": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        {
+          "name": "month",
+          "in": "query",
+          "required": false,
+          "schema": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        {
+          "name": "userId",
+          "in": "query",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "OK",
+          "content": {
+            "*/*": {
+              "schema": {
+                "$ref": "#/components/schemas/RankingListResponseDto"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "/api/raids": {
+    "get": {
+      "tags": [
+        "raid-controller"
+      ],
+      "summary": "\udcec\uc7fe\uf9e3\udcb4 \u63f4\u044a\ubfed \uf9cd\ub349\ube71 \udcec\uc41e\u79fb\udc98 \u8b70\uace0\uc276",
+      "operationId": "getAllBosses",
+      "responses": {
+        "200": {
+          "description": "OK",
+          "content": {
+            "*/*": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/RaidBossResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "/api/raids/{bossId}/detail": {
+    "get": {
+      "tags": [
+        "raid-controller"
+      ],
+      "summary": "\udced\ub4c5\udcec\uc819 \u63f4\u044a\ubfed \udceb\ub2bb\udcec\uc7fb \udced\uc07d\udced\uc1b4 \u8adb\udc8f \udceb\uc632\udced\uada7 \u8b70\uace0\uc276",
+      "operationId": "getBossDetail",
+      "parameters": [
+        {
+          "name": "bossId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "OK",
+          "content": {
+            "*/*": {
+              "schema": {
+                "$ref": "#/components/schemas/RaidGroupInfoResponse"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "/api/posts": {
+    "get": {
+      "tags": [
+        "sns api"
+      ],
+      "summary": "\udcec\uc7fe\uf9e3\udcb4 \u5bc3\ub6af\ub586\u6e72\udc80 \u8b70\uace0\uc276",
+      "operationId": "getAllPosts",
+      "responses": {
+        "200": {
+          "description": "OK",
+          "content": {
+            "*/*": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/PostResponseDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "/api/party/{partyId}": {
+    "get": {
+      "tags": [
+        "party api"
+      ],
+      "summary": "\udced\ub646\udced\ub59a \udcec\uae3d\udcec\uaf6d \u8b70\uace0\uc276",
+      "operationId": "getPartyDetail",
+      "parameters": [
+        {
+          "name": "partyId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "OK",
+          "content": {
+            "*/*": {
+              "schema": {
+                "$ref": "#/components/schemas/PartyDetailResponse"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "/api/party/{partyId}/activities": {
+    "get": {
+      "tags": [
+        "party api"
+      ],
+      "summary": "\udcec\ub58e\udcec\ub586\u5a9b\udc84 \udced\uc1a2\udceb\ub8de \udcec\uae3d\udced\uae6d \u8b70\uace0\uc276",
+      "operationId": "getActivityStatus",
+      "parameters": [
+        {
+          "name": "partyId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "OK",
+          "content": {
+            "*/*": {
+              "schema": {
+                "$ref": "#/components/schemas/PartyActivityStatusResponse"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "/api/party/id": {
+    "get": {
+      "tags": [
+        "party api"
+      ],
+      "summary": "\u73e5\ub348\udc8c\udc80 \u8084\ubdbe\ubc76 \udcec\uae6e\udcec\uaf66",
+      "operationId": "createInviteCode",
+      "responses": {
+        "200": {
+          "description": "OK",
+          "content": {
+            "*/*": {
+              "schema": {
+                "$ref": "#/components/schemas/InviteCodeResponse"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "/api/account": {
+    "get": {
+      "tags": [
+        "account api"
+      ],
+      "summary": "\udcec\uc7fe\uf9e3\udcb4 \u6028\uafa9\uc819 \uf9cf\u2478\uc909 \u8b70\uace0\uc276",
+      "operationId": "getAccounts",
+      "responses": {
+        "200": {
+          "description": "OK",
+          "content": {
+            "*/*": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/AccountResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "/api/posts/{postId}": {
+    "delete": {
+      "tags": [
+        "sns api"
+      ],
+      "summary": "\u5bc3\ub6af\ub586\u6e72\udc80 \udcec\uad98\udcec\uc823",
+      "operationId": "deletePost",
+      "parameters": [
+        {
+          "name": "postId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "OK",
+          "content": {
+            "*/*": {
+              "schema": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "/api/posts/{postId}/{commentId}": {
+    "delete": {
+      "tags": [
+        "sns api"
+      ],
+      "summary": "\udceb\ub64e\u6e72\udc80 \udcec\uad98\udcec\uc823",
+      "operationId": "deleteComment",
+      "parameters": [
+        {
+          "name": "postId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        {
+          "name": "commentId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "OK",
+          "content": {
+            "*/*": {
+              "schema": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "/api/account/delete": {
+    "delete": {
+      "tags": [
+        "account api"
+      ],
+      "summary": "\udced\uc276\udcec\uc35d \udced\uae49\udced\ub21c",
+      "operationId": "deleteAccount",
+      "responses": {
+        "200": {
+          "description": "OK",
+          "content": {
+            "*/*": {
+              "schema": {
+                "$ref": "#/components/schemas/AccountResponse"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

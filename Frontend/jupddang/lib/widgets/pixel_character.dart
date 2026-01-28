@@ -19,6 +19,7 @@ class PixelCharacter extends StatefulWidget {
 class _PixelCharacterState extends State<PixelCharacter>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
+  late Animation<double> _bobAnimation;
   int _currentFrame = 0;
 
   @override
@@ -29,12 +30,28 @@ class _PixelCharacterState extends State<PixelCharacter>
       duration: const Duration(milliseconds: 600),
     );
 
+    _bobAnimation = TweenSequence<double>([
+      TweenSequenceItem(
+        tween: Tween(
+          begin: 0.0,
+          end: -4.0,
+        ).chain(CurveTween(curve: Curves.easeOut)),
+        weight: 50,
+      ),
+      TweenSequenceItem(
+        tween: Tween(
+          begin: -4.0,
+          end: 0.0,
+        ).chain(CurveTween(curve: Curves.easeIn)),
+        weight: 50,
+      ),
+    ]).animate(_controller);
+
     if (widget.isMoving) {
       _controller.repeat();
     }
 
     _controller.addListener(() {
-      // 2프레임 애니메이션 (0, 1)
       final frame = (_controller.value * 2).floor();
       if (frame != _currentFrame) {
         setState(() {
@@ -65,17 +82,25 @@ class _PixelCharacterState extends State<PixelCharacter>
 
   @override
   Widget build(BuildContext context) {
-    return RepaintBoundary(
-      child: SizedBox(
-        width: widget.size * (11 / 14), // 가로세로 비율 유지 (11x14 그리드)
-        height: widget.size,
-        child: CustomPaint(
-          painter: _CharacterPainter(
-            clothesColor: widget.color,
-            frame: widget.isMoving ? _currentFrame : 0,
+    return AnimatedBuilder(
+      animation: _bobAnimation,
+      builder: (context, child) {
+        return Transform.translate(
+          offset: Offset(0, widget.isMoving ? _bobAnimation.value : 0),
+          child: RepaintBoundary(
+            child: SizedBox(
+              width: widget.size * (11 / 14),
+              height: widget.size,
+              child: CustomPaint(
+                painter: _CharacterPainter(
+                  clothesColor: widget.color,
+                  frame: widget.isMoving ? _currentFrame : 0,
+                ),
+              ),
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }

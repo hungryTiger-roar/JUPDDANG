@@ -3,8 +3,8 @@ import 'package:pixelarticons/pixelarticons.dart';
 import 'create_party_screen.dart';
 import 'join_party_screen.dart';
 
-class PartyScreen extends StatelessWidget {
-  const PartyScreen({super.key});
+class PartyMenuScreen extends StatelessWidget {
+  const PartyMenuScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -15,7 +15,43 @@ class PartyScreen extends StatelessWidget {
           padding: const EdgeInsets.all(20),
           child: Column(
             children: [
-              const SizedBox(height: 20),
+              // Header
+              Row(
+                children: [
+                  GestureDetector(
+                    onTap: () => Navigator.pop(context),
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF1F1F1F),
+                        border: Border.all(color: Colors.black, width: 3),
+                        boxShadow: const [
+                          BoxShadow(color: Colors.black, offset: Offset(4, 4)),
+                        ],
+                      ),
+                      child: const Icon(
+                        Pixel.arrowleft,
+                        color: Colors.white,
+                        size: 24,
+                      ),
+                    ),
+                  ),
+                  const Spacer(),
+                  const Text(
+                    'PARTY',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 24,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 2,
+                    ),
+                  ),
+                  const Spacer(),
+                  const SizedBox(width: 40),
+                ],
+              ),
+
+              const SizedBox(height: 60),
 
               // 타이틀
               const Text(
@@ -104,8 +140,6 @@ class PartyScreen extends StatelessWidget {
                   ],
                 ),
               ),
-
-              const SizedBox(height: 100), // navbar 공간
             ],
           ),
         ),

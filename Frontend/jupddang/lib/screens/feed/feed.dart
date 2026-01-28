@@ -7,6 +7,7 @@ import '../../widgets/pixel_button.dart';
 import '../../widgets/pixel_loader.dart';
 import 'package:pixelarticons/pixelarticons.dart';
 import '../../widgets/pixel_character.dart';
+import '../account/profile_screen.dart';
 
 class CommunityScreen extends StatefulWidget {
   const CommunityScreen({super.key});
@@ -491,17 +492,28 @@ class _CommunityScreenState extends State<CommunityScreen> {
             padding: const EdgeInsets.all(16),
             child: Row(
               children: [
-                Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF1F1F1F),
-                    border: Border.all(color: Colors.black, width: 2.0),
-                  ),
-                  child: Center(
-                    child: PixelCharacter(
-                      size: 24,
-                      color: _getColorForNickname(post.nickname),
+                GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            ProfileScreen(userId: post.nickname),
+                      ),
+                    );
+                  },
+                  child: Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1F1F1F),
+                      border: Border.all(color: Colors.black, width: 2.0),
+                    ),
+                    child: Center(
+                      child: PixelCharacter(
+                        size: 24,
+                        color: _getColorForNickname(post.nickname),
+                      ),
                     ),
                   ),
                 ),
@@ -520,6 +532,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
                               fontSize: 14,
                             ),
                           ),
+                          const SizedBox(width: 12),
                           _followButton(post.nickname),
                           if (post.userId == AuthService.userId) ...[
                             const SizedBox(width: 8),
@@ -771,13 +784,9 @@ class _CommunityScreenState extends State<CommunityScreen> {
           borderRadius: BorderRadius.circular(16),
           child: Row(
             children: [
-              Expanded(
-                child: _labeledImage(images[0], 'BEFORE', post.localOnly),
-              ),
+              Expanded(child: _labeledImage(images[0], '전', post.localOnly)),
               const SizedBox(width: 4),
-              Expanded(
-                child: _labeledImage(images[1], 'AFTER', post.localOnly),
-              ),
+              Expanded(child: _labeledImage(images[1], '후', post.localOnly)),
             ],
           ),
         ),
@@ -812,17 +821,19 @@ class _CommunityScreenState extends State<CommunityScreen> {
           top: 10,
           left: 10,
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: Colors.black54,
+              color: Colors.black.withOpacity(0.7),
+              border: Border.all(color: Colors.white24, width: 1.5),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(
               label,
               style: const TextStyle(
                 color: Colors.white,
-                fontSize: 10,
-                fontWeight: FontWeight.bold,
+                fontSize: 14,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 0.5,
               ),
             ),
           ),

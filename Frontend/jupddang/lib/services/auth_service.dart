@@ -226,6 +226,111 @@ class AuthService {
     }
   }
 
+  // 계정 정보 조회
+  Future<Map<String, dynamic>> getAccount(String userId) async {
+    try {
+      final response = await _dio.get(
+        '$accountBase/$userId',
+        options: Options(headers: _authHeaders()),
+      );
+      if (response.data is Map) {
+        return response.data as Map<String, dynamic>;
+      }
+      throw Exception('Invalid response format');
+    } catch (e) {
+      print('Get Account Error: $e');
+      rethrow;
+    }
+  }
+
+  // 계정 정보 업데이트
+  Future<Map<String, dynamic>> updateAccount(
+    String userId,
+    Map<String, dynamic> updates,
+    dynamic imageFile,
+  ) async {
+    try {
+      final headers = _authHeaders();
+
+      if (imageFile != null) {
+        // 이미지가 있는 경우 multipart/form-data로 전송
+        final formData = FormData.fromMap({
+          'data': MultipartFile.fromString(
+            jsonEncode(updates),
+            contentType: MediaType('application', 'json'),
+          ),
+          if (imageFile != null)
+            'image': await MultipartFile.fromFile(imageFile.path),
+        });
+
+        final response = await _dio.put(
+          '$accountBase/$userId',
+          data: formData,
+          options: Options(headers: headers),
+        );
+        return response.data as Map<String, dynamic>;
+      } else {
+        // 이미지가 없는 경우 JSON으로 전송
+        final response = await _dio.put(
+          '$accountBase/$userId',
+          data: updates,
+          options: Options(headers: headers),
+        );
+        return response.data as Map<String, dynamic>;
+      }
+    } catch (e) {
+      print('Update Account Error: $e');
+      rethrow;
+    }
+  }
+
+  // 내 프로필 조회 - GET /api/account/myprofile
+  Future<Map<String, dynamic>> getMyProfile() async {
+    try {
+      final response = await _dio.get(
+        '$accountBase/myprofile',
+        options: Options(headers: _authHeaders()),
+      );
+      if (response.data is Map) {
+        return response.data as Map<String, dynamic>;
+      }
+      throw Exception('Invalid response format');
+    } catch (e) {
+      print('Get My Profile Error: $e');
+      rethrow;
+    }
+  }
+
+  // 내 프로필 업데이트 - PATCH /api/account/myprofile
+  Future<Map<String, dynamic>> updateMyProfile(
+    Map<String, dynamic> updates,
+    dynamic imageFile,
+  ) async {
+    try {
+      final headers = _authHeaders();
+
+      // multipart/form-data로 전송
+      final formData = FormData.fromMap({
+        'data': MultipartFile.fromString(
+          jsonEncode(updates),
+          contentType: MediaType('application', 'json'),
+        ),
+        if (imageFile != null)
+          'image': await MultipartFile.fromFile(imageFile.path),
+      });
+
+      final response = await _dio.patch(
+        '$accountBase/myprofile',
+        data: formData,
+        options: Options(headers: headers),
+      );
+      return response.data as Map<String, dynamic>;
+    } catch (e) {
+      print('Update My Profile Error: $e');
+      rethrow;
+    }
+  }
+
   Map<String, String> _authHeaders() {
     if (accessToken == null || accessToken!.isEmpty) {
       return {};

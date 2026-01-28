@@ -12,10 +12,14 @@ class RankingService {
   )..interceptors.add(LogInterceptor(requestBody: true, responseBody: true));
 
   Future<RankingResponse> getTotalRanking() async {
-    final url = '${AuthService.apiBase}/api/ranking/total';
+    final userId = AuthService.userId ?? 'guest';
+    final url = '${AuthService.apiBase}/api/ranking/total?userId=$userId';
     print('📡 [RankingService] Fetching Total Ranking: $url');
     try {
-      final response = await _dio.get('/api/ranking/total');
+      final response = await _dio.get(
+        '/api/ranking/total',
+        queryParameters: {'userId': userId},
+      );
       print('✅ [RankingService] Total Ranking Success: ${response.statusCode}');
       return RankingResponse.fromJson(response.data);
     } catch (e) {
@@ -29,10 +33,14 @@ class RankingService {
   }
 
   Future<RankingResponse> getMonthlyRanking() async {
-    final url = '${AuthService.apiBase}/api/ranking/monthly';
+    final userId = AuthService.userId ?? 'guest';
+    final url = '${AuthService.apiBase}/api/ranking/monthly?userId=$userId';
     print('📡 [RankingService] Fetching Monthly Ranking: $url');
     try {
-      final response = await _dio.get('/api/ranking/monthly');
+      final response = await _dio.get(
+        '/api/ranking/monthly',
+        queryParameters: {'userId': userId},
+      );
       print(
         '✅ [RankingService] Monthly Ranking Success: ${response.statusCode}',
       );

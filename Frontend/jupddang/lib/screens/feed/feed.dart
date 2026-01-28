@@ -943,6 +943,29 @@ class _CommentBottomSheet extends StatefulWidget {
 class _CommentBottomSheetState extends State<_CommentBottomSheet> {
   final TextEditingController _controller = TextEditingController();
   bool _isSubmitting = false;
+  late List<CommunityComment> _comments;
+
+  @override
+  void initState() {
+    super.initState();
+    _comments = List<CommunityComment>.from(widget.post.comments);
+  }
+
+  Future<void> _deleteComment(CommunityComment comment) async {
+    try {
+      await widget.authService.deleteComment(widget.post.id, comment.id);
+      widget.onCommentAdded();
+      if (mounted) {
+        setState(() {
+          _comments.removeWhere((c) => c.id == comment.id);
+        });
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('댓글 삭제에 실패했습니다.')));
+    }
+  }
 
   Future<void> _submitComment() async {
     final text = _controller.text.trim();
@@ -1003,7 +1026,7 @@ class _CommentBottomSheetState extends State<_CommentBottomSheet> {
           ),
           const SizedBox(height: 20),
           Expanded(
-            child: widget.post.comments.isEmpty
+            child: _comments.isEmpty
                 ? const Center(
                     child: Text(
                       '댓글이 없습니다',
@@ -1012,9 +1035,10 @@ class _CommentBottomSheetState extends State<_CommentBottomSheet> {
                   )
                 : ListView.builder(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
-                    itemCount: widget.post.comments.length,
+                    itemCount: _comments.length,
                     itemBuilder: (context, index) {
-                      final comment = widget.post.comments[index];
+                      final comment = _comments[index];
+                      final isMine = AuthService.nickname == comment.nickname;
                       return Padding(
                         padding: const EdgeInsets.only(bottom: 20),
                         child: Row(
@@ -1042,13 +1066,49 @@ class _CommentBottomSheetState extends State<_CommentBottomSheet> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(
-                                    comment.nickname.toUpperCase(),
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w900,
-                                      fontSize: 14,
-                                    ),
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          comment.nickname.toUpperCase(),
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.w900,
+                                            fontSize: 14,
+                                          ),
+                                        ),
+                                      ),
+                                      if (isMine)
+                                        DropdownButtonHideUnderline(
+                                          child: DropdownButton<String>(
+                                            isDense: true,
+                                            icon: const Icon(
+                                              Icons.more_vert,
+                                              color: Colors.white54,
+                                              size: 18,
+                                            ),
+                                            dropdownColor: const Color(
+                                              0xFF2A2A2A,
+                                            ),
+                                            items: const [
+                                              DropdownMenuItem(
+                                                value: 'delete',
+                                                child: Text(
+                                                  '삭제',
+                                                  style: TextStyle(
+                                                    color: Colors.white,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                            onChanged: (value) {
+                                              if (value == 'delete') {
+                                                _deleteComment(comment);
+                                              }
+                                            },
+                                          ),
+                                        ),
+                                    ],
                                   ),
                                   const SizedBox(height: 4),
                                   Text(

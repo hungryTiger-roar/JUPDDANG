@@ -8,14 +8,13 @@ class AuthService {
   // For now, let's assume we are testing on emulator or web.
   // Note: Web deals with localhost differently.
 
-  // static const String baseUrl = 'http://127.0.0.1:8080/api/account';
-  // 실제 기기 테스트를 위해 호스트 PC의 로컬 IP 사용
-  static const String apiBase = 'https://i14d208.p.ssafy.io/dev-api/api';
+  static const String apiBase = 'http://i14d208.p.ssafy.io/dev-api/api';
   static const String accountBase = '$apiBase/account';
   static const String postsBase = '$apiBase/posts';
 
   static String? accessToken;
   static String? userId;
+  static String? nickname;
 
   final Dio _dio =
       Dio(
@@ -48,6 +47,9 @@ class AuthService {
         final account = data['account'];
         if (account is Map && account['userId'] != null) {
           userId = account['userId'].toString();
+        }
+        if (account is Map && account['nickname'] != null) {
+          nickname = account['nickname'].toString();
         }
       }
       return response.data;
@@ -144,6 +146,19 @@ class AuthService {
       return response.data;
     } catch (e) {
       print('Add Comment Error: $e');
+      rethrow;
+    }
+  }
+
+  // 댓글 삭제
+  Future<void> deleteComment(String postId, String commentId) async {
+    try {
+      await _dio.delete(
+        '$postsBase/$postId/$commentId',
+        options: Options(headers: _authHeaders()),
+      );
+    } catch (e) {
+      print('Delete Comment Error: $e');
       rethrow;
     }
   }

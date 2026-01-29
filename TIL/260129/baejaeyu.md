@@ -39,8 +39,3 @@
 ---
 
 > **오늘의 교훈:** 에러 로그는 거짓말을 하지 않는다. `UnrecognizedPropertyException`은 **API 명세서(Contract)**를 다시 보라는 신호이고, `Invalid JWT`는 **인프라 설정(Configuration)**을 점검하라는 신호다. 코드를 수정하기 전에 **'데이터가 오가는 규약'**과 **'권한'**을 먼저 의심하자.
-
----
-
-**Next Step:**
-작성하신 `JacksonConfig.java`를 프로젝트에 적용하고, 수정된 GCS 키로 파일 업로드 테스트를 진행하시겠습니까?

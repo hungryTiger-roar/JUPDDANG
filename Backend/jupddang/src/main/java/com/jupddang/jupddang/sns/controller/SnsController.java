@@ -1,15 +1,10 @@
 package com.jupddang.jupddang.sns.controller;
 
-<<<<<<< Backend/jupddang/src/main/java/com/jupddang/jupddang/sns/controller/SnsController.java
 import com.jupddang.jupddang.account.entity.Account;
 import com.jupddang.jupddang.sns.dto.CommentRequestDto;
 import com.jupddang.jupddang.sns.dto.MyCommentResponseDto;
-=======
-
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.jupddang.jupddang.sns.dto.CommentRequestDto;
 import com.jupddang.jupddang.sns.dto.PostCreateRequest;
->>>>>>> Backend/jupddang/src/main/java/com/jupddang/jupddang/sns/controller/SnsController.java
 import com.jupddang.jupddang.sns.dto.PostResponseDto;
 import com.jupddang.jupddang.sns.entity.Comment;
 import com.jupddang.jupddang.sns.entity.Post;

@@ -86,19 +86,8 @@ services:
     ports:
       - "127.0.0.1:60004:6379"
 
-# [핵심 변경] infra에서 만든 'jupddang-network'라는 이름을 정확히 사용합니다.
+# [핵심 변경] 외부에서 생성한 'jupddang-network'를 가져와서 내부에서는 'jupddang-net'이라는 이름으로 씁니다.
 networks:
   jupddang-net:
     external: true
     name: jupddang-network
-
-    volumes:
-      - /home/gitlab-runner/data/dev/redis:/data
-    networks:
-      - jupddang-net
-    ports:
-      - "127.0.0.1:60004:6379"
-
-networks:
-  jupddang-net:
-    external: true

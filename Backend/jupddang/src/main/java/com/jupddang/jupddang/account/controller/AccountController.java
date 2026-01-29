@@ -52,11 +52,23 @@ public class AccountController {
     @GetMapping("/myprofile")
     @Operation(summary = "내 프로필 조회")
     public ResponseEntity<AccountResponse> getAccount(
-            // [수정] Swagger가 Account 객체를 분석하지 못하게 숨김 처리
             @Parameter(hidden = true) @AuthenticationPrincipal Account account
     ) {
-        AccountResponse myAccount = accountService.getAccount(account.getUserId());
+        // [수정] 본인 프로필 조회 시에도 팔로워/팔로잉 숫자를 가져오기 위해 account 객체 전달
+        AccountResponse myAccount = accountService.getAccount(account.getUserId(), account);
         return ResponseEntity.ok(myAccount);
+    }
+
+    // 상대방 프로필 조회 (신규 추가 추천)
+    @GetMapping("/profile/{targetId}")
+    @Operation(summary = "상대 프로필 조회")
+    public ResponseEntity<AccountResponse> getOtherAccount(
+            @PathVariable String targetId,
+            @Parameter(hidden = true) @AuthenticationPrincipal Account loginUser
+    ) {
+        // [수정] 대상 ID와 내 로그인 정보를 함께 넘겨 팔로우 여부(isFollowing) 판단
+        AccountResponse profile = accountService.getAccount(targetId, loginUser);
+        return ResponseEntity.ok(profile);
     }
 
     // 내 프로필 수정 (텍스트 + 이미지 동시 처리)

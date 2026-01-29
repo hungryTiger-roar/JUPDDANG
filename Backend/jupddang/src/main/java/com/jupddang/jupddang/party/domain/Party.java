@@ -35,8 +35,20 @@ public class Party {
     @Column(name = "started_at")
     private LocalDateTime startedAt;
 
+    @Column(name = "ended_at") // 종료 시간
+    private LocalDateTime endedAt;
+
     @OneToMany(mappedBy = "party", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<PartyMember> members = new ArrayList<>();
+
+    @Column(name = "total_distance")
+    private Double totalDistance; // 총 이동 거리 (km 단위 등)
+
+    @Column(name = "total_time")
+    private Integer totalTime; // 총 소요 시간 (초 또는 분 단위)
+
+    @Column(name = "total_score")
+    private Integer totalScore; // 파티 총 점수 (랭킹용)
 
     protected Party() {
     }
@@ -44,6 +56,7 @@ public class Party {
     public Party(String inviteCode, String name) {
         this.inviteCode = inviteCode;
         this.name = name;
+        this.leaderId = leaderId;
         this.createdAt = LocalDateTime.now();
         this.maxMembers = 6;
         this.status = PartyStatus.WAITING;
@@ -81,11 +94,16 @@ public class Party {
         this.startedAt = LocalDateTime.now();
     }
 
-    public void complete() {
+    public void complete(Double totalDistance, Integer totalTime, Integer totalScore) {
         if (this.status != PartyStatus.IN_PROGRESS) {
             throw new IllegalStateException("진행 중인 파티만 완료할 수 있습니다.");
         }
         this.status = PartyStatus.COMPLETED;
+        this.endedAt = LocalDateTime.now();
+
+        this.totalDistance = totalDistance;
+        this.totalTime = totalTime;
+        this.totalScore = totalScore;
     }
 
 
@@ -111,6 +129,22 @@ public class Party {
 
     public PartyStatus getStatus() {
         return status;
+    }
+
+    public LocalDateTime getEndedAt() {
+        return endedAt;
+    }
+
+    public Double getTotalDistance() {
+        return totalDistance;
+    }
+
+    public Integer getTotalTime() {
+        return totalTime;
+    }
+
+    public Integer getTotalScore() {
+        return totalScore;
     }
 
     public LocalDateTime getCreatedAt() {

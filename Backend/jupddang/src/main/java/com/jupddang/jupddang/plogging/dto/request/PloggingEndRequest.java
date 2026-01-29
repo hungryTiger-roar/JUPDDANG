@@ -9,5 +9,7 @@ public record PloggingEndRequest(
         Double distance,     // 이동 거리
         List<String> LineString, // 이동 경로 좌표
         List<String> trashImages, // 쓰레기 사진 URL
-        Integer endTime //시간 or
+
+        @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
+        private LocalDateTime endTime;
 ) {}

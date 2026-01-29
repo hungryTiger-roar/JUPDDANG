@@ -79,24 +79,33 @@ public class DataInitializer implements CommandLineRunner {
     }
     
     private void saveTrashcanData(String[] data) {
-        // CSV 형식에 맞게 파싱
-        // 예상 형식: latitude, longitude, address(optional)
+        // CSV 형식: latitude, longitude, address(optional), status(optional)
         
         Trashcan trashcan = new Trashcan();
         
-        // 필수 필드
+        // 필수 필드: 위도, 경도
         trashcan.setLatitude(Double.parseDouble(data[0].trim()));
         trashcan.setLongitude(Double.parseDouble(data[1].trim()));
         
-        // 주소 (있으면)
+        // 주소 (선택 - 3번째 컬럼)
         if (data.length > 2 && !data[2].trim().isEmpty()) {
             trashcan.setAddress(data[2].trim());
         }
         
-        // 기본 상태 설정
-        trashcan.setStatus(TrashcanStatus.ACTIVE);
+        // 상태 (선택 - 4번째 컬럼, 없으면 기본값 OFFICIAL)
+        if (data.length > 3 && !data[3].trim().isEmpty()) {
+            try {
+                trashcan.setStatus(TrashcanStatus.valueOf(data[3].trim().toUpperCase()));
+            } catch (IllegalArgumentException e) {
+                log.warn("잘못된 상태 값: {}. OFFICIAL로 설정합니다.", data[3]);
+                trashcan.setStatus(TrashcanStatus.OFFICIAL);
+            }
+        } else {
+            // CSV에서 가져온 데이터는 공공데이터이므로 OFFICIAL
+            trashcan.setStatus(TrashcanStatus.OFFICIAL);
+        }
         
-        // 검증 횟수 기본값 (엔티티에서 이미 0으로 초기화되지만 명시적으로)
+        // 검증 횟수 초기값
         trashcan.setVerificationCount(0);
         
         // 저장

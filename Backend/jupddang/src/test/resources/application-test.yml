@@ -10,33 +10,39 @@ spring:
   jpa:
     hibernate:
       ddl-auto: create-drop
-    show-sql: false       # [중요] 콘솔에 SQL 출력 끄기
+    show-sql: false
     properties:
       hibernate:
-        format_sql: false # SQL 포맷팅 끄기 (한 줄로 나오게 하거나 아예 안 보임)
+        format_sql: false
         dialect: org.hibernate.dialect.H2Dialect
 
   # 3. Redis 설정
   data:
     redis:
       host: localhost
-      port: 6379 # Embedded Redis 기본 포트
+      port: 6379
 
   # 4. [핵심] GCP 자동 설정 비활성화 (테스트 에러 방지)
   cloud:
     gcp:
       core:
-        enabled: false    # GCP Core 비활성화
+        enabled: false
       storage:
-        enabled: false    # GCP Storage 비활성화
+        enabled: false
       credentials:
-        location: classpath:non-existent.json # 더미 경로 설정 (혹시 모를 호출 대비)
+        location: classpath:non-existent.json
 
-# 5. 로깅 레벨 최적화
+# ✅ 5. JWT 설정 추가 (Security 테스트용)
+jwt:
+  secret: testSecretKeyMustBeAtLeast32BytesLongForHS256Algorithm
+  access-exp-min: 30
+  issuer: jupddang-test
+
+# 6. 로깅 레벨 최적화
 logging:
   level:
     root: INFO
-    com.jupddang: INFO                     # 작성한 시나리오 로그(log.info)는 출력
-    org.hibernate.SQL: OFF                 # 실제 쿼리문 로그 끄기
-    org.hibernate.type.descriptor.sql: OFF # 쿼리 파라미터 바인딩 로그 끄기
-    org.springframework.web: INFO          # 웹 관련 잡다한 DEBUG 로그 끄기
+    com.jupddang: INFO
+    org.hibernate.SQL: OFF
+    org.hibernate.type.descriptor.sql: OFF
+    org.springframework.web: INFO

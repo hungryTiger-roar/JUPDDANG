@@ -14,7 +14,7 @@ import java.util.List;
 import java.util.Optional;
 
 
-public interface PloggingRepository  extends JpaRepository<Plogging, String> {
+public interface PloggingRepository  extends JpaRepository<Plogging, Long> {
 
     // 1. 월간 랭킹 리스트 조회 (상위 N명)
     @Query("SELECT p.account.userId, p.account.nickname, p.account.profileImage, SUM(p.score) " +

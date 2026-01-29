@@ -13,5 +13,4 @@ public class AccountLoginRequest {
     @JsonAlias("id")
     private String userId;
     private String pw;
-
 }

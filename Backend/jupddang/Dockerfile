@@ -1,36 +1,37 @@
-# 1. Build Stage
-FROM eclipse-temurin:21-jdk-alpine as builder
-WORKDIR /build
+# ========================================================
+# 1. Build Stage (빌드 환경)
+# ========================================================
+# [수정] openjdk -> eclipse-temurin (Java 21 공식 권장 이미지)
+FROM eclipse-temurin:21-jdk AS builder
+WORKDIR /app
 
-# [필수] 윈도우 -> 리눅스 파일 변환 도구 설치
-RUN apk update && apk add --no-cache dos2unix
-
-# Wrapper 및 설정 복사
+# 1-1. Gradle 빌드에 필요한 파일만 먼저 복사 (캐시 활용)
 COPY gradlew .
 COPY gradle gradle
-COPY build.gradle settings.gradle .
+COPY build.gradle .
+COPY settings.gradle .
 
-# [핵심 해결책] 
-# 1. gradlew 파일의 줄바꿈을 리눅스용(LF)으로 강제 변환
-# 2. 실행 권한 부여
-RUN dos2unix gradlew && chmod +x gradlew
+# 1-2. gradlew 실행 권한 부여
+RUN chmod +x ./gradlew
 
-# 의존성 다운로드 (로그 레벨 높임)
-RUN ./gradlew dependencies --no-daemon --info
+# 1-3. 의존성 다운로드 (소스코드 복사 전에 수행하여 빌드 속도 향상)
+RUN ./gradlew dependencies --no-daemon
 
-# 소스 복사
-COPY src ./src
+# 1-4. 소스 코드 복사 및 빌드 수행
+COPY src src
+# 테스트 제외(-x test)하고 빌드하여 속도 향상
+RUN ./gradlew clean build -x test --no-daemon
 
-# [핵심 해결책] 빌드 실행 시 상세 로그 출력 (--info --stacktrace)
-# 이걸 넣어야 왜 롬복이 적용 안 되는지 '진짜 에러'가 나옵니다.
-RUN ./gradlew build -x test --no-daemon --info --stacktrace
-
-# 2. Run Stage
-FROM eclipse-temurin:21-jre-alpine
+# ========================================================
+# 2. Run Stage (실행 환경)
+# ========================================================
+# [수정] 실행 환경도 동일한 베이스 이미지 사용
+FROM eclipse-temurin:21-jdk
 WORKDIR /app
-ENV LANG=C.UTF-8 \
-    LC_ALL=C.UTF-8
+
+# 2-1. 빌드 스테이지에서 생성된 JAR 파일만 가져옴
+COPY --from=builder /app/build/libs/*.jar app.jar
+
+# 2-2. 실행 설정
 ENV TZ=Asia/Seoul
-RUN apk add --no-cache tzdata
-COPY --from=builder /build/build/libs/*.jar app.jar
-ENTRYPOINT ["java", "-Dfile.encoding=UTF-8", "-Dsun.jnu.encoding=UTF-8", "-jar", "/app/app.jar"]
+ENTRYPOINT ["java", "-Djava.security.egd=file:/dev/./urandom", "-Duser.timezone=Asia/Seoul", "-jar", "app.jar"]

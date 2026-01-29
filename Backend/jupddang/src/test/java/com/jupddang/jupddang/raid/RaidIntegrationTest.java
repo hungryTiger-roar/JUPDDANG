@@ -92,11 +92,11 @@ class RaidIntegrationTest {
         // 유저 생성
         user1 = accountRepository.save(Account.builder()
                 .userId("user1").email("u1@test.com").nickname("지존파")
-                .pw("pw").color("#FF0000").score(0).build());
+                .pw("pw").color("#FF0000").build());
 
         user2 = accountRepository.save(Account.builder()
                 .userId("user2").email("u2@test.com").nickname("환경지킴이")
-                .pw("pw").color("#00FF00").score(0).build());
+                .pw("pw").color("#00FF00").build());
 
         // [핵심] JWT 설정 호출
         setupJwtMock();
@@ -207,7 +207,7 @@ class RaidIntegrationTest {
                     .userId("attacker" + i)
                     .email("a" + i + "@test.com")
                     .nickname("용사" + i)
-                    .pw("pw").color("#000000").score(0)
+                    .pw("pw").color("#000000")
                     .build());
         }
 

@@ -1,6 +1,6 @@
 package com.jupddang.jupddang.config;
 
-import com.jupddang.jupddang.trashcan.domain.Trashcan;
+import com.jupddang.jupddang.trashcan.entity.Trashcan;
 import com.jupddang.jupddang.trashcan.repository.TrashcanRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

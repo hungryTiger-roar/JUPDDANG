@@ -343,7 +343,7 @@ class AccountIntegrationTest {
     @DisplayName("❌ 정보 조회: 존재하지 않는 userId로 조회 시 예외 발생")
     void getAccount_NotFound_ThrowsException() {
         // when & then
-        assertThatThrownBy(() -> accountService.getAccount("nonExistentUser"))
+        assertThatThrownBy(() -> accountService.getAccount("nonExistentUser", null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("사용자를 찾을 수 없습니다.");
     }
@@ -352,7 +352,7 @@ class AccountIntegrationTest {
     @DisplayName("✅ 정보 조회: 성공")
     void getAccount_Success() {
         // when
-        AccountResponse response = accountService.getAccount(savedAccount.getUserId());
+        AccountResponse response = accountService.getAccount("someUser", null);
 
         // then
         assertThat(response.getUserId()).isEqualTo("testUser");

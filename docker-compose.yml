@@ -2,61 +2,11 @@ version: '3.8'
 
 services:
   # ===========================
-  # [1] Infrastructure
-  # ===========================
-  nginx:
-    container_name: jupddang-nginx
-    image: nginx:latest
-    restart: always
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - /home/gitlab-runner/config/nginx/nginx.conf:/etc/nginx/nginx.conf
-      - /home/gitlab-runner/config/nginx/conf.d:/etc/nginx/conf.d
-    networks:
-      - jupddang-net
-    depends_on:
-      - backend-prod
-      - backend-dev
-
-  prometheus:
-    container_name: jupddang-prometheus
-    image: prom/prometheus
-    restart: always  
-    volumes:
-      - /home/gitlab-runner/config/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
-      - /home/gitlab-runner/data/prometheus:/prometheus  
-    networks:
-      - jupddang-net
-    ports:
-      - "127.0.0.1:9090:9090"
-
-  grafana:
-    container_name: jupddang-grafana
-    image: grafana/grafana
-    restart: always 
-    environment:
-      - GF_SERVER_ROOT_URL=http://localhost/monitor/
-      - GF_SERVER_SERVE_FROM_SUB_PATH=true
-      - GF_SECURITY_ADMIN_USER=admin
-      - GF_SECURITY_ADMIN_PASSWORD=admin
-    volumes:
-      - /home/gitlab-runner/data/grafana:/var/lib/grafana
-    networks:
-      - jupddang-net
-    ports:
-      - "127.0.0.1:3000:3000"
-
-  # ===========================
   # [2] Production Stack
   # ===========================
   backend-prod:
     container_name: jupddang-backend-prod
-    build:
-      context: .
-      dockerfile: Dockerfile
-    image: jupddang-backend:latest
+    image: jupddang-backend:prod
     env_file: .env.prod
     volumes:
       - ./gcp-credentials.json:/app/gcp-credentials.json
@@ -98,10 +48,7 @@ services:
   # ===========================
   backend-dev:
     container_name: jupddang-backend-dev
-    build:
-      context: .
-      dockerfile: Dockerfile
-    image: jupddang-backend:latest
+    image: jupddang-backend:dev
     env_file: .env.dev
     volumes:
       - ./gcp-credentials.json:/app/gcp-credentials.json
@@ -119,7 +66,6 @@ services:
     image: postgis/postgis:15-3.4
     restart: always
     env_file: .env.dev
-    command: postgres -c 'config_file=/etc/postgresql/postgresql.conf'
     environment:
       POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
     volumes:
@@ -140,6 +86,8 @@ services:
     ports:
       - "127.0.0.1:60004:6379"
 
+# [핵심 변경] 외부에서 생성한 'jupddang-network'를 가져와서 내부에서는 'jupddang-net'이라는 이름으로 씁니다.
 networks:
   jupddang-net:
     external: true
+    name: jupddang-network

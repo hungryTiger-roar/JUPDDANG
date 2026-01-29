@@ -1,6 +1,7 @@
 package com.jupddang.jupddang.sns.service;
 
 import com.jupddang.jupddang.common.infrastructure.storage.GcsImageService;
+import com.jupddang.jupddang.follow.repository.FollowRepository;
 import com.jupddang.jupddang.plogging.domain.event.PloggingCompletedEvent;
 import com.jupddang.jupddang.account.entity.Account;
 import com.jupddang.jupddang.account.repository.AccountRepository;
@@ -31,49 +32,35 @@ public class SnsService {
     private final CommentRepository commentRepository;
     private final GcsImageService gcsImageService;
     private final AccountRepository accountRepository;
+    private final FollowRepository followRepository;
 
     /**
-     * Plogging 완료 이벤트 처리 - 피드 생성
+     * [수정됨] Plogging 완료 이벤트 처리
+     * 이미 PloggingServiceImpl에서 업로드와 Post 생성을 마쳤으므로
+     * 여기서는 중복 로직을 제거하고 로그만 남기거나, 알림 전송 로직만 남깁니다.
      */
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handlePloggingCompleted(PloggingCompletedEvent event) {
-        log.info("PloggingCompletedEvent 수신 - ploggingId: {}", event.ploggingId());
+        // 중복 로직(업로드, 저장) 삭제함
+        log.info("PloggingCompletedEvent 수신 완료 (Post 생성은 앞단에서 처리됨) - ploggingId: {}", event.ploggingId());
 
-        try {
-            // 1. 이미지 3장 GCS 업로드
-            String beforeUrl = gcsImageService.uploadImage(
-                    event.beforeImage(), "before"
-            );
-            String afterUrl = gcsImageService.uploadImage(
-                    event.afterImage(), "after"
-            );
-            String mapUrl = gcsImageService.uploadImage(
-                    event.mapImage(), "map"
-            );
-
-            Account account = accountRepository.findByUserId(event.userId())
-                    .orElseThrow(() -> new IllegalArgumentException("해당 유저가 없습니다."));
-
-            // 2. Post(Feed) 생성
-            Post post = Post.builder()
-                    .account(account)
-                    .ploggingId(event.ploggingId())
-                    .beforeImageUrl(beforeUrl)
-                    .afterImageUrl(afterUrl)
-                    .mapImageUrl(mapUrl)
-                    .content("플로깅 " + event.occupiedGridCnt() + "칸 정복! 🎉")
-                    .build();
-
-            postRepository.save(post);
-
-            log.info("피드 생성 완료 - postId: {}", post.getPostId());
-
-        } catch (Exception e) {
-            log.error("피드 생성 실패 - ploggingId: {}", event.ploggingId(), e);
-            throw new RuntimeException("피드 생성에 실패했습니다", e);
-        }
     }
 
+    @Transactional(readOnly = true)
+    public List<PostResponseDto> getFollowFeed(Account loginUser) {
+        // 1. 내가 팔로우하는 대상들을 가져옴
+        List<Account> followingAccounts = followRepository.findAllByFollower(loginUser).stream()
+                .map(follow -> follow.getFollowing())
+                .collect(Collectors.toList());
+
+        // 2. (선택사항) 내 글도 피드에 포함하고 싶다면 나를 리스트에 추가
+        followingAccounts.add(loginUser);
+
+        // 3. 팔로잉 중인 유저들의 글만 조회
+        return postRepository.findAllByAccountInOrderByCreatedAtDesc(followingAccounts).stream()
+                .map(PostResponseDto::new)
+                .collect(Collectors.toList());
+    }
     // 전체 포스트 조회
     @Transactional
     public PostResponseDto createPost(PostCreateRequestDto request) {
@@ -154,6 +141,7 @@ public class SnsService {
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new IllegalArgumentException("게시글이 없습니다."));
 
+        // 삭제는 여기서 하는게 맞습니다 (Post가 삭제될 때 이미지도 지워야 하니까)
         gcsImageService.deleteImage(post.getBeforeImageUrl());
         gcsImageService.deleteImage(post.getAfterImageUrl());
         gcsImageService.deleteImage(post.getMapImageUrl());
@@ -191,4 +179,6 @@ public class SnsService {
 
         commentRepository.delete(comment);
     }
+
+
 }

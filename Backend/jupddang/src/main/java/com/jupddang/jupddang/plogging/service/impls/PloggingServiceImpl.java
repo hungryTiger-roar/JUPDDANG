@@ -121,7 +121,7 @@ public class PloggingServiceImpl implements PloggingService {
     @Override
     @Transactional
     public PloggingResultResponse endPlogging(String userId, PloggingEndRequest request,
-                                              MultipartFile before, MultipartFile after, MultipartFile map) {
+            MultipartFile before, MultipartFile after, MultipartFile map) {
 
         // 1. [수정됨] Account 조회 (getReferenceById는 프록시만 가져오므로 성능상 유리함)
         // userId는 이미 String이므로 변환 불필요
@@ -131,32 +131,34 @@ public class PloggingServiceImpl implements PloggingService {
         log.info("times : {}", request.endTime());
         log.info("content : {}", request.content());
 
-        // 2. [수정됨] Plogging 저장 (Account 객체 연결)
-        // Plogging 엔티티에 score 필드가 추가되었으므로 초기값을 설정합니다. (여기선 0, 필요시 계산 로직 추가)
-        Plogging savedPlogging = ploggingRepository.save(Plogging.builder()
-                .account(account)   // [핵심] .userId(Long) -> .account(Account) 변경
-                .distance(request.distance())
-                .times(request.times())
-                .score(0)           // score 필드 초기화 (int 기본값)
-                .build());
-
-        // 3. Redis 점령 목록 조회
+        // 2. 점령 그리드 조회 (점수 계산에 필요)
         Set<String> capturedGrids = redisRepository.getCapturedGrids(userId);
         int occupiedCount = capturedGrids.size();
 
-        // 4. RaidService 호출
+        // 3. 플로깅 점수 계산 (레이드 점수 제외)
+        int ploggingScore = calculatePloggingScore(request.distance(), request.times(), occupiedCount);
+
+        // 4. Plogging 저장 (계산된 점수 포함)
+        Plogging savedPlogging = ploggingRepository.save(Plogging.builder()
+                .account(account)
+                .distance(request.distance())
+                .times(request.times())
+                .score(ploggingScore) // ✅ 계산된 플로깅 점수 저장
+                .build());
+
+        // 5. 레이드 점수 계산 (별도 처리)
         int totalRaidScore = 0;
         if (!capturedGrids.isEmpty()) {
             totalRaidScore = raidService.applyRaidScore(userId, capturedGrids);
         }
 
-        // 5. GCS에 이미지 업로드
+        // 6. GCS에 이미지 업로드
         String folder = "plogging/" + userId + "/" + savedPlogging.getId();
         String beforeUrl = gcsImageService.uploadImage(before, folder);
         String afterUrl = gcsImageService.uploadImage(after, folder);
         String mapUrl = gcsImageService.uploadImage(map, folder);
 
-        // 6. Post 생성 및 저장
+        // 7. Post 생성 및 저장
         Post savedPost = postRepository.save(Post.builder()
                 .account(account)
                 .ploggingId(savedPlogging.getId())
@@ -167,30 +169,53 @@ public class PloggingServiceImpl implements PloggingService {
                 .likeCount(0)
                 .build());
 
-        // 7. 이벤트 발행 (알림 용도)
+        // 8. 이벤트 발행 (점수 정산 및 랭킹 업데이트용)
         PloggingCompletedEvent event = PloggingCompletedEvent.builder()
                 .ploggingId(savedPlogging.getId())
                 .userId(userId)
                 .occupiedGridCnt(occupiedCount)
                 .raidScore(totalRaidScore)
+                .ploggingScore(ploggingScore) // ✅ 플로깅 점수 추가
                 .build();
 
         eventPublisher.publishEvent(event);
 
-        // 8. Redis 정리
+        // 9. Redis 정리
         redisRepository.deleteUserState(userId);
 
-        log.info("플로깅 종료: userId={}, captured={}, raidScore={}", userId, occupiedCount, totalRaidScore);
+        log.info("플로깅 종료: userId={}, captured={}, ploggingScore={}, raidScore={}",
+                userId, occupiedCount, ploggingScore, totalRaidScore);
 
-        // 9. 응답 반환
+        // 10. 응답 반환
         return new PloggingResultResponse(
                 savedPlogging.getId(),
                 savedPost.getPostId(),
                 "종료되었습니다.",
                 request.distance(),
                 occupiedCount,
-                totalRaidScore
-        );
+                totalRaidScore);
+    }
+
+    /**
+     * 플로깅 점수 계산
+     * 공식: score = (distance * 10) + (times / 60) + (occupiedCount * 5)
+     * 
+     * @param distance      이동 거리 (km)
+     * @param times         소요 시간 (초)
+     * @param occupiedCount 점령한 그리드 수
+     * @return 계산된 플로깅 점수
+     */
+    private int calculatePloggingScore(Double distance, Integer times, int occupiedCount) {
+        int distanceScore = (distance != null) ? (int) (distance * 10) : 0;
+        int timeScore = (times != null) ? (times / 60) : 0;
+        int gridScore = occupiedCount * 5;
+
+        int totalScore = distanceScore + timeScore + gridScore;
+
+        log.debug("점수 계산: distance={}km({}점), times={}초({}점), grids={}개({}점) => 총 {}점",
+                distance, distanceScore, times, timeScore, occupiedCount, gridScore, totalScore);
+
+        return totalScore;
     }
 
     private void validateCoordinate(Double lat, Double lon) {

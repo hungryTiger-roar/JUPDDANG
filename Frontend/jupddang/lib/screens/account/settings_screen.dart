@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:jupddang/screens/account/splash_screen.dart';
 import 'package:pixelarticons/pixelarticons.dart';
 import 'profile_screen.dart';
 import 'edit_profile_screen.dart';
@@ -154,7 +155,7 @@ class SettingsScreen extends StatelessWidget {
                                 context,
                                 MaterialPageRoute(
                                   builder: (context) =>
-                                      const EditProfileScreen(),
+                                  const EditProfileScreen(),
                                 ),
                               );
                             },
@@ -209,8 +210,7 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 
-  Widget _settingTile(
-    BuildContext context, {
+  Widget _settingTile(BuildContext context, {
     required IconData icon,
     required String label,
     required Color color,
@@ -251,132 +251,171 @@ class SettingsScreen extends StatelessWidget {
   void _showComingSoon(BuildContext context, String feature) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1F1F1F),
-        shape: RoundedRectangleBorder(
-          side: const BorderSide(color: Colors.black, width: 3),
-        ),
-        title: const Text(
-          'Coming Soon',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900),
-        ),
-        content: Text(
-          '$feature 기능은 곧 추가될 예정입니다!',
-          style: const TextStyle(color: Colors.white70),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text(
-              'OK',
-              style: TextStyle(
-                color: Color(0xFF17C964),
-                fontWeight: FontWeight.bold,
-              ),
+      builder: (context) =>
+          AlertDialog(
+            backgroundColor: const Color(0xFF1F1F1F),
+            shape: RoundedRectangleBorder(
+              side: const BorderSide(color: Colors.black, width: 3),
             ),
+            title: const Text(
+              'Coming Soon',
+              style: TextStyle(
+                  color: Colors.white, fontWeight: FontWeight.w900),
+            ),
+            content: Text(
+              '$feature 기능은 곧 추가될 예정입니다!',
+              style: const TextStyle(color: Colors.white70),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text(
+                  'OK',
+                  style: TextStyle(
+                    color: Color(0xFF17C964),
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
     );
   }
 
   void _showAppInfo(BuildContext context) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1F1F1F),
-        shape: RoundedRectangleBorder(
-          side: const BorderSide(color: Colors.black, width: 3),
-        ),
-        title: const Text(
-          'App Info',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900),
-        ),
-        content: const Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'JupDDang',
+      builder: (context) =>
+          AlertDialog(
+            backgroundColor: const Color(0xFF1F1F1F),
+            shape: RoundedRectangleBorder(
+              side: const BorderSide(color: Colors.black, width: 3),
+            ),
+            title: const Text(
+              'App Info',
               style: TextStyle(
-                color: Colors.white,
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
+                  color: Colors.white, fontWeight: FontWeight.w900),
+            ),
+            content: const Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'JupDDang',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                SizedBox(height: 8),
+                Text('Version 1.0.0', style: TextStyle(color: Colors.white70)),
+                SizedBox(height: 16),
+                Text(
+                  '© 2026 JupDDang Team',
+                  style: TextStyle(color: Colors.white54, fontSize: 12),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text(
+                  'Close',
+                  style: TextStyle(
+                    color: Color(0xFF17C964),
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
-            ),
-            SizedBox(height: 8),
-            Text('Version 1.0.0', style: TextStyle(color: Colors.white70)),
-            SizedBox(height: 16),
-            Text(
-              '© 2026 JupDDang Team',
-              style: TextStyle(color: Colors.white54, fontSize: 12),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text(
-              'Close',
-              style: TextStyle(
-                color: Color(0xFF17C964),
-                fontWeight: FontWeight.bold,
-              ),
-            ),
+            ],
           ),
-        ],
-      ),
     );
   }
 
   void _showDeleteDialog(BuildContext context) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1F1F1F),
-        shape: RoundedRectangleBorder(
-          side: const BorderSide(color: Colors.black, width: 3),
-        ),
-        title: const Text(
-          'Account Deletion',
-          style: TextStyle(
-            color: Color(0xFFEF4444),
-            fontWeight: FontWeight.w900,
-          ),
-        ),
-        content: const Text(
-          '정말로 회원 탈퇴를 진행하시겠습니까?\n\n모든 데이터가 삭제되며 복구할 수 없습니다.',
-          style: TextStyle(color: Colors.white70),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text(
-              'Cancel',
-              style: TextStyle(
-                color: Colors.white70,
-                fontWeight: FontWeight.bold,
-              ),
+      builder: (context) =>
+          AlertDialog(
+            backgroundColor: const Color(0xFF1F1F1F),
+            shape: RoundedRectangleBorder(
+              side: const BorderSide(color: Colors.black, width: 3),
             ),
-          ),
-          TextButton(
-            onPressed: () {
-              // TODO: Implement account deletion
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('회원 탈퇴 기능은 곧 추가될 예정입니다.')),
-              );
-            },
-            child: const Text(
-              'Delete',
+            title: const Text(
+              'Account Deletion',
               style: TextStyle(
                 color: Color(0xFFEF4444),
-                fontWeight: FontWeight.bold,
+                fontWeight: FontWeight.w900,
               ),
             ),
+            content: const Text(
+              '정말로 회원 탈퇴를 진행하시겠습니까?\n\n모든 데이터가 삭제되며 복구할 수 없습니다.',
+              style: TextStyle(color: Colors.white70),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text(
+                  'Cancel',
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              TextButton(
+                onPressed: () async {
+                  final originalContext = context;
+                  Navigator.pop(context);
+
+                  showDialog(
+                    context: originalContext,
+                    barrierDismissible: false,
+                    builder: (dialogContext) =>
+                    const Center(
+                      child: CircularProgressIndicator(
+                          color: Color(0xFF17C964)),
+                    ),
+                  );
+
+                  final authService = AuthService();
+                  final success = await authService.deleteAccount();
+
+                  if (originalContext.mounted) {
+                    Navigator.of(originalContext).pop();
+                  }
+
+                  if (success) {
+                    if (originalContext.mounted) {
+                      Navigator.of(originalContext).pushAndRemoveUntil(
+                        MaterialPageRoute(
+                          builder: (context) => const SplashScreen(),
+                        ),
+                            (route) => false,
+                      );
+                    }
+                  } else {
+                    if (originalContext.mounted) {
+                      ScaffoldMessenger.of(originalContext).showSnackBar(
+                        const SnackBar(
+                          content: Text('회원 탈퇴에 실패했습니다. 다시 시도해주세요'),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                    }
+                  }
+                },
+                child: const Text(
+                  'Delete',
+                  style: TextStyle(
+                    color: Color(0xFFEF4444),
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
     );
   }
 }

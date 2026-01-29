@@ -17,20 +17,46 @@ class AuthService {
   static String? nickname;
 
   final Dio _dio =
-      Dio(
-          BaseOptions(
-            connectTimeout: const Duration(seconds: 10),
-            receiveTimeout: const Duration(seconds: 10),
-          ),
-        )
-        ..interceptors.add(
-          LogInterceptor(
-            requestBody: true,
-            responseBody: true,
-            requestHeader: false,
-            responseHeader: false,
-          ),
-        );
+  Dio(
+    BaseOptions(
+      connectTimeout: const Duration(seconds: 10),
+      receiveTimeout: const Duration(seconds: 10),
+    ),
+  )
+    ..interceptors.add(
+      LogInterceptor(
+        requestBody: true,
+        responseBody: true,
+        requestHeader: false,
+        responseHeader: false,
+      ),
+    );
+
+  //회원 탈퇴
+  Future<bool> deleteAccount() async {
+    try {
+      final response = await _dio.delete(
+        '$accountBase/delete',
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $accessToken',
+          },
+        ),
+      );
+
+      if (response.statusCode == 200) {
+        accessToken = null;
+        userId = null;
+        nickname = null;
+        return true;
+      }
+
+      return false;
+    } catch (e) {
+      print('회원 탈퇴 실패: $e');
+      return false;
+    }
+  }
 
   Future<dynamic> login(String id, String pw) async {
     try {

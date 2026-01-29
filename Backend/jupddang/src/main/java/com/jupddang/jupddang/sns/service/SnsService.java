@@ -6,6 +6,7 @@ import com.jupddang.jupddang.plogging.domain.event.PloggingCompletedEvent;
 import com.jupddang.jupddang.account.entity.Account;
 import com.jupddang.jupddang.account.repository.AccountRepository;
 import com.jupddang.jupddang.sns.dto.CommentRequestDto;
+import com.jupddang.jupddang.sns.dto.MyCommentResponseDto;
 import com.jupddang.jupddang.sns.dto.PostCreateRequest;
 import com.jupddang.jupddang.sns.dto.PostResponseDto;
 import com.jupddang.jupddang.sns.entity.Comment;
@@ -160,4 +161,15 @@ public class SnsService {
         return null;
     }
 
+    public List<PostResponseDto> getMyPosts(String userId) {
+        return postRepository.findByAccount_UserId(userId).stream()
+                .map(PostResponseDto::new)
+                .collect(Collectors.toList());
+    }
+
+    public List<MyCommentResponseDto> getMyComments(String userId) {
+        return commentRepository.findByAccount_UserId(userId).stream()
+                .map(MyCommentResponseDto::new)
+                .collect(Collectors.toList());
+    }
 }

@@ -85,6 +85,7 @@ public class PloggingServiceImpl implements PloggingService {
             log.error("Location processing error", e);
             throw new PloggingException(PloggingErrorCode.INTERNAL_SERVER_ERROR);
         }
+
     }
 
     private boolean handleOccupationAttempt(String userId, String h3Index, Long partyId) {
@@ -128,7 +129,7 @@ public class PloggingServiceImpl implements PloggingService {
         Account account = accountRepository.getReferenceById(userId);
 
         log.info("distance : {}", request.distance());
-        log.info("times : {}", request.endTime());
+//        log.info("times : {}", request.endTime());
         log.info("content : {}", request.content());
 
         // 2. 점령 그리드 조회 (점수 계산에 필요)

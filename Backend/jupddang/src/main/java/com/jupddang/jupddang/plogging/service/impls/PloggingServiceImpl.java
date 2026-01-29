@@ -85,6 +85,7 @@ public class PloggingServiceImpl implements PloggingService {
             log.error("Location processing error", e);
             throw new PloggingException(PloggingErrorCode.INTERNAL_SERVER_ERROR);
         }
+
     }
 
     private boolean handleOccupationAttempt(String userId, String h3Index, Long partyId) {
@@ -128,7 +129,7 @@ public class PloggingServiceImpl implements PloggingService {
         Account account = accountRepository.getReferenceById(userId);
 
         log.info("distance : {}", request.distance());
-        log.info("times : {}", request.endTime());
+//        log.info("times : {}", request.endTime());
         log.info("content : {}", request.content());
 
         // 2. [수정됨] Plogging 저장 (Account 객체 연결)

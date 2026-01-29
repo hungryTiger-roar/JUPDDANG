@@ -1,12 +1,17 @@
 package com.jupddang.jupddang.sns.controller;
 
+import com.jupddang.jupddang.account.entity.Account;
 import com.jupddang.jupddang.sns.dto.CommentRequestDto;
+import com.jupddang.jupddang.sns.dto.MyCommentResponseDto;
 import com.jupddang.jupddang.sns.dto.PostResponseDto;
+import com.jupddang.jupddang.sns.entity.Comment;
+import com.jupddang.jupddang.sns.entity.Post;
 import com.jupddang.jupddang.sns.service.SnsService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -69,4 +74,21 @@ public class SnsController {
         snsService.deleteComment(postId, commentId);
         return ResponseEntity.ok("댓글 삭제 성공");
     }
+
+    // 내가 작성한 피드 확인
+    @GetMapping("myposts")
+    @Operation(summary = "내가 작성한 피드 확인")
+    public ResponseEntity<List<PostResponseDto>> getMyPosts(@AuthenticationPrincipal Account account) {
+        List<PostResponseDto> getPosts = snsService.getMyPosts(account.getUserId());
+        return ResponseEntity.ok(getPosts);
+    }
+
+    // 내가 작성한 댓글 확인
+    @GetMapping("mycomments")
+    @Operation(summary = "내가 작성한 댓글 확인")
+    public ResponseEntity<List<MyCommentResponseDto>> getMyComments(@AuthenticationPrincipal Account account) {
+        List<MyCommentResponseDto> getPosts = snsService.getMyComments(account.getUserId());
+        return ResponseEntity.ok(getPosts);
+    }
+
 }

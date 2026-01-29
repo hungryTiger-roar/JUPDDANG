@@ -20,8 +20,11 @@ public class AccountResponse {
     private long totalScore;
     private String tier;
     private LocalDateTime createdAt;
+    private boolean isFollowing;
+    private long followerCount;
+    private long followingCount;
 
-    public static AccountResponse from(Account account) {
+    public static AccountResponse from(Account account, boolean isFollowing, long followers, long followings) {
         return new AccountResponse(
                 account.getUserId(),
                 account.getEmail(),
@@ -30,7 +33,14 @@ public class AccountResponse {
                 account.getIntro(),
                 account.getTotalScore(),
                 account.getTier(),
-                account.getCreatedAt()
+                account.getCreatedAt(),
+                isFollowing,
+                followers,
+                followings
         );
+    }
+
+    public static AccountResponse from(Account account) {
+        return from(account, false, 0, 0);
     }
 }

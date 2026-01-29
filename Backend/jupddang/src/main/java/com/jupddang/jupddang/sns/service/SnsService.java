@@ -1,6 +1,7 @@
 package com.jupddang.jupddang.sns.service;
 
 import com.jupddang.jupddang.common.infrastructure.storage.GcsImageService;
+import com.jupddang.jupddang.follow.repository.FollowRepository;
 import com.jupddang.jupddang.plogging.domain.event.PloggingCompletedEvent;
 import com.jupddang.jupddang.account.entity.Account;
 import com.jupddang.jupddang.account.repository.AccountRepository;
@@ -28,6 +29,7 @@ public class SnsService {
     private final CommentRepository commentRepository;
     private final GcsImageService gcsImageService;
     private final AccountRepository accountRepository;
+    private final FollowRepository followRepository;
 
     /**
      * [수정됨] Plogging 완료 이벤트 처리
@@ -39,11 +41,23 @@ public class SnsService {
         // 중복 로직(업로드, 저장) 삭제함
         log.info("PloggingCompletedEvent 수신 완료 (Post 생성은 앞단에서 처리됨) - ploggingId: {}", event.ploggingId());
 
-        // 여기에 나중에 '알림 보내기' 같은 로직만 추가하시면 됩니다.
     }
 
-    // ... 아래 나머지 메서드(조회, 좋아요, 댓글 등)는 그대로 유지 ...
+    @Transactional(readOnly = true)
+    public List<PostResponseDto> getFollowFeed(Account loginUser) {
+        // 1. 내가 팔로우하는 대상들을 가져옴
+        List<Account> followingAccounts = followRepository.findAllByFollower(loginUser).stream()
+                .map(follow -> follow.getFollowing())
+                .collect(Collectors.toList());
 
+        // 2. (선택사항) 내 글도 피드에 포함하고 싶다면 나를 리스트에 추가
+        followingAccounts.add(loginUser);
+
+        // 3. 팔로잉 중인 유저들의 글만 조회
+        return postRepository.findAllByAccountInOrderByCreatedAtDesc(followingAccounts).stream()
+                .map(PostResponseDto::new)
+                .collect(Collectors.toList());
+    }
     // 전체 포스트 조회
     @Transactional(readOnly = true)
     public List<PostResponseDto> getAllPost() {
@@ -104,4 +118,6 @@ public class SnsService {
 
         commentRepository.delete(comment);
     }
+
+
 }

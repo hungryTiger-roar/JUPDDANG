@@ -16,6 +16,7 @@ import '../../widgets/pixel_character.dart';
 import '../../models/party_models.dart';
 import '../../services/party_service.dart';
 import '../../services/party_socket_service.dart';
+import 'package:gal/gal.dart';
 
 enum PloggingPhase { idle, plogging, paused, summary }
 
@@ -396,6 +397,32 @@ class _MapScreenState extends State<MapScreen> {
     _mapController.move(_mapController.camera.center, newZoom);
   }
 
+  Future<void> _takePhoto() async {
+    try {
+      final XFile? photo = await _picker.pickImage(
+        source: ImageSource.camera,
+        imageQuality: 85,
+      );
+
+      if (photo == null) return;
+
+      // Gal 패키지로 간단하게 저장
+      await Gal.putImage(photo.path);
+
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('사진이 갤러리에 저장되었습니다')));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('사진 저장 실패: $e')));
+      }
+    }
+  }
+
   void _startOccupationTimer() {
     _stopOccupationTimer();
     _occupyProgress = 0.0;
@@ -736,6 +763,10 @@ class _MapScreenState extends State<MapScreen> {
                   "my_location",
                   _centerToCurrentLocation,
                 ),
+                if (_isPlogging) ...[
+                  const SizedBox(height: 24),
+                  _manualMoveButton(Pixel.camera, "take_photo", _takePhoto),
+                ],
               ],
             ),
           ),

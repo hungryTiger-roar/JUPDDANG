@@ -25,15 +25,14 @@ public class PloggingController {
      * 플로깅 종료 + 피드 생성
      * POST /api/v1/plogging/end
      */
-    @PostMapping(value ="/end", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PostMapping(value = "/end", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(summary = "플로깅 종료 및 결과 생성")
     public ResponseEntity<PloggingResultResponse> endPlogging(
-            @RequestPart("data") String dataJson,
+            @RequestPart("data") @io.swagger.v3.oas.annotations.Parameter(description = "플로깅 종료 데이터 (JSON)", example = "{\"ploggingId\":1,\"content\":\"플로깅 완료!\",\"distance\":2.5,\"LineString\":[\"37.5,127.0\",\"37.51,127.01\"],\"trashImages\":[\"https://example.com/trash1.jpg\"],\"endTime\":3600}") String dataJson,
             @RequestPart("beforeImage") MultipartFile beforeImage,
             @RequestPart("afterImage") MultipartFile afterImage,
             @RequestPart("mapImage") MultipartFile mapImage,
-            @RequestHeader("userId") String userId
-    ) throws Exception {
+            @RequestHeader("userId") String userId) throws Exception {
         // JSON String을 객체로 변환
         PloggingEndRequest request = objectMapper.readValue(dataJson, PloggingEndRequest.class);
 
@@ -43,8 +42,7 @@ public class PloggingController {
                 request,
                 beforeImage,
                 afterImage,
-                mapImage
-        );
+                mapImage);
 
         // 결과 반환
         return ResponseEntity.ok(response);

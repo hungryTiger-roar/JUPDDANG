@@ -60,6 +60,29 @@ public class RankingTestController {
         return ResponseEntity.ok("랭킹 테스트 데이터 생성 완료! (testuser1~5)");
     }
 
+    @GetMapping("/clear") // ★ 청소용 주소: /api/ranking/test/clear
+    @Transactional
+    @Operation(summary = "테스트 데이터 삭제", description = "생성된 테스트 유저와 Redis 랭킹 데이터를 모두 삭제합니다.")
+    public ResponseEntity<String> clearTestData() {
+        // 1. Redis 랭킹 데이터 삭제 (Init 때 썼던 키랑 똑같은 걸 지워야 해요!)
+        String totalKey = "ranking:total";
+        String monthlyKey = String.format("ranking:monthly:%04d%02d",
+                LocalDate.now().getYear(), LocalDate.now().getMonthValue());
+
+        rankingRedisRepository.deleteRankingKey(totalKey);
+        rankingRedisRepository.deleteRankingKey(monthlyKey);
+
+        // 2. DB 테스트 계정 삭제 (testuser1 ~ testuser5)
+        List<String> userIds = List.of("testuser1", "testuser2", "testuser3", "testuser4", "testuser5");
+        for (String userId : userIds) {
+            Optional<Account> account = accountRepository.findByUserId(userId);
+            // 계정이 있으면 삭제!
+            account.ifPresent(accountRepository::delete);
+        }
+
+        return ResponseEntity.ok("🧹 청소 끝! 테스트 데이터(Redis + DB)가 싹 삭제되었습니다.");
+    }
+
     private void setupTestAccounts() {
         List<String> userIds = List.of("testuser1", "testuser2", "testuser3", "testuser4", "testuser5");
         for (String userId : userIds) {

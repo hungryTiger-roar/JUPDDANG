@@ -1,6 +1,7 @@
 package com.jupddang.jupddang.config;
 
 import com.jupddang.jupddang.trashcan.entity.Trashcan;
+import com.jupddang.jupddang.trashcan.entity.TrashcanStatus;
 import com.jupddang.jupddang.trashcan.repository.TrashcanRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -51,11 +52,20 @@ public class DataInitializer implements CommandLineRunner {
                         continue; // 헤더 스킵
                     }
                     
+                    // 빈 줄 스킵
+                    if (line.trim().isEmpty()) {
+                        continue;
+                    }
+                    
                     // CSV 파싱 및 저장
                     String[] data = line.split(",");
-                    if (data.length >= 3) {  // 최소 필드 개수 확인
-                        saveTrashcanData(data);
-                        loadedCount++;
+                    if (data.length >= 2) {  // 최소 위도, 경도 필요
+                        try {
+                            saveTrashcanData(data);
+                            loadedCount++;
+                        } catch (Exception e) {
+                            log.warn("CSV 데이터 파싱 실패 (줄: {}): {}", line, e.getMessage());
+                        }
                     }
                 }
             }
@@ -69,15 +79,27 @@ public class DataInitializer implements CommandLineRunner {
     }
     
     private void saveTrashcanData(String[] data) {
-        // CSV 형식에 맞게 수정 (예시)
-        // data[0] = name, data[1] = latitude, data[2] = longitude 등
-        Trashcan trashcan = Trashcan.builder()
-            .name(data[0])
-            .latitude(Double.parseDouble(data[1]))
-            .longitude(Double.parseDouble(data[2]))
-            // 추가 필드 매핑
-            .build();
+        // CSV 형식에 맞게 파싱
+        // 예상 형식: latitude, longitude, address(optional)
         
+        Trashcan trashcan = new Trashcan();
+        
+        // 필수 필드
+        trashcan.setLatitude(Double.parseDouble(data[0].trim()));
+        trashcan.setLongitude(Double.parseDouble(data[1].trim()));
+        
+        // 주소 (있으면)
+        if (data.length > 2 && !data[2].trim().isEmpty()) {
+            trashcan.setAddress(data[2].trim());
+        }
+        
+        // 기본 상태 설정
+        trashcan.setStatus(TrashcanStatus.ACTIVE);
+        
+        // 검증 횟수 기본값 (엔티티에서 이미 0으로 초기화되지만 명시적으로)
+        trashcan.setVerificationCount(0);
+        
+        // 저장
         trashcanRepository.save(trashcan);
     }
 }

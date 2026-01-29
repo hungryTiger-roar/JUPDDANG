@@ -43,6 +43,7 @@ dependencies:
   pixelarticons: ^0.4.0
   geocoding: ^4.0.0
   rive: ^0.13.10
+  stomp_dart_client: ^3.0.1
 
 dev_dependencies:
   flutter_test:

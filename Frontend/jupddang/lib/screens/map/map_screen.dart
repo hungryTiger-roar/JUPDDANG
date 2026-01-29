@@ -13,11 +13,15 @@ import '../../services/auth_service.dart';
 import '../../models/hexagon.dart';
 import '../../widgets/pixel_button.dart';
 import '../../widgets/pixel_character.dart';
+import '../../models/party_models.dart';
+import '../../services/party_service.dart';
+import '../../services/party_socket_service.dart';
 
 enum PloggingPhase { idle, plogging, paused, summary }
 
 class MapScreen extends StatefulWidget {
-  const MapScreen({super.key});
+  final int? partyId;
+  const MapScreen({super.key, this.partyId});
 
   @override
   State<MapScreen> createState() => _MapScreenState();
@@ -32,6 +36,12 @@ class _MapScreenState extends State<MapScreen> {
   bool _isInitialCenterSet = false;
   StreamSubscription<Position>? _positionStream;
   Timer? _debounceTimer;
+
+  // 파티 연동을 위한 서비스
+  final PartySocketService _socketService = PartySocketService();
+  final PartyService _partyService = PartyService();
+  Party? _party;
+  Timer? _partyPollTimer; // REST API 폴링 타이머
 
   String? _currentH3Index;
   Timer? _stayTimer;
@@ -74,10 +84,103 @@ class _MapScreenState extends State<MapScreen> {
   void initState() {
     super.initState();
     _initLocation();
+
+    // 파티 정보 로드 및 웹소켓 연결
+    if (widget.partyId != null) {
+      _loadPartyInfo();
+
+      // 웹소켓에서 상태 변화만 감지 (활동 데이터는 더 이상 사용하지 않음)
+
+      // 파티 종료 실시간 감지
+      _socketService.onStatusUpdated = (status) {
+        if (!mounted) return;
+        if (status == 'COMPLETED' && _phase != PloggingPhase.summary) {
+          _finishPlogging();
+        } else if (status == 'IN_PROGRESS' && _phase == PloggingPhase.idle) {
+          _startPlogging();
+        }
+      };
+
+      _socketService.connect(widget.partyId!);
+
+      // [REST API 폴링] 웹소켓이 실패해도 2초마다 방장의 활동 데이터 가져오기
+      _partyPollTimer = Timer.periodic(const Duration(seconds: 2), (_) {
+        _pollPartyData();
+      });
+    }
+  }
+
+  /// REST API로 파티 상태 폴링 (시작/종료 감지)
+  Future<void> _pollPartyData() async {
+    if (!mounted || widget.partyId == null) return;
+
+    try {
+      final party = await _partyService.getPartyDetail(widget.partyId!);
+      if (!mounted) return;
+
+      setState(() => _party = party);
+
+      // 파티원인 경우 상태 변화 감지
+      if (!(party.isCurrentUserLeader)) {
+        // 1. 파티 전체 상태로 확인
+        if (party.status == 'IN_PROGRESS' && _phase == PloggingPhase.idle) {
+          _startPlogging();
+        } else if (party.status == 'COMPLETED' &&
+            _phase != PloggingPhase.summary) {
+          _finishPlogging();
+        }
+
+        // 2. 팀장의 활동 상태로도 확인 (백업)
+        if (_phase == PloggingPhase.plogging && party.status == 'IN_PROGRESS') {
+          try {
+            final activities = await _partyService.getActivityStatus(
+              widget.partyId!,
+            );
+            final leaderActivity = activities.firstWhere(
+              (a) => a.userId == party.leaderId,
+              orElse: () => activities.isNotEmpty
+                  ? activities.first
+                  : PartyActivity(
+                      userId: '',
+                      totalDistance: 0,
+                      elapsedTime: 0,
+                      isCompleted: false,
+                    ),
+            );
+            // 팀장이 완료 상태이면 파티원도 종료
+            if (leaderActivity.isCompleted && _phase != PloggingPhase.summary) {
+              _finishPlogging();
+            }
+          } catch (e) {
+            // 활동 조회 실패 무시
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint("Party poll error: $e");
+    }
+  }
+
+  Future<void> _loadPartyInfo() async {
+    try {
+      final p = await _partyService.getPartyDetail(widget.partyId!);
+      if (!mounted) return;
+
+      setState(() => _party = p);
+
+      // 파티원인 경우 대기 - 상태는 폴링으로 제어됨
+      // 초기 로드 시에는 시작하지 않음 (폴링에서 상태 변화 감지)
+    } catch (e) {
+      debugPrint("Party load error: $e");
+    }
   }
 
   @override
   void dispose() {
+    _partyPollTimer?.cancel();
+    if (widget.partyId != null) {
+      _socketService.disconnect();
+    }
     _positionStream?.cancel();
     _debounceTimer?.cancel();
     _stayTimer?.cancel();
@@ -145,6 +248,21 @@ class _MapScreenState extends State<MapScreen> {
       final distance = const Distance().distance(_currentPosition!, newPos);
       _totalDistance += distance;
       _pathPoints.add(newPos);
+
+      // 파티장인 경우 데이터 실시간 전송 (웹소켓으로만)
+      if (widget.partyId != null && (_party?.isCurrentUserLeader ?? false)) {
+        final activity = PartyActivity(
+          userId: AuthService.userId ?? 'Unknown',
+          totalDistance: _totalDistance,
+          elapsedTime: _sessionStopwatch.elapsed.inSeconds,
+          isCompleted: false,
+          currentLatitude: newPos.latitude,
+          currentLongitude: newPos.longitude,
+          occupyProgress: _occupyProgress,
+          currentH3Index: _currentH3Index,
+        );
+        _socketService.sendActivity(widget.partyId!, activity);
+      }
     }
 
     _currentPosition = newPos;
@@ -173,12 +291,13 @@ class _MapScreenState extends State<MapScreen> {
       _phase == PloggingPhase.plogging || _phase == PloggingPhase.paused;
 
   void _startPlogging() {
+    // 파티원도 자기 위치 기반으로 플로깅 진행 (시작/종료만 동기화)
     setState(() {
       _phase = PloggingPhase.plogging;
-      _showCustomizer = false; // Close palette if open
+      _showCustomizer = false;
       _sessionStopwatch.start();
       _totalDistance = 0.0;
-      _pathPoints = [_currentPosition!];
+      _pathPoints = _currentPosition != null ? [_currentPosition!] : [];
       _coinsGained = 0;
       _descriptionController.clear();
       _startAddress = "Fetching address...";
@@ -234,6 +353,15 @@ class _MapScreenState extends State<MapScreen> {
       _statsTimer?.cancel();
       _stopOccupationTimer();
     });
+
+    // 파티원인 경우만 자동으로 메인으로 이동 (팀장은 summary에서 이미지 업로드 후 저장)
+    if (widget.partyId != null && !(_party?.isCurrentUserLeader ?? false)) {
+      Future.delayed(const Duration(seconds: 2), () {
+        if (mounted) {
+          Navigator.of(context).popUntil((route) => route.isFirst);
+        }
+      });
+    }
   }
 
   void _resetPlogging() {
@@ -274,6 +402,22 @@ class _MapScreenState extends State<MapScreen> {
     _stayTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (!mounted) return;
       _occupyProgress += (1.0 / 60.0);
+
+      // 파티장인 경우 진행도 실시간 공유 (웹소켓으로만)
+      if (widget.partyId != null && (_party?.isCurrentUserLeader ?? false)) {
+        final activity = PartyActivity(
+          userId: AuthService.userId ?? 'Unknown',
+          totalDistance: _totalDistance,
+          elapsedTime: _sessionStopwatch.elapsed.inSeconds,
+          isCompleted: false,
+          currentLatitude: _currentPosition?.latitude,
+          currentLongitude: _currentPosition?.longitude,
+          occupyProgress: _occupyProgress,
+          currentH3Index: _currentH3Index,
+        );
+        _socketService.sendActivity(widget.partyId!, activity);
+      }
+
       if (_occupyProgress >= 1.0) {
         _occupyProgress = 1.0;
         _stopOccupationTimer();
@@ -319,9 +463,14 @@ class _MapScreenState extends State<MapScreen> {
 
   Future<void> _updateHexagons(LatLngBounds bounds) async {
     if (!mounted) return;
-    // Check if bounds are valid (avoiding empty bounds crash)
-    if (bounds.southWest.latitude == 0 && bounds.northEast.latitude == 0)
+
+    // Bounds가 유효한지 체크 (크래시 방지)
+    try {
+      if (bounds.southWest.latitude == 0 && bounds.northEast.latitude == 0)
+        return;
+    } catch (e) {
       return;
+    }
 
     final List<String> h3Indices = _h3Service.getHexagonsInBounds(
       bounds.southWest,
@@ -355,22 +504,26 @@ class _MapScreenState extends State<MapScreen> {
           }
 
           Color fillColor = baseColor;
-          if (model.h3Index == _currentH3Index && _occupyProgress > 0) {
+
+          // 점령 중인 칸 강조 (자기 데이터 사용)
+          String? targetH3Index = _currentH3Index;
+          double targetProgress = _occupyProgress;
+
+          if (model.h3Index == targetH3Index && targetProgress > 0) {
             // While occupying, fade from the unowned color to the SELECTED palette color
             final targetColor = _selectedGridColor
                 .withOpacity(_gridOpacity * 1.5)
                 .withAlpha((_gridOpacity * 1.5 * 255).toInt().clamp(0, 255));
             fillColor =
-                Color.lerp(fillColor, targetColor, _occupyProgress) ??
-                fillColor;
+                Color.lerp(fillColor, targetColor, targetProgress) ?? fillColor;
           }
           return Polygon(
             points: points,
             color: fillColor,
-            borderColor: model.h3Index == _currentH3Index
+            borderColor: model.h3Index == targetH3Index
                 ? Colors.white.withOpacity(0.8)
                 : Colors.black.withOpacity(0.4 * _gridOpacity),
-            borderStrokeWidth: model.h3Index == _currentH3Index ? 3.0 : 2.0,
+            borderStrokeWidth: model.h3Index == targetH3Index ? 3.0 : 2.0,
           );
         })
         .whereType<Polygon>()
@@ -395,7 +548,11 @@ class _MapScreenState extends State<MapScreen> {
           maxZoom: 19.0,
           onPositionChanged: _onMapPositionChanged,
           onMapReady: () {
-            _updateHexagons(_mapController.camera.visibleBounds);
+            Future.delayed(const Duration(milliseconds: 500), () {
+              if (mounted) {
+                _updateHexagons(_mapController.camera.visibleBounds);
+              }
+            });
           },
           interactionOptions: const InteractionOptions(
             flags: InteractiveFlag.all,
@@ -409,7 +566,9 @@ class _MapScreenState extends State<MapScreen> {
             PolylineLayer(
               polylines: [
                 Polyline(
-                  points: _pathPoints,
+                  points: _pathPoints.isEmpty
+                      ? [const LatLng(0, 0), const LatLng(0, 0)]
+                      : _pathPoints,
                   color: _selectedGridColor.withOpacity(0.6),
                   strokeWidth: 5.0,
                   borderColor: Colors.white,
@@ -424,6 +583,7 @@ class _MapScreenState extends State<MapScreen> {
           if (_currentPosition != null)
             MarkerLayer(
               markers: [
+                // 내 마커
                 Marker(
                   point: _currentPosition!,
                   width: 48,
@@ -581,17 +741,19 @@ class _MapScreenState extends State<MapScreen> {
           ),
 
           // Contextual Controls (Start/Pause/Resume/Stop)
-          Positioned(
-            bottom: 120,
-            left: 20,
-            right: 20,
-            child: Center(
-              child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 300),
-                child: _buildPloggingControls(),
+          // 파티인 경우 방장에게만 제어 버튼 표시
+          if (widget.partyId == null || (_party?.isCurrentUserLeader ?? false))
+            Positioned(
+              bottom: 120,
+              left: 20,
+              right: 20,
+              child: Center(
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 300),
+                  child: _buildPloggingControls(),
+                ),
               ),
             ),
-          ),
 
           // Summary Overlay
           if (_phase == PloggingPhase.summary) _buildSummaryOverlay(),

@@ -4,6 +4,7 @@ import 'package:pixelarticons/pixelarticons.dart';
 import '../../models/party_models.dart';
 import '../../services/party_service.dart';
 import '../../services/auth_service.dart';
+import '../../services/party_socket_service.dart';
 import '../../widgets/pixel_character.dart';
 
 class PartyPloggingScreen extends StatefulWidget {
@@ -17,11 +18,12 @@ class PartyPloggingScreen extends StatefulWidget {
 
 class _PartyPloggingScreenState extends State<PartyPloggingScreen> {
   final PartyService _partyService = PartyService();
+  final PartySocketService _socketService = PartySocketService();
 
   Party? _party;
   List<PartyActivity> _activities = [];
   bool _loading = true;
-  Timer? _pollTimer;
+  // Timer? _pollTimer; // 웹소켓 사용으로 제거
 
   // 방장의 활동 정보
   PartyActivity? get _leaderActivity {
@@ -43,15 +45,22 @@ class _PartyPloggingScreenState extends State<PartyPloggingScreen> {
   void initState() {
     super.initState();
     _loadPartyInfo();
-    // 1초마다 활동 상태 갱신 (실시간 동기화)
-    _pollTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      _loadActivities();
-    });
+
+    // 웹소켓 연결 및 콜백 설정
+    _socketService.onActivitiesUpdated = (activities) {
+      if (mounted) {
+        setState(() {
+          _activities = activities;
+          _loading = false;
+        });
+      }
+    };
+    _socketService.connect(widget.partyId);
   }
 
   @override
   void dispose() {
-    _pollTimer?.cancel();
+    _socketService.disconnect();
     super.dispose();
   }
 

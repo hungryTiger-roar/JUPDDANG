@@ -1,11 +1,12 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:dio/dio.dart';
 import '../models/party_models.dart';
 import 'auth_service.dart';
 
 class PartyService {
-  static const String apiBase = 'https://i14d208.p.ssafy.io/dev-api';
-  static const String partyBase = '$apiBase/api/party';
+  static const String apiBase = 'https://i14d208.p.ssafy.io/dev-api/api';
+  static const String partyBase = '$apiBase/party';
 
   final Dio _dio = Dio(
     BaseOptions(
@@ -111,6 +112,57 @@ class PartyService {
     } catch (e) {
       print('Get Activity Status Error: $e');
       rethrow;
+    }
+  }
+
+  /// 개별 활동 완료 (팀장용 - 이미지 포함)
+  Future<void> completeActivity({
+    required int partyId,
+    required double distance,
+    required int trashCount,
+    required String description,
+    required File beforeImage,
+    required File afterImage,
+    required File mapImage,
+  }) async {
+    try {
+      final formData = FormData.fromMap({
+        'data': jsonEncode({
+          'distance': distance,
+          'trashCount': trashCount,
+          'description': description,
+        }),
+        'beforeImage': await MultipartFile.fromFile(beforeImage.path),
+        'afterImage': await MultipartFile.fromFile(afterImage.path),
+        'mapImage': await MultipartFile.fromFile(mapImage.path),
+      });
+
+      await _dio.post(
+        '$partyBase/$partyId/activities/complete',
+        data: formData,
+        options: Options(
+          headers: _authHeaders(),
+          contentType: 'multipart/form-data',
+        ),
+      );
+    } catch (e) {
+      print('Complete Activity Error: $e');
+      rethrow;
+    }
+  }
+
+  /// 간단한 활동 완료 (이미지 없이 - 테스트용)
+  Future<void> completeActivitySimple(int partyId) async {
+    try {
+      // 백엔드에 간단한 종료 API가 없으므로, 상태 변경을 위해 활동 조회 API를 호출
+      // 실제로는 백엔드에 종료 API가 필요함
+      await _dio.get(
+        '$partyBase/$partyId/activities',
+        options: Options(headers: _authHeaders()),
+      );
+    } catch (e) {
+      print('Complete Activity Simple Error: $e');
+      // 에러 무시 (최선의 노력)
     }
   }
 }

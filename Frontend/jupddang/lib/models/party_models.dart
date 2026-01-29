@@ -83,6 +83,8 @@ class PartyActivity {
   final double totalDistance;
   final int elapsedTime; // seconds
   final bool isCompleted;
+  final double? occupyProgress; // 점령 진행도 (0.0 ~ 1.0)
+  final String? currentH3Index; // 현재 점령 중인 H3 인덱스
 
   PartyActivity({
     required this.userId,
@@ -91,6 +93,8 @@ class PartyActivity {
     required this.totalDistance,
     required this.elapsedTime,
     required this.isCompleted,
+    this.occupyProgress,
+    this.currentH3Index,
   });
 
   factory PartyActivity.fromJson(Map<String, dynamic> json) {
@@ -101,6 +105,21 @@ class PartyActivity {
       totalDistance: (json['totalDistance'] ?? 0).toDouble(),
       elapsedTime: json['elapsedTime'] ?? 0,
       isCompleted: json['isCompleted'] ?? false,
+      occupyProgress: (json['occupyProgress'] ?? 0.0).toDouble(),
+      currentH3Index: json['currentH3Index']?.toString(),
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'userId': userId,
+      'currentLatitude': currentLatitude,
+      'currentLongitude': currentLongitude,
+      'totalDistance': totalDistance,
+      'elapsedTime': elapsedTime,
+      'isCompleted': isCompleted,
+      'occupyProgress': occupyProgress,
+      'currentH3Index': currentH3Index,
+    };
   }
 }

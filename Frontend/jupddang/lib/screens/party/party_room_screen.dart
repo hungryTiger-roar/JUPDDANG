@@ -5,9 +5,10 @@ import 'package:pixelarticons/pixelarticons.dart';
 import '../../models/party_models.dart';
 import '../../services/party_service.dart';
 import '../../services/auth_service.dart';
+import '../../services/party_socket_service.dart';
 import '../../widgets/pixel_button.dart';
 import '../../widgets/pixel_character.dart';
-import 'party_plogging_screen.dart';
+import '../map/map_screen.dart';
 
 class PartyRoomScreen extends StatefulWidget {
   final int partyId;
@@ -21,6 +22,8 @@ class PartyRoomScreen extends StatefulWidget {
 class _PartyRoomScreenState extends State<PartyRoomScreen> {
   final PartyService _partyService = PartyService();
 
+  final PartySocketService _socketService = PartySocketService();
+
   Party? _party;
   bool _loading = true;
   bool _starting = false;
@@ -30,7 +33,23 @@ class _PartyRoomScreenState extends State<PartyRoomScreen> {
   void initState() {
     super.initState();
     _loadPartyDetail();
-    // 2초마다 파티 정보 갱신
+
+    // 웹소켓 연결 및 시작 감지 콜백 설정
+    _socketService.onStatusUpdated = (status) {
+      if (status == 'IN_PROGRESS' && mounted) {
+        _pollTimer?.cancel();
+        _socketService.disconnect();
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => MapScreen(partyId: widget.partyId),
+          ),
+        );
+      }
+    };
+    _socketService.connect(widget.partyId);
+
+    // 2초마다 파티 정보 갱신 (백업 폴링)
     _pollTimer = Timer.periodic(const Duration(seconds: 2), (_) {
       _loadPartyDetail(silent: true);
     });
@@ -39,6 +58,7 @@ class _PartyRoomScreenState extends State<PartyRoomScreen> {
   @override
   void dispose() {
     _pollTimer?.cancel();
+    _socketService.disconnect();
     super.dispose();
   }
 
@@ -60,8 +80,7 @@ class _PartyRoomScreenState extends State<PartyRoomScreen> {
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
-              builder: (context) =>
-                  PartyPloggingScreen(partyId: widget.partyId),
+              builder: (context) => MapScreen(partyId: widget.partyId),
             ),
           );
         }
@@ -87,7 +106,7 @@ class _PartyRoomScreenState extends State<PartyRoomScreen> {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (context) => PartyPloggingScreen(partyId: widget.partyId),
+            builder: (context) => MapScreen(partyId: widget.partyId),
           ),
         );
       }

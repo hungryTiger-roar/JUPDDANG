@@ -7,6 +7,7 @@ import com.jupddang.jupddang.account.entity.Account;
 import com.jupddang.jupddang.account.repository.AccountRepository;
 import com.jupddang.jupddang.sns.dto.CommentRequestDto;
 import com.jupddang.jupddang.sns.dto.MyCommentResponseDto;
+import com.jupddang.jupddang.sns.dto.PostCreateRequest;
 import com.jupddang.jupddang.sns.dto.PostResponseDto;
 import com.jupddang.jupddang.sns.entity.Comment;
 import com.jupddang.jupddang.sns.entity.Post;
@@ -18,6 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -81,7 +83,6 @@ public class SnsService {
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new IllegalArgumentException("게시글이 없습니다."));
 
-        // 삭제는 여기서 하는게 맞습니다 (Post가 삭제될 때 이미지도 지워야 하니까)
         gcsImageService.deleteImage(post.getBeforeImageUrl());
         gcsImageService.deleteImage(post.getAfterImageUrl());
         gcsImageService.deleteImage(post.getMapImageUrl());
@@ -120,6 +121,45 @@ public class SnsService {
         commentRepository.delete(comment);
     }
 
+    /**
+     * 일반 게시글 작성 (플로깅 데이터 없음)
+     */
+    @Transactional
+    public Long createPost(Account account, PostCreateRequest request,
+                           MultipartFile beforeImage, MultipartFile afterImage, MultipartFile mapImage) {
+
+        String beforeUrl = uploadImageIfPresent(beforeImage);
+        String afterUrl = uploadImageIfPresent(afterImage);
+        String mapUrl = uploadImageIfPresent(mapImage);
+
+        Post post = Post.builder()
+                .account(account)
+                .content(request.getContent())
+                .beforeImageUrl(beforeUrl)
+                .afterImageUrl(afterUrl)
+                .mapImageUrl(mapUrl)
+                .ploggingId(null)
+                .build();
+
+        Post savedPost = postRepository.save(post);
+        return savedPost.getPostId();
+    }
+
+    /**
+     * 이미지 null 체크 및 업로드 헬퍼 메서드
+     * GcsImageService를 사용하여 실제 이미지를 업로드합니다.
+     */
+    private String uploadImageIfPresent(MultipartFile image) {
+        if (image != null && !image.isEmpty()) {
+            try {
+                return gcsImageService.uploadImage(image, "sns");
+            } catch (Exception e) {
+                log.error("SNS 이미지 업로드 실패: {}", e.getMessage());
+                throw new RuntimeException("이미지 업로드에 실패했습니다.", e);
+            }
+        }
+        return null;
+    }
 
     public List<PostResponseDto> getMyPosts(String userId) {
         return postRepository.findByAccount_UserId(userId).stream()

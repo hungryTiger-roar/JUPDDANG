@@ -1,8 +1,15 @@
 package com.jupddang.jupddang.sns.controller;
 
+<<<<<<< Backend/jupddang/src/main/java/com/jupddang/jupddang/sns/controller/SnsController.java
 import com.jupddang.jupddang.account.entity.Account;
 import com.jupddang.jupddang.sns.dto.CommentRequestDto;
 import com.jupddang.jupddang.sns.dto.MyCommentResponseDto;
+=======
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.jupddang.jupddang.sns.dto.CommentRequestDto;
+import com.jupddang.jupddang.sns.dto.PostCreateRequest;
+>>>>>>> Backend/jupddang/src/main/java/com/jupddang/jupddang/sns/controller/SnsController.java
 import com.jupddang.jupddang.sns.dto.PostResponseDto;
 import com.jupddang.jupddang.sns.entity.Comment;
 import com.jupddang.jupddang.sns.entity.Post;
@@ -10,9 +17,11 @@ import com.jupddang.jupddang.sns.service.SnsService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -23,6 +32,7 @@ import java.util.List;
 public class SnsController {
 
     private final SnsService snsService;
+    private final ObjectMapper objectMapper;
 
     // 전체 포스트 조회
     @GetMapping("/all")
@@ -91,4 +101,30 @@ public class SnsController {
         return ResponseEntity.ok(getPosts);
     }
 
+    /**
+     * 일반 게시글 작성 (Before, After, Map 이미지 포함)
+     * POST /api/posts
+     */
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "일반 게시글 작성", description = "플로깅 없이 사진(Before, After, Map)과 글로 게시글을 작성합니다.")
+    public ResponseEntity<String> createPost(
+            @RequestPart("data") String dataJson,
+            @RequestPart(value = "beforeImage", required = false) MultipartFile beforeImage,
+            @RequestPart(value = "afterImage", required = false) MultipartFile afterImage,
+            @RequestPart(value = "mapImage", required = false) MultipartFile mapImage,
+            @io.swagger.v3.oas.annotations.Parameter(hidden = true)
+            @org.springframework.security.core.annotation.AuthenticationPrincipal
+            com.jupddang.jupddang.account.entity.Account loginUser
+    ) throws Exception {
+
+        // 1. JSON String을 DTO로 변환
+        PostCreateRequest request = objectMapper.readValue(dataJson, PostCreateRequest.class);
+
+        // 2. 서비스 호출 (이미지들을 전달)
+        // [주의] SnsService에 createPost 메서드가 없으면 여기서 계속 에러가 납니다.
+        Long postId = snsService.createPost(loginUser, request, beforeImage, afterImage, mapImage);
+
+        return ResponseEntity.ok("게시글 작성 완료: " + postId);
+    }
+    
 }

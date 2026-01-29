@@ -8,9 +8,16 @@ class AuthService {
   // For now, let's assume we are testing on emulator or web.
   // Note: Web deals with localhost differently.
 
-  static const String apiBase = 'https://i14d208.p.ssafy.io/dev-api';
-  static const String accountBase = '$apiBase/api/account';
-  static const String postsBase = '$apiBase/api/posts';
+  // 서버 접속용
+  // static const String apiBase = 'https://i14d208.p.ssafy.io/dev-api'; //서버
+  // static const String accountBase = '$apiBase/api/account'; //서버
+  // static const String postsBase = '$apiBase/api/posts'; //서버
+
+  // 로컬 (본인 로컬 진행 요망)
+  // static const String apiBase = 'http://10.195.208.203:8080/api';
+  static const String accountBase = '$apiBase/account';
+  static const String postsBase = '$apiBase/posts';
+
 
   static String? accessToken;
   static String? userId;
@@ -302,31 +309,80 @@ class AuthService {
   }
 
   // 내 프로필 업데이트 - PATCH /api/account/myprofile
+  // Future<Map<String, dynamic>> updateMyProfile(
+  //   Map<String, dynamic> updates,
+  //   dynamic imageFile,
+  // ) async {
+  //   try {
+  //     final headers = _authHeaders();
+  //
+  //     // multipart/form-data로 전송
+  //     final formData = FormData.fromMap({
+  //       'data': MultipartFile.fromString(
+  //         jsonEncode(updates),
+  //         contentType: MediaType('application', 'json'),
+  //       ),
+  //       if (imageFile != null)
+  //         'image': await MultipartFile.fromFile(imageFile.path),
+  //     });
+  //
+  //     final response = await _dio.patch(
+  //       '$accountBase/myprofile',
+  //       data: formData,
+  //       options: Options(headers: headers),
+  //     );
+  //     return response.data as Map<String, dynamic>;
+  //   } catch (e) {
+  //     print('Update My Profile Error: $e');
+  //     rethrow;
+  //   }
+  // }
+
+// AuthService.dart 수정
   Future<Map<String, dynamic>> updateMyProfile(
-    Map<String, dynamic> updates,
-    dynamic imageFile,
-  ) async {
+      Map<String, dynamic> updates,
+      dynamic imageFile,
+      ) async {
     try {
       final headers = _authHeaders();
+      final formDataMap = <String, dynamic>{};
 
-      // multipart/form-data로 전송
-      final formData = FormData.fromMap({
-        'data': MultipartFile.fromString(
-          jsonEncode(updates),
-          contentType: MediaType('application', 'json'),
-        ),
-        if (imageFile != null)
-          'image': await MultipartFile.fromFile(imageFile.path),
-      });
+      // ⚠️ 수정 포인트 1: data 파트의 형식을 더 엄격하게 지정
+      // 서버가 시나리오 4에서 요구하는 형식을 정확히 맞추기 위해 'data'라는 키로 JSON을 보냅니다.
+      formDataMap['data'] = MultipartFile.fromString(
+        jsonEncode(updates),
+        contentType: MediaType('application', 'json'),
+      );
+
+      // ⚠️ 수정 포인트 2: 이미지 키값 및 파일명 처리
+      if (imageFile != null) {
+        String path = imageFile.path;
+        String fileName = path.split('/').last;
+
+        formDataMap['image'] = await MultipartFile.fromFile(
+          path,
+          filename: fileName,
+          contentType: MediaType('image', fileName.endsWith('png') ? 'png' : 'jpeg'),
+        );
+      }
+
+      final formData = FormData.fromMap(formDataMap);
 
       final response = await _dio.patch(
         '$accountBase/myprofile',
         data: formData,
-        options: Options(headers: headers),
+        options: Options(
+          headers: headers,
+          // ⚠️ 수정 포인트 3: 컨텐트 타입을 명시적으로 지정
+          contentType: 'multipart/form-data',
+        ),
       );
+
       return response.data as Map<String, dynamic>;
     } catch (e) {
-      print('Update My Profile Error: $e');
+      if (e is DioException) {
+        print('서버 응답 상세: ${e.response?.data}');
+      }
       rethrow;
     }
   }

@@ -4,6 +4,7 @@ import com.jupddang.jupddang.account.dto.*;
 import com.jupddang.jupddang.account.entity.Account;
 import com.jupddang.jupddang.account.repository.AccountRepository;
 import com.jupddang.jupddang.common.infrastructure.storage.GcsImageService;
+import com.jupddang.jupddang.follow.repository.FollowRepository;
 import com.jupddang.jupddang.security.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -27,6 +28,7 @@ public class AccountService {
     private final BCryptPasswordEncoder bCryptPasswordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
     private final GcsImageService gcsImageService;
+    private final FollowRepository followRepository;
 
     @Transactional
     public AccountResponse createAccount(AccountCreateRequest request) {
@@ -86,11 +88,21 @@ public class AccountService {
     }
 
     @Transactional(readOnly = true)
-    public AccountResponse getAccount(String userId) {
-        Account account = accountRepository.findByUserId(userId)
+    public AccountResponse getAccount(String targetUserId, Account loginUser) {
+        Account target = accountRepository.findByUserId(targetUserId)
                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
 
-        return AccountResponse.from(account);
+        // 1. 내가 이 사람을 팔로우 중인지 확인
+        boolean isFollowing = false;
+        if (loginUser != null) {
+            isFollowing = followRepository.findByFollowerAndFollowing(loginUser, target).isPresent();
+        }
+
+        // 2. 팔로워/팔로잉 숫자 카운트
+        long followerCount = followRepository.countByFollowing(target);
+        long followingCount = followRepository.countByFollower(target);
+
+        return AccountResponse.from(target, isFollowing, followerCount, followingCount);
     }
 
     @Transactional

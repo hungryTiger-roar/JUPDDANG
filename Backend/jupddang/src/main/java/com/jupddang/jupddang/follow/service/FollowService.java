@@ -3,10 +3,13 @@ package com.jupddang.jupddang.follow.service;
 import com.jupddang.jupddang.account.entity.Account;
 import com.jupddang.jupddang.account.repository.AccountRepository;
 import com.jupddang.jupddang.follow.domain.Follow;
+import com.jupddang.jupddang.follow.dto.FollowResponse;
 import com.jupddang.jupddang.follow.repository.FollowRepository;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -40,5 +43,27 @@ public class FollowService {
                             .build());
                     return "followed";
                 });
+    }
+
+    @Transactional(readOnly = true)
+    public List<FollowResponse> getFollowings(String userId) {
+        Account account = accountRepository.findByUserId(userId)
+                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
+
+        // 내가 팔로잉하는 목록 (Follow 엔티티의 following 대상들을 추출)
+        return followRepository.findAllByFollower(account).stream()
+                .map(follow -> FollowResponse.from(follow.getFollowing()))
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<FollowResponse> getFollowers(String userId) {
+        Account account = accountRepository.findByUserId(userId)
+                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
+
+        // 나를 팔로우하는 목록 (Follow 엔티티의 follower들을 추출)
+        return followRepository.findAllByFollowing(account).stream()
+                .map(follow -> FollowResponse.from(follow.getFollower()))
+                .toList();
     }
 }

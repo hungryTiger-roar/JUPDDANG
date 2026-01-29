@@ -20,10 +20,22 @@ public class SnsController {
     private final SnsService snsService;
 
     // 전체 포스트 조회
-    @GetMapping
+    @GetMapping("/all")
     @Operation(summary = "전체 게시글 조회")
     public ResponseEntity<List<PostResponseDto>> getAllPosts() {
         return ResponseEntity.ok(snsService.getAllPost());
+    }
+
+    @GetMapping
+    @Operation(summary = "팔로잉 피드 조회", description = "내가 팔로우하는 유저들과 내 게시글을 최신순으로 조회합니다.")
+    public ResponseEntity<List<PostResponseDto>> getFollowFeed(
+            // Swagger에서 Account 객체가 노출되지 않게 숨김 처리하며 인증 객체를 주입받습니다.
+            @io.swagger.v3.oas.annotations.Parameter(hidden = true)
+            @org.springframework.security.core.annotation.AuthenticationPrincipal
+            com.jupddang.jupddang.account.entity.Account loginUser
+    ) {
+        // [수정] 서비스의 신규 메서드 호출
+        return ResponseEntity.ok(snsService.getFollowFeed(loginUser));
     }
 
     // 포스트 좋아요

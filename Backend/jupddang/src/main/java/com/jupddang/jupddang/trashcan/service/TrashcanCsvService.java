@@ -25,6 +25,7 @@ public class TrashcanCsvService {
 
     /**
      * CSV 파일을 읽어서 DB에 저장
+     * 
      * @param filePath CSV 파일 경로
      */
     @Transactional
@@ -43,13 +44,18 @@ public class TrashcanCsvService {
                 String[] line = allLines.get(i);
 
                 try {
-                    // CSV 컬럼 매핑
-                    // D(3): 소재지도로명주소
-                    // F(5): 위도
-                    // G(6): 경도
+                    // CSV 컬럼 매핑 (실제 공공데이터 포털 형식)
+                    // 0: 쓰레기통명
+                    // 1: 시도명
+                    // 2: 시군구명
+                    // 3: 도로명주소
+                    // 4: 지번주소
+                    // 5: (빈 컬럼 - 설치장소)
+                    // 6: 위도
+                    // 7: 경도
                     String address = line.length > 3 ? line[3] : "";
-                    String latitudeStr = line.length > 5 ? line[5] : "";
-                    String longitudeStr = line.length > 6 ? line[6] : "";
+                    String latitudeStr = line.length > 6 ? line[6] : "";
+                    String longitudeStr = line.length > 7 ? line[7] : "";
 
                     // 위도/경도 파싱
                     Double latitude = parseDouble(latitudeStr);

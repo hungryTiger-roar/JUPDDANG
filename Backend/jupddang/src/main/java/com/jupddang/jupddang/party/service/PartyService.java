@@ -1,5 +1,7 @@
 package com.jupddang.jupddang.party.service;
 
+import com.jupddang.jupddang.account.entity.Account;
+import com.jupddang.jupddang.account.repository.AccountRepository;
 import com.jupddang.jupddang.party.domain.Party;
 import com.jupddang.jupddang.party.domain.PartyMember;
 import com.jupddang.jupddang.party.domain.PartyStatus;
@@ -44,19 +46,22 @@ public class PartyService {
     private static final int CODE_LENGTH = 6;
     private static final int MAX_CODE_VALUE = 1_000_000;
     private static final int MAX_ATTEMPTS = 10;
+    private final AccountRepository accountRepository;
 
     public PartyService(PartyRepository partyRepository,
                         PartyMemberRepository partyMemberRepository,
                         PartyActivityRepository partyActivityRepository,
                         PloggingService ploggingService,
                         PloggingRepository ploggingRepository,
-                        PostRepository postRepository) {
+                        PostRepository postRepository,
+                        AccountRepository accountRepository) {
         this.partyRepository = partyRepository;
         this.partyMemberRepository = partyMemberRepository;
         this.partyActivityRepository = partyActivityRepository;
         this.ploggingService = ploggingService;
         this.ploggingRepository = ploggingRepository;
         this.postRepository = postRepository;
+        this.accountRepository = accountRepository;
     }
 
     // 초대 코드 생성
@@ -257,6 +262,9 @@ public class PartyService {
             MultipartFile mapImage
     ) {
         // 1. 활동 조회
+        Party party = partyRepository.findById(partyId)
+                .orElseThrow(() -> new IllegalArgumentException("파티를 찾을 수 없습니다."));
+
         PartyActivity activity = partyActivityRepository
                 .findByPartyIdAndUserId(partyId, userId)
                 .orElseThrow(() -> new IllegalArgumentException("활동을 찾을 수 없습니다."));
@@ -276,6 +284,19 @@ public class PartyService {
 
         // 5. PartyActivity 완료 처리
         activity.complete(plogging);
+
+        if (party.isLeader(userId)) {
+            party.complete(request.distance(), request.times(), request.score());
+
+            List<PartyMember> members = partyMemberRepository.findByPartyId(partyId);
+
+            for (PartyMember member : members) {
+                Account account = accountRepository.findById(member.getUserId())
+                        .orElseThrow(() -> new IllegalStateException("사용자 정보를 찾을 수 없습니다: " + member.getUserId()));
+
+                account.addActivityStats(request.score(), request.distance(), request.times());
+            }
+        }
 
         // 6. 응답 생성
         return new ActivityCompleteResponse(

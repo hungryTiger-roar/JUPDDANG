@@ -47,6 +47,12 @@ public class Account implements UserDetails {
     @Column(name = "total_score", nullable = false)
     private Long totalScore;
 
+    @Column(name = "total_distance", nullable = false)
+    private Double totalDistance;
+
+    @Column(name = "total_time", nullable = false)
+    private Integer totalTime;
+
     @Column(nullable = false)
     private String tier;
 
@@ -71,6 +77,8 @@ public class Account implements UserDetails {
         this.color = (color != null && !color.isBlank()) ? color : "#111111";
 
         this.totalScore = 0L;
+        this.totalDistance = 0.0;
+        this.totalTime = 0;
         this.tier = PloggingLevel.BRONZE_5.getLabel();
         this.profileImage = "https://storage.googleapis.com/jupddang-images/default/default-profile.png";
         this.intro = "안녕하세요!";
@@ -96,6 +104,15 @@ public class Account implements UserDetails {
         return List.of(new SimpleGrantedAuthority("ROLE_USER"));
     }
 
+    public void addActivityStats(int score, Double distance, Integer time) {
+        this.totalScore += score;
+        this.totalDistance += distance;
+        this.totalTime += time;
+
+        // 점수가 올랐으니 티어 재산정
+        this.tier = PloggingLevel.findByScore(this.totalScore).getLabel();
+    }
+
     @Override
     public String getPassword() { return this.pw; }
 
@@ -113,4 +130,6 @@ public class Account implements UserDetails {
 
     @Override
     public boolean isEnabled() { return true; }
+
+
 }

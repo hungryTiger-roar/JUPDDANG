@@ -136,7 +136,7 @@ public class PloggingServiceImpl implements PloggingService {
         Plogging savedPlogging = ploggingRepository.save(Plogging.builder()
                 .account(account)   // [핵심] .userId(Long) -> .account(Account) 변경
                 .distance(request.distance())
-                .times(request.endTime())
+                .times(request.times())
                 .score(0)           // score 필드 초기화 (int 기본값)
                 .build());
 

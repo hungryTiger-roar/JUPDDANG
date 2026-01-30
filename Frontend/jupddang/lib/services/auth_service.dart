@@ -1,14 +1,13 @@
 import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:http_parser/http_parser.dart';
-import '../models/party_models.dart';
+import '../models/plogging_models.dart';
 
 class AuthService {
   // Android Emulator: 10.0.2.2
   // Real Device: Use your PC's IP address (e.g., 192.168.x.x) or deploy to server
   // For now, let's assume we are testing on emulator or web.
   // Note: Web deals with localhost differently.
-
   static const String apiBase = 'https://i14d208.p.ssafy.io/dev-api/api';
   static const String accountBase = '$apiBase/account';
   static const String postsBase = '$apiBase/posts';

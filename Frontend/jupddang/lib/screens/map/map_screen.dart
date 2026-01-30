@@ -16,6 +16,7 @@ import '../../models/hexagon.dart';
 import '../../widgets/pixel_button.dart';
 import '../../widgets/pixel_character.dart';
 import '../../models/party_models.dart';
+import '../../models/plogging_models.dart';
 import '../../services/party_service.dart';
 import '../../services/party_socket_service.dart';
 import 'package:gal/gal.dart';
@@ -352,7 +353,7 @@ class _MapScreenState extends State<MapScreen> {
     });
   }
 
-  void _finishPlogging() {
+  Future<void> _finishPlogging() async {
     setState(() {
       _phase = PloggingPhase.summary;
       _sessionStopwatch.stop();
@@ -638,9 +639,14 @@ class _MapScreenState extends State<MapScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: FlutterMap(
-        mapController: _mapController,
-        options: MapOptions(
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: RepaintBoundary(
+              key: _mapRepaintKey,
+              child: FlutterMap(
+                mapController: _mapController,
+                options: MapOptions(
           initialCenter: const LatLng(37.5665, 126.9780),
           initialZoom: 16.0,
           minZoom: 5.0,
@@ -657,11 +663,11 @@ class _MapScreenState extends State<MapScreen> {
             flags: InteractiveFlag.all,
           ),
         ),
-        children: [
+                children: [
           TileLayer(
             urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
           ),
-          if (_pathPoints.isNotEmpty)
+          if (_pathPoints.isNotEmpty && !_isCapturingMap)
             PolylineLayer(
               polylines: [
                 Polyline(
@@ -693,7 +699,7 @@ class _MapScreenState extends State<MapScreen> {
                     isMoving: _phase == PloggingPhase.plogging,
                   ),
                 ),
-                if (_currentH3Index != null)
+                if (_currentH3Index != null && !_isCapturingMap)
                   Marker(
                     point: _currentPosition!,
                     width: 120,
@@ -734,6 +740,9 @@ class _MapScreenState extends State<MapScreen> {
                     ),
                   ),
               ],
+            ),
+                ],
+              ),
             ),
           ),
           if (_isPlogging)
@@ -1084,7 +1093,7 @@ class _MapScreenState extends State<MapScreen> {
                     text: "PUBLISH RECORD",
                     isGreen: false,
                     color: _selectedGridColor,
-                    onPressed: () {
+                    onPressed: () async {
                       if (AuthService.accessToken == null) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
@@ -1095,15 +1104,11 @@ class _MapScreenState extends State<MapScreen> {
                         return;
                       }
 
-                      final route = _pathPoints
-                          .map((p) => '${p.latitude},${p.longitude}')
-                          .toList();
                       final request = PloggingEndRequest(
-                        distance: _totalDistance.round(),
+                        distance: _totalDistance / 1000.0,
                         content: _descriptionController.text.trim(),
-                        endTime: _sessionStopwatch.elapsed.inSeconds,
-                        lineString: route,
-                        trashImages: const [],
+                        times: _sessionStopwatch.elapsed.inSeconds,
+                        endTime: _formatEndTime(DateTime.now()),
                       );
                       final mapPath = await _captureMapImage();
                       if (mapPath != null) {
@@ -1200,6 +1205,11 @@ class _MapScreenState extends State<MapScreen> {
     String mm = twoDigits(d.inMinutes.remainder(60));
     String ss = twoDigits(d.inSeconds.remainder(60));
     return "$mm:$ss";
+  }
+
+  String _formatEndTime(DateTime dt) {
+    final iso = dt.toIso8601String();
+    return iso.split('.').first;
   }
 
   Widget _buildMapCustomizer() {

@@ -357,6 +357,57 @@ class AuthService {
     }
   }
 
+  //화현: 팔로잉 목록 조회 - GET /api/follow/followings/{userId}
+  Future<List<dynamic>> getFollowings(String userId) async {
+    try {
+      final response = await _dio.get(
+        '$apiBase/follow/followings/$userId',
+        options: Options(headers: _authHeaders()),
+      );
+      if (response.data is List) {
+        return response.data as List<dynamic>;
+      }
+      return [];
+    } catch (e) {
+      print('Get Followings Error: $e');
+      return [];
+    }
+  }
+
+  //화현: 팔로워 목록 조회 - GET /api/follow/followers/{userId}
+  Future<List<dynamic>> getFollowers(String userId) async {
+    try {
+      final response = await _dio.get(
+        '$apiBase/follow/followers/$userId',
+        options: Options(headers: _authHeaders()),
+      );
+      if (response.data is List) {
+        return response.data as List<dynamic>;
+      }
+      return [];
+    } catch (e) {
+      print('Get Followers Error: $e');
+      return [];
+    }
+  }
+
+  //화현: 팔로우/언팔로우 토글 - POST /api/follow/{targetId}
+  Future<bool> toggleFollow(String targetId) async {
+    try {
+      final response = await _dio.post(
+        '$apiBase/follow/$targetId',
+        options: Options(headers: _authHeaders()),
+      );
+      if (response.statusCode == 200) {
+        return true;
+      }
+      return false;
+    } catch (e) {
+      print('Toggle Follow Error: $e');
+      return false;
+    }
+  }
+
   Map<String, String> _authHeaders() {
     if (accessToken == null || accessToken!.isEmpty) {
       return {};

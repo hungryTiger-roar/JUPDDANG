@@ -3,6 +3,7 @@ import '../../services/auth_service.dart';
 import '../../widgets/pixel_character.dart';
 import 'package:pixelarticons/pixelarticons.dart';
 import '../../models/community_models.dart';
+import 'follow_list_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   final String userId;
@@ -64,12 +65,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
       // 받은 좋아요 수 (작성한 게시글의 likeCount 합계)
       int totalLikes = userPosts.fold(0, (sum, post) => sum + post.likeCount);
 
+      //화현: 팔로워/팔로잉 수 가져오기
+      final followings = await _authService.getFollowings(widget.userId);
+      final followers = await _authService.getFollowers(widget.userId);
+
       setState(() {
         _stats['posts'] = userPosts.length;
         _stats['comments'] = commentCount;
         _stats['likes'] = totalLikes;
-        _stats['followers'] = 0; // TODO: 팔로우 기능 추가 시
-        _stats['following'] = 0; // TODO: 팔로우 기능 추가 시
+        _stats['followers'] = followers.length;
+        _stats['following'] = followings.length;
         _loading = false;
       });
     } catch (e) {
@@ -251,13 +256,40 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
           const SizedBox(height: 20),
 
+          //화현: 팔로워/팔로잉 클릭 시 목록 화면으로 이동
           // Follow Row
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              _statBadge('FOLLOWERS', _stats['followers']!),
+              GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => FollowListScreen(
+                        userId: widget.userId,
+                        initialTab: 1, // 팔로워 탭으로 시작
+                      ),
+                    ),
+                  );
+                },
+                child: _statBadge('FOLLOWERS', _stats['followers']!),
+              ),
               Container(width: 2, height: 30, color: Colors.white24),
-              _statBadge('FOLLOWING', _stats['following']!),
+              GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => FollowListScreen(
+                        userId: widget.userId,
+                        initialTab: 0, // 팔로잉 탭으로 시작
+                      ),
+                    ),
+                  );
+                },
+                child: _statBadge('FOLLOWING', _stats['following']!),
+              ),
             ],
           ),
         ],

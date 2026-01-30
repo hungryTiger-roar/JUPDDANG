@@ -16,7 +16,11 @@ import '../../widgets/pixel_character.dart';
 import '../../models/party_models.dart';
 import '../../services/party_service.dart';
 import '../../services/party_socket_service.dart';
+import '../../models/raid_models.dart';
+import '../../services/raid_service.dart';
+import 'boss_detail_screen.dart';
 import 'package:gal/gal.dart';
+import '../../widgets/animated_boss_widget.dart'; // Added for AnimatedBossWidget
 
 enum PloggingPhase { idle, plogging, paused, summary }
 
@@ -43,6 +47,11 @@ class _MapScreenState extends State<MapScreen> {
   final PartyService _partyService = PartyService();
   Party? _party;
   Timer? _partyPollTimer; // REST API 폴링 타이머
+
+  // 레이드 보스 연동
+  final RaidService _raidService = RaidService();
+  List<RaidBossModel> _raidBosses = [];
+  Set<String> _bossH3Indices = {};
 
   String? _currentH3Index;
   Timer? _stayTimer;
@@ -85,6 +94,7 @@ class _MapScreenState extends State<MapScreen> {
   void initState() {
     super.initState();
     _initLocation();
+    _loadRaidBosses(); // 레이드 보스 데이터 로드
 
     // 파티 정보 로드 및 웹소켓 연결
     if (widget.partyId != null) {
@@ -174,6 +184,35 @@ class _MapScreenState extends State<MapScreen> {
     } catch (e) {
       debugPrint("Party load error: $e");
     }
+  }
+
+  Future<void> _loadRaidBosses() async {
+    try {
+      final bosses = await _raidService.getAllRaidBosses();
+      if (!mounted) return;
+      setState(() {
+        _raidBosses = bosses;
+        _bossH3Indices = bosses.map((b) => b.h3Index).toSet();
+      });
+      debugPrint("🎯 Loaded ${bosses.length} raid bosses (will use fallback positioning)");
+    } catch (e) {
+      debugPrint("❌ Failed to load raid bosses: $e");
+    }
+  }
+
+  void _showBossDetail(int bossId) {
+    // Find the boss object to pass it to the detail screen
+    final boss = _raidBosses.firstWhere(
+      (b) => b.id == bossId,
+      orElse: () => RaidBossModel(id: bossId, h3Index: '', name: 'Unknown', bossType: 0),
+    );
+    
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => BossDetailScreen(bossId: bossId, boss: boss),
+      ),
+    );
   }
 
   @override
@@ -511,6 +550,7 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   void _generatePolygons() {
+    int bossHexCount = 0;
     final newPolygons = _visibleHexagonModels
         .map((model) {
           final boundary = _h3Service.getHexagonBoundary(model.h3Index);
@@ -520,23 +560,42 @@ class _MapScreenState extends State<MapScreen> {
               .map((coord) => LatLng(coord.lat, coord.lon))
               .toList();
 
+          // Check if this is a boss hexagon
+          final isBossHex = _bossH3Indices.contains(model.h3Index);
+          if (isBossHex) {
+            bossHexCount++;
+            debugPrint("🔴 Boss hexagon found: ${model.h3Index}");
+          }
+
           // Apply customization
           Color baseColor;
-          if (model.ownerId == null) {
+          Color borderColor;
+          double borderWidth;
+
+          if (isBossHex) {
+            // Boss hexagons: Red with pulsing effect
+            baseColor = Colors.red.withOpacity(0.3 * _gridOpacity);
+            borderColor = Colors.red.withOpacity(0.8);
+            borderWidth = 4.0;
+          } else if (model.ownerId == null) {
             // Unowned lands: Fixed subtle gray (the "default" look)
             baseColor = Colors.black.withOpacity(0.05 * _gridOpacity);
+            borderColor = Colors.black.withOpacity(0.4 * _gridOpacity);
+            borderWidth = 2.0;
           } else {
             // Owned lands: Use the color selected from the palette
             baseColor = _selectedGridColor.withOpacity(_gridOpacity);
+            borderColor = Colors.black.withOpacity(0.4 * _gridOpacity);
+            borderWidth = 2.0;
           }
 
           Color fillColor = baseColor;
 
-          // 점령 중인 칸 강조 (자기 데이터 사용)
+          // 점령 중인 칸 강조 (자기 데이터 사용) - only if not a boss hex
           String? targetH3Index = _currentH3Index;
           double targetProgress = _occupyProgress;
 
-          if (model.h3Index == targetH3Index && targetProgress > 0) {
+          if (!isBossHex && model.h3Index == targetH3Index && targetProgress > 0) {
             // While occupying, fade from the unowned color to the SELECTED palette color
             final targetColor = _selectedGridColor
                 .withOpacity(_gridOpacity * 1.5)
@@ -544,13 +603,14 @@ class _MapScreenState extends State<MapScreen> {
             fillColor =
                 Color.lerp(fillColor, targetColor, targetProgress) ?? fillColor;
           }
+
           return Polygon(
             points: points,
             color: fillColor,
-            borderColor: model.h3Index == targetH3Index
+            borderColor: model.h3Index == targetH3Index && !isBossHex
                 ? Colors.white.withOpacity(0.8)
-                : Colors.black.withOpacity(0.4 * _gridOpacity),
-            borderStrokeWidth: model.h3Index == targetH3Index ? 3.0 : 2.0,
+                : borderColor,
+            borderStrokeWidth: model.h3Index == targetH3Index && !isBossHex ? 3.0 : borderWidth,
           );
         })
         .whereType<Polygon>()
@@ -561,6 +621,18 @@ class _MapScreenState extends State<MapScreen> {
         _hexagons = newPolygons;
       });
     }
+  }
+
+  // Helper to get hexagon center
+  LatLng? _getHexagonCenter(String h3Index) {
+    final boundary = _h3Service.getHexagonBoundary(h3Index);
+    if (boundary.isEmpty) {
+      return null;
+    }
+
+    double lat = boundary.map((c) => c.lat).reduce((a, b) => a + b) / boundary.length;
+    double lon = boundary.map((c) => c.lon).reduce((a, b) => a + b) / boundary.length;
+    return LatLng(lat, lon);
   }
 
   @override
@@ -607,20 +679,74 @@ class _MapScreenState extends State<MapScreen> {
             key: ValueKey('grid_${_selectedGridColor.value}_$_gridOpacity'),
             polygons: _hexagons,
           ),
-          if (_currentPosition != null)
-            MarkerLayer(
-              markers: [
-                // 내 마커
-                Marker(
-                  point: _currentPosition!,
-                  width: 48,
-                  height: 48,
-                  child: PixelCharacter(
-                    size: 48,
-                    color: _selectedGridColor,
-                    isMoving: _phase == PloggingPhase.plogging,
+          // Boss markers - ALWAYS show
+          MarkerLayer(
+            markers: [
+              // Boss markers
+              ..._raidBosses.asMap().entries.map((entry) {
+                final index = entry.key;
+                final boss = entry.value;
+                
+                // Try to get H3 center, fallback to fixed position
+                LatLng? center = _getHexagonCenter(boss.h3Index);
+                
+                // 🎯 FALLBACK: H3 실패 시 구미 중심 주변에 강제 배치
+                if (center == null) {
+                  debugPrint("⚠️ Using fallback position for boss #${boss.id}");
+                  final baseLatitude = 36.109648;
+                  final baseLongitude = 128.417922;
+                  // 각 보스를 약간씩 다른 위치에 배치 (0.001 = 약 100m)
+                  center = LatLng(
+                    baseLatitude + (index * 0.001),
+                    baseLongitude + (index * 0.001),
+                  );
+                }
+
+                // Determine boss type
+                BossType bossType;
+                switch (boss.bossType % 4) {
+                  case 0:
+                    bossType = BossType.trashCan;
+                    break;
+                  case 1:
+                    bossType = BossType.trashBag;
+                    break;
+                  case 2:
+                    bossType = BossType.dustCloud;
+                    break;
+                  case 3:
+                    bossType = BossType.rottenSprout;
+                    break;
+                  default:
+                    bossType = BossType.trashCan;
+                }
+
+                return Marker(
+                  point: center,
+                  width: 70,
+                  height: 70,
+                  child: GestureDetector(
+                    onTap: () => _showBossDetail(boss.id),
+                    child: AnimatedBossWidget(
+                      bossType: bossType,
+                      size: 60,
+                    ),
                   ),
-                ),
+                );
+              }).toList(),
+                
+                // 내 마커 (위치 있을 때만)
+                if (_currentPosition != null)
+                  Marker(
+                    point: _currentPosition!,
+                    width: 48,
+                    height: 48,
+                    child: PixelCharacter(
+                      size: 48,
+                      color: _selectedGridColor,
+                      isMoving: _phase == PloggingPhase.plogging,
+                    ),
+                  ),
                 if (_currentH3Index != null)
                   Marker(
                     point: _currentPosition!,

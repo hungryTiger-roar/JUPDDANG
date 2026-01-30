@@ -963,13 +963,23 @@ class _CommentBottomSheet extends StatefulWidget {
 
 class _CommentBottomSheetState extends State<_CommentBottomSheet> {
   final TextEditingController _controller = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
   bool _isSubmitting = false;
   late List<CommunityComment> _comments;
 
   @override
   void initState() {
     super.initState();
+    // 초기 댓글 목록을 최신순으로 정렬
     _comments = List<CommunityComment>.from(widget.post.comments);
+    _comments.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _scrollController.dispose();
+    super.dispose();
   }
 
   Future<void> _deleteComment(CommunityComment comment) async {
@@ -992,22 +1002,55 @@ class _CommentBottomSheetState extends State<_CommentBottomSheet> {
     final text = _controller.text.trim();
     if (text.isEmpty || _isSubmitting) return;
 
+    FocusScope.of(context).unfocus();
     setState(() => _isSubmitting = true);
+
     try {
-      await widget.authService.addComment(
+      // 1. 서버에 댓글 전송, 응답으로 새 댓글 ID (또는 객체)를 받음
+      final response = await widget.authService.addComment(
         widget.post.id,
         AuthService.userId ?? 'guest',
         text,
       );
+
       _controller.clear();
+
+      // 2. 받은 응답으로 새 댓글 객체 생성
+      // 서버가 ID만 반환한다고 가정하고 로컬에서 객체를 생성합니다.
+      final newComment = CommunityComment(
+        id: response.toString(), // 서버가 ID를 반환한다고 가정
+        nickname: AuthService.nickname ?? 'You',
+        content: text,
+        createdAt: DateTime.now(),
+      );
+
+      // 3. 로컬 상태에 새 댓글 추가하고 UI 갱신 (맨 위에 추가)
+      setState(() {
+        _comments.insert(0, newComment);
+      });
+
+      // 4. 부모 위젯(피드)에 알려 전체 목록도 갱신하도록 함
       widget.onCommentAdded();
-      if (mounted) Navigator.pop(context);
+
+      // 5. 댓글이 맨 위에 추가되므로, 스크롤을 맨 위로 이동 (선택 사항)
+      // 또는 아무것도 하지 않아 현재 스크롤 위치를 유지
+      if (mounted && _scrollController.hasClients) {
+        _scrollController.animateTo(
+          0.0,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('댓글 작성에 실패했습니다.')));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('댓글 작성에 실패했습니다.')),
+        );
+      }
     } finally {
-      if (mounted) setState(() => _isSubmitting = false);
+      if (mounted) {
+        setState(() => _isSubmitting = false);
+      }
     }
   }
 
@@ -1046,108 +1089,111 @@ class _CommentBottomSheetState extends State<_CommentBottomSheet> {
             ),
           ),
           const SizedBox(height: 20),
-          Expanded(
-            child: _comments.isEmpty
-                ? const Center(
-                    child: Text(
-                      '댓글이 없습니다',
-                      style: TextStyle(color: Colors.white38, fontSize: 16),
-                    ),
-                  )
-                : ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    itemCount: _comments.length,
-                    itemBuilder: (context, index) {
-                      final comment = _comments[index];
-                      final isMine = AuthService.nickname == comment.nickname;
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 20),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Container(
-                              width: 32,
-                              height: 32,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF1F1F1F),
-                                border: Border.all(
-                                  color: Colors.black,
-                                  width: 2.0,
-                                ),
-                              ),
-                              child: Center(
-                                child: PixelCharacter(
-                                  size: 20,
-                                  color: _getColorForNickname(comment.nickname),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Expanded(
+                              Expanded(
+                                child: _comments.isEmpty
+                                    ? const Center(
                                         child: Text(
-                                          comment.nickname.toUpperCase(),
-                                          style: const TextStyle(
-                                            color: Colors.white,
-                                            fontWeight: FontWeight.w900,
-                                            fontSize: 14,
-                                          ),
+                                          '댓글이 없습니다',
+                                          style: TextStyle(color: Colors.white38, fontSize: 16),
                                         ),
-                                      ),
-                                      if (isMine)
-                                        DropdownButtonHideUnderline(
-                                          child: DropdownButton<String>(
-                                            isDense: true,
-                                            icon: const Icon(
-                                              Icons.more_vert,
-                                              color: Colors.white54,
-                                              size: 18,
-                                            ),
-                                            dropdownColor: const Color(
-                                              0xFF2A2A2A,
-                                            ),
-                                            items: const [
-                                              DropdownMenuItem(
-                                                value: 'delete',
-                                                child: Text(
-                                                  '삭제',
-                                                  style: TextStyle(
-                                                    color: Colors.white,
+                                      )
+                                    : ListView.builder(
+                                        controller: _scrollController,
+                                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                                        itemCount: _comments.length,
+                                        itemBuilder: (context, index) {
+                                          final comment = _comments[index];
+                                          final isMine = AuthService.nickname == comment.nickname;
+                                          return Padding(
+                                            padding: const EdgeInsets.only(bottom: 20),
+                                            child: Row(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                // 프로필사진
+                                                Container(
+                                                  width: 50,
+                                                  height: 50,
+                                                  decoration: BoxDecoration(
+                                                    color: const Color(0xFF1F1F1F),
+                                                    border: Border.all(
+                                                      color: Colors.black,
+                                                      width: 2.0,
+                                                    ),
+                                                  ),
+                                                  child: Center(
+                                                    child: PixelCharacter(
+                                                      size: 35,
+                                                      color: _getColorForNickname(comment.nickname),
+                                                    ),
                                                   ),
                                                 ),
-                                              ),
-                                            ],
-                                            onChanged: (value) {
-                                              if (value == 'delete') {
-                                                _deleteComment(comment);
-                                              }
-                                            },
-                                          ),
-                                        ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    comment.content,
-                                    style: const TextStyle(
-                                      color: Colors.white70,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
-          ),
+                                                const SizedBox(width: 12),
+                                                Expanded(
+                                                  child: Column(
+                                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                                    children: [
+                                                      Row(
+                                                        children: [
+                                                          Expanded(
+                                                            // 닉네임
+                                                            child: Text(
+                                                              comment.nickname.toUpperCase(),
+                                                              style: const TextStyle(
+                                                                color: Colors.white54,
+                                                                fontWeight: FontWeight.bold,
+                                                                fontSize: 14,
+                                                              ),
+                                                            ),
+                                                          ),
+                                                          if (isMine)
+                                                            DropdownButtonHideUnderline(
+                                                              child: DropdownButton<String>(
+                                                                isDense: true,
+                                                                icon: const Icon(
+                                                                  Icons.more_vert,
+                                                                  color: Colors.white54,
+                                                                  size: 18,
+                                                                ),
+                                                                dropdownColor: const Color(
+                                                                  0xFF2A2A2A,
+                                                                ),
+                                                                items: const [
+                                                                  DropdownMenuItem(
+                                                                    value: 'delete',
+                                                                    child: Text(
+                                                                      '삭제',
+                                                                      style: TextStyle(
+                                                                        color: Colors.white,
+                                                                      ),
+                                                                    ),
+                                                                  ),
+                                                                ],
+                                                                onChanged: (value) {
+                                                                  if (value == 'delete') {
+                                                                    _deleteComment(comment);
+                                                                  }
+                                                                },
+                                                              ),
+                                                            ),
+                                                        ],
+                                                      ),
+                                                      const SizedBox(height: 4),
+                                                      // 댓글
+                                                      Text(
+                                                        comment.content,
+                                                        style: const TextStyle(
+                                                          color: Colors.white,
+                                                          fontSize: 14
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          );
+                                        },
+                                      ),          ),
           _commentInput(),
         ],
       ),

@@ -10,11 +10,13 @@ import 'package:pixelarticons/pixelarticons.dart';
 class CommunityComposeScreen extends StatefulWidget {
   final List<AccountSummary> accounts;
   final AccountSummary? initialAccount;
+  final CommunityPostDraft? initialDraft;
 
   const CommunityComposeScreen({
     super.key,
     required this.accounts,
     this.initialAccount,
+    this.initialDraft,
   });
 
   @override
@@ -81,6 +83,50 @@ class _CommunityComposeScreenState extends State<CommunityComposeScreen> {
     _selectedAccount =
         widget.initialAccount ??
         (widget.accounts.isNotEmpty ? widget.accounts.first : null);
+
+    // 이어쓰기 데이터가 있으면 불러오기 실행
+    if (widget.initialDraft != null) {
+      _loadFromDraft(widget.initialDraft!);
+    }
+  }
+
+  // Draft 데이터를 화면 컨트롤러에 채워넣는 로직
+  void _loadFromDraft(CommunityPostDraft draft) {
+    // 1. 이미지 복구
+    if (draft.localImagePaths.isNotEmpty) {
+      _beforeImage = XFile(draft.localImagePaths[0]);
+      if (draft.localImagePaths.length > 1) {
+        _afterImage = XFile(draft.localImagePaths[1]);
+      }
+    }
+
+    // 2. 텍스트 파싱 (해시태그, 본문, 기록 분리)
+    final lines = draft.content.split('\n');
+    final bodyBuffer = StringBuffer();
+    final hashtagBuffer = StringBuffer();
+
+    for (var line in lines) {
+      final trimmed = line.trim();
+      if (trimmed.isEmpty) continue;
+
+      if (trimmed.startsWith('#')) {
+        hashtagBuffer.write('$trimmed ');
+      } else if (trimmed.startsWith('기록:')) {
+        // 기록 데이터 매칭 (제목과 날짜로 찾기)
+        for (var record in _records) {
+          if (trimmed.contains(record.title) && trimmed.contains(record.date)) {
+            _selectedRecord = record;
+            break;
+          }
+        }
+      } else {
+        if (bodyBuffer.isNotEmpty) bodyBuffer.writeln();
+        bodyBuffer.write(trimmed);
+      }
+    }
+
+    _hashtagController.text = hashtagBuffer.toString().trim();
+    _contentController.text = bodyBuffer.toString().trim();
   }
 
   @override

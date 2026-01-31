@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../../models/community_models.dart';
 import '../../services/auth_service.dart';
@@ -139,11 +140,18 @@ class _CommunityScreenState extends State<CommunityScreen> {
   }
 
   Future<void> _deletePost(String postId) async {
+    // 임시 저장된 글인지 확인
+    final isLocalDraft = _localPosts.any((p) => p.id == postId);
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF1F1F1F),
         title: const Text('삭제하시겠습니까?', style: TextStyle(color: Colors.white)),
+        content: Text(
+          isLocalDraft ? '임시 저장된 글은 복구할 수 없습니다.' : '게시글을 삭제하시겠습니까?',
+          style: const TextStyle(color: Colors.white70),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -159,21 +167,71 @@ class _CommunityScreenState extends State<CommunityScreen> {
 
     if (confirmed == true) {
       try {
-        await _authService.deletePost(postId);
+        // 임시 글이 아니면 서버 삭제 요청
+        if (!isLocalDraft) {
+          await _authService.deletePost(postId);
+        }
+
         setState(() {
-          _remotePosts.removeWhere((p) => p.id == postId);
-          _localPosts.removeWhere((p) => p.id == postId);
+          if (isLocalDraft) {
+            _localPosts.removeWhere((p) => p.id == postId);
+          } else {
+            _remotePosts.removeWhere((p) => p.id == postId);
+
+          }
         });
-        if (mounted)
+        if (mounted) {
           ScaffoldMessenger.of(
             context,
           ).showSnackBar(const SnackBar(content: Text('게시글이 삭제되었습니다.')));
+        }
       } catch (e) {
-        if (mounted)
+        if (mounted) {
           ScaffoldMessenger.of(
             context,
           ).showSnackBar(const SnackBar(content: Text('삭제에 실패했습니다.')));
+        }
       }
+    }
+  }
+
+  // 이어쓰기 함수 (임시저장 글 -> 작성 화면 이동)
+  Future<void> _continueWriting(CommunityPost post) async {
+    // 현재 로그인된 작성자 계정 정보 찾기
+    final initialAccount = _accounts.firstWhere(
+        (account) => account.userId == AuthService.userId,
+        orElse: () => _accounts.isNotEmpty
+          ? _accounts.first
+          : AccountSummary(userId: 'guest', nickname: 'Guest'),
+    );
+
+    // Draft 객체 생성 (기존 포스트 내용을 바탕으로)
+    final initialDraft = CommunityPostDraft(
+      userId: post.userId ?? '',
+      nickname: post.nickname,
+      content: post.content,
+      localImagePaths: post.localImagePaths,
+    );
+
+    final newDraft = await Navigator.push<CommunityPostDraft>(
+        context,
+        MaterialPageRoute(
+            builder: (context) => CommunityComposeScreen(
+              accounts: _accounts.isNotEmpty ? _accounts : [initialAccount],
+              initialAccount: initialAccount,
+              initialDraft: initialDraft,
+            ),
+        ),
+    );
+
+    // 작성 완료 후 돌아왔을 때 처리
+    if (newDraft != null) {
+      // 기존 임시 글 삭제
+      setState(() {
+        _localPosts.removeWhere((p) => p.id == post.id);
+      });
+      // 새 글 업로드 시도
+      await _submitPost(newDraft);
     }
   }
 
@@ -477,6 +535,12 @@ class _CommunityScreenState extends State<CommunityScreen> {
   }
 
   Widget _buildPostCard(CommunityPost post) {
+    // 임시 글 여부 확인
+    final isLocalDraft = _localPosts.any((p) => p.id == post.id);
+    final String currentUserId = AuthService.userId?.toString() ?? '';
+    final String postUserId = post.userId?.toString() ?? '';
+    final isMine = postUserId.isNotEmpty && postUserId == currentUserId;
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       decoration: BoxDecoration(
@@ -491,6 +555,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
           Padding(
             padding: const EdgeInsets.all(16),
             child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 GestureDetector(
                   onTap: () {
@@ -524,22 +589,30 @@ class _CommunityScreenState extends State<CommunityScreen> {
                     children: [
                       Row(
                         children: [
-                          Text(
-                            post.nickname.toUpperCase(),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w900,
-                              fontSize: 14,
+                          Flexible( // 닉네임이 길어질 경우를 대비해 Flexible 사용
+                            child: Text(
+                              post.nickname.toUpperCase(),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w900,
+                                fontSize: 14,
+                              ),
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                          const SizedBox(width: 12),
-                          _followButton(post.nickname),
-                          if (post.userId == AuthService.userId) ...[
-                            const SizedBox(width: 8),
-                            _myPostTag(),
-                          ],
+                          const SizedBox(width: 8),
+                          // 팔로우 버튼 (내 글 아닐 때만)
+                          if (!isMine) _followButton(post.nickname),
+
+                          // 임시 저장 글 태그 (내 글이고 임시글일 때)
+                          if (isMine && isLocalDraft)
+                            Padding(
+                              padding: const EdgeInsets.only(left: 8),
+                              child: _myPostTag(),
+                            ),
                         ],
                       ),
+                      const SizedBox(height: 2), // 간격 미세 조정
                       Text(
                         _formatTime(post.createdAt).toUpperCase(),
                         style: const TextStyle(
@@ -550,17 +623,67 @@ class _CommunityScreenState extends State<CommunityScreen> {
                     ],
                   ),
                 ),
-                if (post.userId == AuthService.userId)
-                  GestureDetector(
-                    onTap: () => _deletePost(post.id),
-                    child: const Icon(
-                      Pixel.trash,
-                      color: Colors.redAccent,
-                      size: 24,
+                // ★ 삼선 메뉴 (통일 및 정렬 수정) ★
+                if (isMine)
+                  SizedBox(
+                    width: 24, // 아이콘 크기에 맞춰 영역 제한
+                    height: 24,
+                    child: PopupMenuButton<String>(
+                      padding: EdgeInsets.zero, // 패딩 제거 (중요!)
+                      constraints: const BoxConstraints(), // 불필요한 공간 제거
+                      icon: const Icon(Pixel.menu, color: Colors.white38, size: 20),
+                      color: const Color(0xFF2A2A2A),
+                      onSelected: (value) {
+                        if (value == 'delete') {
+                          _deletePost(post.id);
+                        } else if (value == 'continue') {
+                          _continueWriting(post);
+                        }
+                      },
+                      itemBuilder: (BuildContext context) {
+                        final List<PopupMenuEntry<String>> items = [];
+
+                        // 1. 임시 저장 글일 경우 '이어쓰기' 메뉴 추가
+                        if (isLocalDraft) {
+                          items.add(
+                            const PopupMenuItem<String>(
+                              value: 'continue',
+                              child: Row(
+                                children: [
+                                  Icon(Pixel.edit, color: Colors.white, size: 18),
+                                  SizedBox(width: 8),
+                                  Text('이어쓰기', style: TextStyle(color: Colors.white)),
+                                ],
+                              ),
+                            ),
+                          );
+                        }
+
+                        // 2. 공통: '삭제' 메뉴 추가
+                        items.add(
+                          const PopupMenuItem<String>(
+                            value: 'delete',
+                            child: Row(
+                              children: [
+                                Icon(Pixel.trash, color: Colors.redAccent, size: 18),
+                                SizedBox(width: 8),
+                                Text('삭제', style: TextStyle(color: Colors.white)),
+                              ],
+                            ),
+                          ),
+                        );
+
+                        return items;
+                      },
                     ),
                   )
-                else
-                  const Icon(Pixel.menu, color: Colors.white38, size: 20),
+                // else
+                // // 남의 글인 경우 (단순 아이콘)
+                //   const SizedBox(
+                //     width: 24,
+                //     height: 24,
+                //     child: Icon(Pixel.menu, color: Colors.white38, size: 20),
+                //   ),
               ],
             ),
           ),
@@ -935,7 +1058,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
         border: Border.all(color: Colors.black, width: 2.0),
       ),
       child: const Text(
-        'MY POST',
+        '임시 저장된 글',
         style: TextStyle(
           color: Colors.black,
           fontSize: 8,

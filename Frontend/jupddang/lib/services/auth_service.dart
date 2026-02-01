@@ -270,6 +270,23 @@ class AuthService {
     }
   }
 
+  //화현이: 프로필 정보 조회 (score, isFollowing, followerCount, followingCount 포함)
+  Future<Map<String, dynamic>> getProfileById(String targetId) async {
+    try {
+      final response = await _dio.get(
+        '$accountBase/profile/$targetId',
+        options: Options(headers: _authHeaders()),
+      );
+      if (response.data is Map) {
+        return response.data as Map<String, dynamic>;
+      }
+      throw Exception('Invalid response format');
+    } catch (e) {
+      print('Get Profile By ID Error: $e');
+      rethrow;
+    }
+  }
+
   // 계정 정보 업데이트
   Future<Map<String, dynamic>> updateAccount(
     String userId,

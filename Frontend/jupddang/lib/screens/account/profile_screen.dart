@@ -28,6 +28,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
     'score': 0, //화현이: 사용자 점수 추가
   };
 
+  //화현이: 본인 게시글 표시 및 이미지 순환을 위한 변수
+  List<CommunityPost> _myPosts = [];
+  bool _loadingPosts = false;
+  final Map<String, int> _currentImageIndex = {}; // postId -> image index
+
   @override
   void initState() {
     super.initState();
@@ -87,6 +92,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
             : (totalScore as num).toInt(); //화현이: score 저장
         _loading = false;
       });
+
+      //화현이: 본인 게시글 로드
+      await _loadMyPosts();
     } catch (e) {
       setState(() => _loading = false);
       if (mounted) {
@@ -94,6 +102,32 @@ class _ProfileScreenState extends State<ProfileScreen> {
           context,
         ).showSnackBar(const SnackBar(content: Text('프로필 정보를 불러오는데 실패했습니다.')));
       }
+    }
+  }
+
+  //화현이: 본인 작성 게시글 로드
+  Future<void> _loadMyPosts() async {
+    setState(() => _loadingPosts = true);
+
+    try {
+      final postsData = await _authService.getMyPosts();
+      final posts = postsData
+          .whereType<Map>()
+          .map(
+            (item) => CommunityPost.fromPostJson(item.cast<String, dynamic>()),
+          )
+          .toList();
+
+      // createdAt 기준 최신순 정렬
+      posts.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+      setState(() {
+        _myPosts = posts;
+        _loadingPosts = false;
+      });
+    } catch (e) {
+      setState(() => _loadingPosts = false);
+      print('My Posts Load Error: $e');
     }
   }
 
@@ -161,12 +195,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   // Stats Grid
                   SliverToBoxAdapter(child: _buildStatsGrid()),
 
-                  // Recent Activity Section
+                  // 화현이: 본인 게시글 그리드
                   SliverToBoxAdapter(
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(20, 32, 20, 16),
-                      child: const Text(
-                        'RECENT ACTIVITY',
+                      child: Text(
+                        'MY POSTS',
                         style: TextStyle(
                           color: Colors.white70,
                           fontSize: 14,
@@ -177,25 +211,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   ),
 
-                  // Activity List (placeholder)
+                  // Posts Grid
                   SliverToBoxAdapter(
-                    child: Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 20),
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF1F1F1F),
-                        border: Border.all(color: Colors.black, width: 3),
-                        boxShadow: const [
-                          BoxShadow(color: Colors.black, offset: Offset(6, 6)),
-                        ],
-                      ),
-                      child: const Center(
-                        child: Text(
-                          'Coming Soon',
-                          style: TextStyle(color: Colors.white38, fontSize: 14),
-                        ),
-                      ),
-                    ),
+                    child: _loadingPosts
+                        ? const Center(
+                            child: Padding(
+                              padding: EdgeInsets.all(40),
+                              child: CircularProgressIndicator(
+                                color: Color(0xFF17C964),
+                              ),
+                            ),
+                          )
+                        : _buildPostsGrid(),
                   ),
 
                   const SliverToBoxAdapter(child: SizedBox(height: 100)),
@@ -399,6 +426,220 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  //화현이: 본인 게시글 그리드 빌더
+  Widget _buildPostsGrid() {
+    if (_myPosts.isEmpty) {
+      return Container(
+        margin: const EdgeInsets.symmetric(horizontal: 20),
+        padding: const EdgeInsets.all(40),
+        decoration: BoxDecoration(
+          color: const Color(0xFF1F1F1F),
+          border: Border.all(color: Colors.black, width: 3),
+          boxShadow: const [
+            BoxShadow(color: Colors.black, offset: Offset(6, 6)),
+          ],
+        ),
+        child: Column(
+          children: const [
+            Icon(Pixel.file, color: Colors.white24, size: 48),
+            SizedBox(height: 16),
+            Text(
+              '작성한 게시글이 없습니다',
+              style: TextStyle(
+                color: Colors.white38,
+                fontSize: 16,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: GridView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 3,
+          crossAxisSpacing: 4,
+          mainAxisSpacing: 4,
+          childAspectRatio: 1,
+        ),
+        itemCount: _myPosts.length,
+        itemBuilder: (context, index) => _buildGridItem(_myPosts[index]),
+      ),
+    );
+  }
+
+  //화현이: 그리드 아이템 빌더 (이미지 순환 기능 포함)
+  Widget _buildGridItem(CommunityPost post) {
+    // 이미지 순서: afterImageUrl → beforeImageUrl → mapImageUrl
+    final List<String> availableImages = [];
+
+    if (post.imageUrls.isNotEmpty) {
+      // after 이미지 찾기
+      for (var url in post.imageUrls) {
+        if (url.toLowerCase().contains('after')) {
+          availableImages.add(url);
+          break;
+        }
+      }
+      // before 이미지 찾기
+      for (var url in post.imageUrls) {
+        if (url.toLowerCase().contains('before')) {
+          availableImages.add(url);
+          break;
+        }
+      }
+      // map 이미지 찾기
+      for (var url in post.imageUrls) {
+        if (url.toLowerCase().contains('map')) {
+          availableImages.add(url);
+          break;
+        }
+      }
+
+      // 아무것도 없으면 모든 이미지 추가
+      if (availableImages.isEmpty) {
+        availableImages.addAll(post.imageUrls);
+      }
+    }
+
+    // 현재 표시할 이미지 인덱스
+    final currentIndex = _currentImageIndex[post.id] ?? 0;
+    final imageUrl = availableImages.isNotEmpty
+        ? availableImages[currentIndex % availableImages.length]
+        : null;
+
+    return GestureDetector(
+      onTap: () {
+        if (availableImages.isNotEmpty) {
+          // 다음 이미지로 순환
+          setState(() {
+            _currentImageIndex[post.id] =
+                (currentIndex + 1) % availableImages.length;
+          });
+        }
+      },
+      child: Container(
+        decoration: BoxDecoration(
+          color: const Color(0xFF1F1F1F),
+          border: Border.all(color: Colors.black, width: 2),
+        ),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            // 이미지
+            if (imageUrl != null)
+              Image.network(
+                imageUrl,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  return Container(
+                    color: const Color(0xFF2A2A2A),
+                    child: const Icon(
+                      Pixel.image,
+                      color: Colors.white24,
+                      size: 32,
+                    ),
+                  );
+                },
+              )
+            else
+              Container(
+                color: const Color(0xFF2A2A2A),
+                child: const Icon(Pixel.file, color: Colors.white24, size: 32),
+              ),
+
+            // 좋아요 & 댓글 오버레이 (아이콘 크기 16px로 확대)
+            Positioned(
+              bottom: 0,
+              left: 0,
+              right: 0,
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.transparent,
+                      Colors.black.withOpacity(0.75),
+                    ],
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Pixel.heart, color: Colors.white, size: 16),
+                        const SizedBox(width: 4),
+                        Text(
+                          post.likeCount.toString(),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Row(
+                      children: [
+                        const Icon(
+                          Pixel.message,
+                          color: Colors.white,
+                          size: 16,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          post.comments.length.toString(),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            // 이미지 순환 인디케이터 (여러 이미지가 있을 경우)
+            if (availableImages.length > 1)
+              Positioned(
+                top: 8,
+                right: 8,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.6),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    '${currentIndex + 1}/${availableImages.length}',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

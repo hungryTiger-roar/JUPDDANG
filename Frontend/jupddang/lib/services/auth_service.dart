@@ -465,4 +465,20 @@ class AuthService {
     return {'Authorization': 'Bearer $accessToken'};
   }
 
+  //화현이: 본인 작성 게시글 조회
+  Future<List<dynamic>> getMyPosts() async {
+    try {
+      final response = await _dio.get(
+        '$postsBase/myposts',
+        options: Options(headers: _authHeaders()),
+      );
+      if (response.data is List) {
+        return response.data as List<dynamic>;
+      }
+      throw Exception('Invalid response format');
+    } catch (e) {
+      print('Get My Posts Error: $e');
+      rethrow;
+    }
+  }
 }

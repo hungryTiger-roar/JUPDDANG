@@ -1,16 +1,17 @@
 import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:http_parser/http_parser.dart';
+import '../models/plogging_models.dart';
 
 class AuthService {
   // Android Emulator: 10.0.2.2
   // Real Device: Use your PC's IP address (e.g., 192.168.x.x) or deploy to server
   // For now, let's assume we are testing on emulator or web.
   // Note: Web deals with localhost differently.
-
   static const String apiBase = 'https://i14d208.p.ssafy.io/dev-api/api';
   static const String accountBase = '$apiBase/account';
   static const String postsBase = '$apiBase/posts';
+  static const String ploggingBase = '$apiBase/v1/plogging/end';
 
   static String? accessToken;
   static String? userId;
@@ -405,6 +406,38 @@ class AuthService {
     } catch (e) {
       print('Toggle Follow Error: $e');
       return false;
+
+  Future<void> endPlogging({
+    required PloggingEndRequest requestData,
+    required String beforeImagePath,
+    required String afterImagePath,
+    required String mapImagePath,
+  }) async {
+    try {
+      final headers = _authHeaders();
+      if (userId != null && userId!.isNotEmpty) {
+        headers['userId'] = userId!;
+      }
+
+      final dataJson = jsonEncode(requestData.toJson());
+      final formData = FormData.fromMap({
+        'data': MultipartFile.fromString(
+          dataJson,
+          contentType: MediaType('application', 'json'),
+        ),
+        'beforeImage': await MultipartFile.fromFile(beforeImagePath),
+        'afterImage': await MultipartFile.fromFile(afterImagePath),
+        'mapImage': await MultipartFile.fromFile(mapImagePath),
+      });
+
+      await _dio.post(
+        ploggingBase,
+        data: formData,
+        options: Options(headers: headers),
+      );
+    } catch (e) {
+      print('End Plogging Error: $e');
+      rethrow;
     }
   }
 
@@ -414,4 +447,5 @@ class AuthService {
     }
     return {'Authorization': 'Bearer $accessToken'};
   }
+
 }

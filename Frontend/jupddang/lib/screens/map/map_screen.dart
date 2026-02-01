@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart'; // kIsWeb 사용을 위해 추가
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
@@ -14,6 +16,7 @@ import '../../models/hexagon.dart';
 import '../../widgets/pixel_button.dart';
 import '../../widgets/pixel_character.dart';
 import '../../models/party_models.dart';
+import '../../models/plogging_models.dart';
 import '../../services/party_service.dart';
 import '../../services/party_socket_service.dart';
 import 'package:gal/gal.dart';
@@ -30,6 +33,7 @@ class MapScreen extends StatefulWidget {
 
 class _MapScreenState extends State<MapScreen> {
   final MapController _mapController = MapController();
+  final GlobalKey _mapRepaintKey = GlobalKey();
   final LocationH3Service _h3Service = LocationH3Service();
 
   List<Polygon> _hexagons = [];
@@ -37,12 +41,12 @@ class _MapScreenState extends State<MapScreen> {
   bool _isInitialCenterSet = false;
   StreamSubscription<Position>? _positionStream;
   Timer? _debounceTimer;
-
+  bool _isLoading = false;
   // 파티 연동을 위한 서비스
   final PartySocketService _socketService = PartySocketService();
   final PartyService _partyService = PartyService();
   Party? _party;
-  Timer? _partyPollTimer; // REST API 폴링 타이머
+  Timer? _partyPollTimer; // RES
 
   String? _currentH3Index;
   Timer? _stayTimer;
@@ -55,6 +59,7 @@ class _MapScreenState extends State<MapScreen> {
   final ImagePicker _picker = ImagePicker();
   XFile? _beforeImage;
   XFile? _afterImage;
+  XFile? _mapImage;
 
   // Session Data
   String? _startAddress;
@@ -78,6 +83,7 @@ class _MapScreenState extends State<MapScreen> {
   List<LatLng> _pathPoints = [];
   int _coinsGained = 0;
   Timer? _statsTimer;
+  bool _isCapturingMap = false;
 
   static const double _minZoomLevel = 15.0;
 
@@ -347,7 +353,7 @@ class _MapScreenState extends State<MapScreen> {
     });
   }
 
-  void _finishPlogging() {
+  Future<void> _finishPlogging() async {
     setState(() {
       _phase = PloggingPhase.summary;
       _sessionStopwatch.stop();
@@ -363,6 +369,14 @@ class _MapScreenState extends State<MapScreen> {
         }
       });
     }
+
+    final mapPath = await _captureMapImage();
+    if (!mounted) return;
+    if (mapPath != null) {
+      setState(() {
+        _mapImage = XFile(mapPath);
+      });
+    }
   }
 
   void _resetPlogging() {
@@ -371,6 +385,7 @@ class _MapScreenState extends State<MapScreen> {
       _sessionStopwatch.reset();
       _beforeImage = null;
       _afterImage = null;
+      _mapImage = null;
       _pathPoints = [];
     });
   }
@@ -383,6 +398,63 @@ class _MapScreenState extends State<MapScreen> {
           _beforeImage = picked;
         else
           _afterImage = picked;
+      });
+    }
+  }
+
+  Future<String?> _captureMapImage() async {
+    if (!mounted) return null;
+    final previousCenter = _mapController.camera.center;
+    final previousZoom = _mapController.camera.zoom;
+
+    if (_currentPosition != null) {
+      _mapController.move(_currentPosition!, 16.0);
+      await Future.delayed(const Duration(milliseconds: 250));
+      await _updateHexagons(_mapController.camera.visibleBounds);
+    }
+    setState(() {
+      _isCapturingMap = true;
+    });
+    await WidgetsBinding.instance.endOfFrame;
+    final renderObject = _mapRepaintKey.currentContext?.findRenderObject();
+    if (renderObject is! RenderRepaintBoundary) {
+      if (mounted) {
+        setState(() {
+          _isCapturingMap = false;
+        });
+      }
+      return null;
+    }
+    final image = await renderObject.toImage(pixelRatio: 2.0);
+    final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+    if (byteData == null) {
+      if (mounted) {
+        setState(() {
+          _isCapturingMap = false;
+        });
+      }
+      return null;
+    }
+    final bytes = byteData.buffer.asUint8List();
+    final file =
+        File('${Directory.systemTemp.path}/map_${DateTime.now().millisecondsSinceEpoch}.png');
+    await file.writeAsBytes(bytes);
+    if (mounted) {
+      setState(() {
+        _isCapturingMap = false;
+      });
+    }
+    if (_currentPosition != null) {
+      _mapController.move(previousCenter, previousZoom);
+    }
+    return file.path;
+  }
+
+  Future<void> _pickMapImage() async {
+    final picked = await _picker.pickImage(source: ImageSource.gallery);
+    if (picked != null) {
+      setState(() {
+        _mapImage = picked;
       });
     }
   }
@@ -542,7 +614,8 @@ class _MapScreenState extends State<MapScreen> {
                 .withOpacity(_gridOpacity * 1.5)
                 .withAlpha((_gridOpacity * 1.5 * 255).toInt().clamp(0, 255));
             fillColor =
-                Color.lerp(fillColor, targetColor, targetProgress) ?? fillColor;
+                Color.lerp(fillColor, targetColor, _occupyProgress) ??
+                fillColor;
           }
           return Polygon(
             points: points,
@@ -566,9 +639,14 @@ class _MapScreenState extends State<MapScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: FlutterMap(
-        mapController: _mapController,
-        options: MapOptions(
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: RepaintBoundary(
+              key: _mapRepaintKey,
+              child: FlutterMap(
+                mapController: _mapController,
+                options: MapOptions(
           initialCenter: const LatLng(37.5665, 126.9780),
           initialZoom: 16.0,
           minZoom: 5.0,
@@ -585,11 +663,11 @@ class _MapScreenState extends State<MapScreen> {
             flags: InteractiveFlag.all,
           ),
         ),
-        children: [
+                children: [
           TileLayer(
             urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
           ),
-          if (_pathPoints.isNotEmpty)
+          if (_pathPoints.isNotEmpty && !_isCapturingMap)
             PolylineLayer(
               polylines: [
                 Polyline(
@@ -621,7 +699,7 @@ class _MapScreenState extends State<MapScreen> {
                     isMoving: _phase == PloggingPhase.plogging,
                   ),
                 ),
-                if (_currentH3Index != null)
+                if (_currentH3Index != null && !_isCapturingMap)
                   Marker(
                     point: _currentPosition!,
                     width: 120,
@@ -663,7 +741,10 @@ class _MapScreenState extends State<MapScreen> {
                   ),
               ],
             ),
-          // Stats Overlay (Top)
+                ],
+              ),
+            ),
+          ),
           if (_isPlogging)
             Positioned(
               top: 100,
@@ -798,7 +879,7 @@ class _MapScreenState extends State<MapScreen> {
       return SizedBox(
         width: 200,
         child: PixelButton(
-          text: "START JUPKING",
+          text: "START JUPDDANG",
           isGreen: false,
           color: _selectedGridColor,
           onPressed: _startPlogging,
@@ -928,7 +1009,7 @@ class _MapScreenState extends State<MapScreen> {
                   const Align(
                     alignment: Alignment.centerLeft,
                     child: Text(
-                      "DESCRIPTION",
+                      "CONTENT",
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
@@ -952,6 +1033,29 @@ class _MapScreenState extends State<MapScreen> {
                         borderSide: BorderSide(color: Colors.black, width: 2),
                       ),
                     ),
+                  ),
+                  const SizedBox(height: 24),
+                  const Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      "MAP PHOTO",
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildPhotoSlot(
+                          "MAP",
+                          _mapImage,
+                          () {},
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 24),
                   const Align(
@@ -989,7 +1093,7 @@ class _MapScreenState extends State<MapScreen> {
                     text: "PUBLISH RECORD",
                     isGreen: false,
                     color: _selectedGridColor,
-                    onPressed: () {
+                    onPressed: () async {
                       if (AuthService.accessToken == null) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
@@ -999,6 +1103,23 @@ class _MapScreenState extends State<MapScreen> {
                         );
                         return;
                       }
+
+                      final request = PloggingEndRequest(
+                        distance: _totalDistance / 1000.0,
+                        content: _descriptionController.text.trim(),
+                        times: _sessionStopwatch.elapsed.inSeconds,
+                        endTime: _formatEndTime(DateTime.now()),
+                      );
+                      final mapPath = await _captureMapImage();
+                      if (mapPath != null) {
+                        _mapImage = XFile(mapPath);
+                      }
+                      AuthService().endPlogging(
+                        requestData: request,
+                        beforeImagePath: _beforeImage!.path,
+                        afterImagePath: _afterImage!.path,
+                        mapImagePath: mapPath ?? _afterImage!.path,
+                      );
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(content: Text("기록이 업로드되었습니다!")),
                       );
@@ -1084,6 +1205,11 @@ class _MapScreenState extends State<MapScreen> {
     String mm = twoDigits(d.inMinutes.remainder(60));
     String ss = twoDigits(d.inSeconds.remainder(60));
     return "$mm:$ss";
+  }
+
+  String _formatEndTime(DateTime dt) {
+    final iso = dt.toIso8601String();
+    return iso.split('.').first;
   }
 
   Widget _buildMapCustomizer() {

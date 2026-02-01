@@ -1,4 +1,4 @@
-import 'package:dio/dio.dart';
+   import 'package:dio/dio.dart';
 import 'auth_service.dart';
 import '../models/ranking_model.dart';
 
@@ -13,15 +13,24 @@ class RankingService {
 
   Future<RankingResponse> getTotalRanking() async {
     final userId = AuthService.userId ?? 'guest';
-    final url = '${AuthService.apiBase}/api/ranking/total?userId=$userId';
-    print('📡 [RankingService] Fetching Total Ranking: $url');
+    // 로그에 토큰 있는지 확인용
+    print('🔑 Token: ${AuthService.accessToken}');
+
     try {
       final response = await _dio.get(
-        '/api/ranking/total',
+        '/ranking/total',
         queryParameters: {'userId': userId},
+
+        // 토큰 실어 보내야 401 안뜸
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer ${AuthService.accessToken}',
+            'Content-Type' : 'application/json',
+          },
+        ),
       );
       print('✅ [RankingService] Total Ranking Success: ${response.statusCode}');
-      return RankingResponse.fromJson(response.data);
+      return RankingResponse.fromJson(response.data, userId);
     } catch (e) {
       print('❌ [RankingService] Total Ranking Error: $e');
       if (e is DioException) {
@@ -44,7 +53,7 @@ class RankingService {
       print(
         '✅ [RankingService] Monthly Ranking Success: ${response.statusCode}',
       );
-      return RankingResponse.fromJson(response.data);
+      return RankingResponse.fromJson(response.data, userId);
     } catch (e) {
       print('❌ [RankingService] Monthly Ranking Error: $e');
       if (e is DioException) {
@@ -57,23 +66,29 @@ class RankingService {
 
   RankingResponse _getMockRanking(String type) {
     List<Ranker> topRankers = List.generate(
-      10,
+      3,
       (index) => Ranker(
         rank: index + 1,
-        nickname: 'User ${index + 1}',
+        nickname: 'Top User ${index + 1}',
         score: 1000 - (index * 50),
-        userId: 'user_$index',
+        userId: 'top_user_$index',
       ),
+    );
+
+    List<Ranker> myWindow = List.generate(
+        5,
+        (index) => Ranker(
+            rank: 40 + index,
+            nickname: index == 2 ? 'Me' : 'Neighbor $index',
+            score: 500 - (index * 10),
+            userId: index == 2 ? 'my_id' : 'neighbor_$index',
+        ),
     );
 
     return RankingResponse(
       topRankers: topRankers,
-      myRanking: Ranker(
-        rank: 42,
-        nickname: 'MyNickname',
-        score: 120,
-        userId: 'my_id',
-      ),
+      myRankWindow: myWindow,
+      myRanking: myWindow.firstWhere((r) => r.userId == 'my_id', orElse: () => myWindow[0]),
     );
   }
 }

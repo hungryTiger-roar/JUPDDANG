@@ -25,20 +25,35 @@ class Ranker {
 }
 
 class RankingResponse {
-  final List<Ranker> topRankers;
+  final List<Ranker> topRankers; // 1~3등
+  final List<Ranker> myRankWindow; // 내 주변 랭킹
   final Ranker? myRanking;
 
-  RankingResponse({required this.topRankers, this.myRanking});
+  RankingResponse({required this.topRankers, required this.myRankWindow, this.myRanking});
 
-  factory RankingResponse.fromJson(Map<String, dynamic> json) {
-    var list = json['rankings'] as List? ?? [];
-    List<Ranker> rankers = list.map((i) => Ranker.fromJson(i)).toList();
+  factory RankingResponse.fromJson(Map<String, dynamic> json, String currentUserId) {
+
+    var topList = json['topRankers'] as List? ?? [];
+    List<Ranker> topRankers = topList.map((i) => Ranker.fromJson(i)).toList();
+
+    var windowList = json['myRankWindow'] as List? ?? [];
+    List<Ranker> myRankWindow = windowList.map((i) => Ranker.fromJson(i)).toList();
+
+    Ranker? me;
+    try {
+      me = myRankWindow.firstWhere((ranker) => ranker.userId == currentUserId);
+    } catch (e) {
+      try {
+        me = topRankers.firstWhere((ranker) => ranker.userId == currentUserId);
+      } catch (e) {
+        me = null;
+      }
+    }
 
     return RankingResponse(
-      topRankers: rankers,
-      myRanking: json['myRanking'] != null
-          ? Ranker.fromJson(json['myRanking'])
-          : null,
+      topRankers: topRankers,
+      myRankWindow: myRankWindow,
+      myRanking: me,
     );
   }
 }

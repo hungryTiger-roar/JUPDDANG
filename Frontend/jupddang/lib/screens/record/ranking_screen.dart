@@ -66,7 +66,8 @@ class _RankingScreenState extends State<RankingScreen> {
                     );
                   }
 
-                  final rankings = snapshot.data!.topRankers;
+                  final topRankers = snapshot.data!.topRankers; // 1,2,3등
+                  final myRankWindow = snapshot.data!.myRankWindow; // 내 주변 랭킹
                   final myRanking = snapshot.data!.myRanking;
 
                   return RefreshIndicator(
@@ -75,24 +76,24 @@ class _RankingScreenState extends State<RankingScreen> {
                     child: Column(
                       children: [
                         Expanded(
-                          child: ListView.builder(
+                          child: ListView(
                             padding: const EdgeInsets.only(bottom: 24),
-                            itemCount: rankings.length,
-                            itemBuilder: (context, index) {
-                              if (index < 3) {
-                                // First 3 are special
-                                if (index == 0) {
-                                  return Column(
-                                    children: [
-                                      _buildPodium(rankings.take(3).toList()),
-                                      const SizedBox(height: 20),
-                                    ],
-                                  );
-                                }
-                                return const SizedBox.shrink();
-                              }
-                              return _buildRankItem(rankings[index]);
-                            },
+                            children: [
+                              // 1~3등
+                              if (topRankers.isNotEmpty) ...[
+                                _buildPodium(topRankers),
+                                const SizedBox(height: 20),
+                              ],
+                              // 1등과 4등 사이가 멀면 점선 표시
+                              if (myRankWindow.isNotEmpty && myRankWindow.first.rank > 3)
+                                const Padding(
+                                  padding: EdgeInsets.symmetric(vertical: 10),
+                                  child: Icon(Icons.more_vert, color: Colors.white24),
+                                ),
+
+                              // 내 주변 리스트
+                              ...myRankWindow.map((ranker) => _buildRankItem(ranker)),
+                            ],
                           ),
                         ),
                         if (myRanking != null) _buildMyRank(myRanking),
@@ -188,7 +189,7 @@ class _RankingScreenState extends State<RankingScreen> {
     ];
 
     return Container(
-      height: 220,
+      height: 260,
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.end,

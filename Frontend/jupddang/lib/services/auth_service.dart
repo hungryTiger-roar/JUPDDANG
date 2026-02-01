@@ -91,7 +91,6 @@ class AuthService {
     required String pw,
     required String email,
     required String nickname,
-    required String region,
     String? profileImage,
     String? intro,
   }) async {
@@ -103,7 +102,6 @@ class AuthService {
           'pw': pw,
           'email': email,
           'nickname': nickname,
-          'region': region,
           'profileImage': profileImage ?? '',
           'intro': intro ?? '',
         },

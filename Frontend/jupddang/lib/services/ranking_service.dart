@@ -43,12 +43,21 @@ class RankingService {
 
   Future<RankingResponse> getMonthlyRanking() async {
     final userId = AuthService.userId ?? 'guest';
-    final url = '${AuthService.apiBase}/api/ranking/monthly?userId=$userId';
-    print('📡 [RankingService] Fetching Monthly Ranking: $url');
+
+    print('📡 [RankingService] Fetching Monthly Ranking...');
+
     try {
       final response = await _dio.get(
-        '/api/ranking/monthly',
+        '/ranking/monthly',
         queryParameters: {'userId': userId},
+
+        // 토큰 실어 보내야 401 안뜸
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer ${AuthService.accessToken}',
+            'Content-Type' : 'application/json',
+          },
+        ),
       );
       print(
         '✅ [RankingService] Monthly Ranking Success: ${response.statusCode}',

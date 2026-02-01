@@ -21,7 +21,7 @@ class SettingsScreen extends StatelessWidget {
                 padding: const EdgeInsets.fromLTRB(20, 10, 20, 16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
+                  children: [
                     Text(
                       'SETTINGS',
                       style: TextStyle(
@@ -32,9 +32,53 @@ class SettingsScreen extends StatelessWidget {
                       ),
                     ),
                     SizedBox(height: 6),
-                    Text(
-                      'MANAGE YOUR ACCOUNT',
-                      style: TextStyle(color: Colors.white70, fontSize: 12),
+                    Row(
+                      children: [
+                        Text(
+                          'MANAGE YOUR ACCOUNT',
+                          style: TextStyle(color: Colors.white70, fontSize: 12),
+                        ),
+                        Spacer(),
+                        //화현: 로그아웃 버튼
+                        GestureDetector(
+                          onTap: () => _showLogoutDialog(context),
+                          child: Container(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              border: Border.all(color: Colors.black, width: 3),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black,
+                                  offset: Offset(3, 3),
+                                ),
+                              ],
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Pixel.power,
+                                  color: Colors.black,
+                                  size: 14,
+                                ),
+                                SizedBox(width: 6),
+                                Text(
+                                  'LOGOUT',
+                                  style: TextStyle(
+                                    color: Colors.black,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -416,6 +460,63 @@ class SettingsScreen extends StatelessWidget {
               ),
             ],
           ),
+    );
+  }
+
+  //화현: 로그아웃 다이얼로그
+  void _showLogoutDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1F1F1F),
+        shape: RoundedRectangleBorder(
+          side: const BorderSide(color: Colors.black, width: 3),
+        ),
+        title: const Text(
+          'Logout',
+          style: TextStyle(
+            color: Color(0xFFEF4444),
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        content: const Text(
+          '정말 로그아웃 하시겠습니까?',
+          style: TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(
+                color: Colors.white70,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              // JWT 토큰 삭제
+              AuthService.accessToken = null;
+              AuthService.userId = null;
+              AuthService.nickname = null;
+              // 스플래시 화면으로 이동 (뒤로가기 방지)
+              Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute(builder: (context) => const SplashScreen()),
+                (route) => false,
+              );
+            },
+            child: const Text(
+              'Logout',
+              style: TextStyle(
+                color: Color(0xFFEF4444),
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

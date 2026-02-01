@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:pixelarticons/pixelarticons.dart';
 import '../../services/auth_service.dart';
 import '../../models/follow_model.dart';
+import 'profile_screen.dart'; //화현이: 프로필 화면 import 추가
 
 //화련 팔로우 리스트 스크린
 class FollowListScreen extends StatefulWidget {
@@ -282,60 +283,78 @@ class _FollowListScreenState extends State<FollowListScreen>
           ),
           child: Row(
             children: [
-              // Avatar
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF2A2A2A),
-                  border: Border.all(color: Colors.black, width: 2),
-                ),
-                child: user.profileImage.isNotEmpty
-                    ? Image.network(
-                        user.profileImage,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) {
-                          return const Icon(
-                            Pixel.user,
-                            color: Color(0xFF17C964),
-                            size: 24,
-                          );
-                        },
-                      )
-                    : const Icon(
-                        Pixel.user,
-                        color: Color(0xFF17C964),
-                        size: 24,
-                      ),
-              ),
-              const SizedBox(width: 12),
-
-              // User Info
+              //화현이: 아바타와 사용자 정보 클릭 시 프로필 화면으로 이동
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      user.nickname.toUpperCase(),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w900,
+                child: GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            ProfileScreen(userId: user.userId),
                       ),
-                    ),
-                    if (user.intro.isNotEmpty) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        user.intro,
-                        style: const TextStyle(
-                          color: Colors.white54,
-                          fontSize: 12,
+                    );
+                  },
+                  child: Row(
+                    children: [
+                      // Avatar
+                      Container(
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF2A2A2A),
+                          border: Border.all(color: Colors.black, width: 2),
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                        child: user.profileImage.isNotEmpty
+                            ? Image.network(
+                                user.profileImage,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return const Icon(
+                                    Pixel.user,
+                                    color: Color(0xFF17C964),
+                                    size: 24,
+                                  );
+                                },
+                              )
+                            : const Icon(
+                                Pixel.user,
+                                color: Color(0xFF17C964),
+                                size: 24,
+                              ),
+                      ),
+                      const SizedBox(width: 12),
+
+                      // User Info
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              user.nickname.toUpperCase(),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                            if (user.intro.isNotEmpty) ...[
+                              const SizedBox(height: 4),
+                              Text(
+                                user.intro,
+                                style: const TextStyle(
+                                  color: Colors.white54,
+                                  fontSize: 12,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ],
+                        ),
                       ),
                     ],
-                  ],
+                  ),
                 ),
               ),
 

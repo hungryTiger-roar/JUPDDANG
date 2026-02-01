@@ -25,6 +25,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     'likes': 0,
     'followers': 0,
     'following': 0,
+    'score': 0, //화현이: 사용자 점수 추가
   };
 
   @override
@@ -65,16 +66,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
       // 받은 좋아요 수 (작성한 게시글의 likeCount 합계)
       int totalLikes = userPosts.fold(0, (sum, post) => sum + post.likeCount);
 
-      //화현: 팔로워/팔로잉 수 가져오기
-      final followings = await _authService.getFollowings(widget.userId);
-      final followers = await _authService.getFollowers(widget.userId);
+      //화현이: 프로필 정보를 한 번에 가져오기 (최적화: 3번 호출 -> 1번 호출)
+      final profileData = await _authService.getProfileById(widget.userId);
+      final totalScore = profileData['totalScore'] ?? 0;
+      final followerCount = profileData['followerCount'] ?? 0;
+      final followingCount = profileData['followingCount'] ?? 0;
 
       setState(() {
         _stats['posts'] = userPosts.length;
         _stats['comments'] = commentCount;
         _stats['likes'] = totalLikes;
-        _stats['followers'] = followers.length;
-        _stats['following'] = followings.length;
+        _stats['followers'] = followerCount is int
+            ? followerCount
+            : (followerCount as num).toInt(); //화현이: follower 수
+        _stats['following'] = followingCount is int
+            ? followingCount
+            : (followingCount as num).toInt(); //화현이: following 수
+        _stats['score'] = totalScore is int
+            ? totalScore
+            : (totalScore as num).toInt(); //화현이: score 저장
         _loading = false;
       });
     } catch (e) {
@@ -254,6 +264,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ),
 
+          const SizedBox(height: 12), //화현이: 간격 조정
+          //화현이: Score 표시 추가
+          Text(
+            'SCORE: ${_formatNumber(_stats['score']!)}',
+            style: const TextStyle(
+              color: Color(0xFF17C964),
+              fontSize: 16,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 1.0,
+            ),
+          ),
+
           const SizedBox(height: 20),
 
           //화현: 팔로워/팔로잉 클릭 시 목록 화면으로 이동
@@ -319,6 +341,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  //화현이: 숫자 천 단위 콤마 포맷 함수
+  String _formatNumber(int number) {
+    return number.toString().replaceAllMapped(
+      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+      (Match m) => '${m[1]},',
     );
   }
 

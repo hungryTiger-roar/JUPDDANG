@@ -406,6 +406,8 @@ class AuthService {
     } catch (e) {
       print('Toggle Follow Error: $e');
       return false;
+    }
+  }
 
   Future<void> endPlogging({
     required PloggingEndRequest requestData,

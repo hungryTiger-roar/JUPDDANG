@@ -8,7 +8,7 @@ class AuthService {
   // Real Device: Use your PC's IP address (e.g., 192.168.x.x) or deploy to server
   // For now, let's assume we are testing on emulator or web.
   // Note: Web deals with localhost differently.
-  static const String apiBase = 'https://i14d208.p.ssafy.io/dev-api/api';
+  // static const String apiBase = 'https://i14d208.p.ssafy.io/dev-api/api';
   static const String accountBase = '$apiBase/account';
   static const String postsBase = '$apiBase/posts';
   static const String ploggingBase = '$apiBase/v1/plogging/end';
@@ -20,8 +20,9 @@ class AuthService {
   final Dio _dio =
   Dio(
     BaseOptions(
-      connectTimeout: const Duration(seconds: 10),
-      receiveTimeout: const Duration(seconds: 10),
+      connectTimeout: const Duration(seconds: 60),
+      receiveTimeout: const Duration(seconds: 60),
+      sendTimeout: const Duration(seconds: 60),
     ),
   )
     ..interceptors.add(
@@ -424,7 +425,7 @@ class AuthService {
     }
   }
 
-  Future<void> endPlogging({
+  Future<dynamic> endPlogging({
     required PloggingEndRequest requestData,
     required String beforeImagePath,
     required String afterImagePath,
@@ -447,11 +448,13 @@ class AuthService {
         'mapImage': await MultipartFile.fromFile(mapImagePath),
       });
 
-      await _dio.post(
+      final response = await _dio.post( // 🎯 응답 저장
         ploggingBase,
         data: formData,
         options: Options(headers: headers),
       );
+
+      return response.data; // 🎯 응답 반환
     } catch (e) {
       print('End Plogging Error: $e');
       rethrow;

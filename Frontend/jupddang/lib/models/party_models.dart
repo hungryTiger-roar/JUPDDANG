@@ -76,6 +76,84 @@ class Party {
   }
 }
 
+class LocationRequest {
+  final double lat;
+  final double lon;
+  final int partyId;
+  final int? elapsedTime; // 초 단위 경과 시간
+  final double? totalDistance; // 총 이동 거리 (미터)
+  final int? score; // 점수
+
+  LocationRequest({
+    required this.lat,
+    required this.lon,
+    required this.partyId,
+    this.elapsedTime,
+    this.totalDistance,
+    this.score,
+  });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'lat': lat,
+      'lon': lon,
+      'partyId': partyId,
+      if (elapsedTime != null) 'elapsedTime': elapsedTime,
+      if (totalDistance != null) 'totalDistance': totalDistance,
+      if (score != null) 'score': score,
+    };
+  }
+
+  factory LocationRequest.fromJson(Map<String, dynamic> json) {
+    return LocationRequest(
+      lat: (json['lat'] ?? 0.0).toDouble(),
+      lon: (json['lon'] ?? 0.0).toDouble(),
+      partyId: json['partyId'] ?? 0,
+      elapsedTime: json['elapsedTime'],
+      totalDistance: json['totalDistance']?.toDouble(),
+      score: json['score'],
+    );
+  }
+}
+
+class PartyMemberLocation {
+  final String userId;
+  final double lat;
+  final double lon;
+  final int elapsedTime;
+  final double totalDistance;
+  final int score;
+  final int occupiedCount;
+  final double occupyProgress;
+  final String? currentH3Index;
+
+  PartyMemberLocation({
+    required this.userId,
+    required this.lat,
+    required this.lon,
+    required this.elapsedTime,
+    required this.totalDistance,
+    required this.score,
+    required this.occupiedCount,
+    required this.occupyProgress,
+    this.currentH3Index,
+  });
+
+  factory PartyMemberLocation.fromJson(Map<String, dynamic> json) {
+    return PartyMemberLocation(
+      userId: json['userId'] ?? '',
+      lat: (json['lat'] ?? 0.0).toDouble(),
+      lon: (json['lon'] ?? 0.0).toDouble(),
+      elapsedTime: json['elapsedTime'] ?? 0,
+      totalDistance: (json['totalDistance'] ?? 0.0).toDouble(),
+      score: json['score'] ?? 0,
+      occupiedCount: json['occupiedCount'] ?? 0,
+      occupyProgress: (json['occupyProgress'] ?? 0.0).toDouble(),
+      currentH3Index: json['currentH3Index'],
+    );
+  }
+}
+
 class PartyActivity {
   final String userId;
   final double? currentLatitude;

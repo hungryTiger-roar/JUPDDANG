@@ -1,6 +1,8 @@
 package com.jupddang.jupddang.account.repository;
 
 import com.jupddang.jupddang.account.entity.Account;
+import com.jupddang.jupddang.sns.entity.Comment;
+import com.jupddang.jupddang.sns.entity.Post;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
 import org.springframework.data.jpa.repository.JpaRepository;

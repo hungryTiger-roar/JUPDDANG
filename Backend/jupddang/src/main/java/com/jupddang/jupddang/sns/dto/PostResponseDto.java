@@ -11,6 +11,7 @@ import java.util.stream.Collectors;
 // 앱 화면에 뿌려줄 게시글 정보
 public class PostResponseDto {
     private Long postId;
+    private String userId;
     private String nickname;
     private Long ploggingId;
     private String beforeImageUrl;
@@ -23,6 +24,7 @@ public class PostResponseDto {
 
     public PostResponseDto(Post post) {
         this.postId = post.getPostId();
+        this.userId = post.getAccount().getUserId();
         this.nickname = post.getAccount().getNickname();
         this.ploggingId = post.getPloggingId();
         this.beforeImageUrl = post.getBeforeImageUrl();

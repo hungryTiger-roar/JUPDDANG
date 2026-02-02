@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:jupddang/screens/map/map_screen.dart';
 import 'package:jupddang/screens/record/ranking_screen.dart';
-import 'package:jupddang/screens/feed/feed.dart'; // import 추가
-import 'package:jupddang/screens/party/party_screen.dart'; // import 추가
-import 'package:jupddang/screens/account/settings_screen.dart'; // import 추가
+import 'package:jupddang/screens/feed/feed.dart';
+import 'package:jupddang/screens/party/party_screen.dart';
+import 'package:jupddang/screens/account/settings_screen.dart';
 import '../../widgets/custom_bottom_navbar.dart';
 
 class MainScreen extends StatefulWidget {
@@ -15,28 +15,55 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 2; // 초기 화면: 지도 (인덱스 2)
+  dynamic _ploggingResult; // 🎯 플로깅 결과 저장
+  final GlobalKey<NavigatorState> _mapNavigatorKey = GlobalKey<NavigatorState>(); // 🎯 맵 네비게이터 키
 
-  // 각 탭에 연결될 화면 리스트 (5개)
-  final List<Widget> _screens = [
-    const CommunityScreen(), // 0
-    const PartyScreen(), // 1
-    const MapScreen(), // 2
-    const RankingScreen(), // 3
-    const SettingsScreen(), // 4
-  ];
+  void _onItemTapped(int index) async {
+    // 🎯 맵 화면에서 다른 탭으로 이동할 때 플로깅 완료 확인
+    if (_selectedIndex == 2 && index != 2) {
+      // 맵 화면의 네비게이터에서 결과를 받아올 수 있도록 처리
+      // 만약 맵 화면이 전체 화면으로 띄워졌다면 결과가 자동으로 전달됨
+    }
 
-  void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
     });
   }
 
+  // 🎯 플로깅 결과 처리 완료 콜백
+  void _onPloggingResultProcessed() {
+    setState(() {
+      _ploggingResult = null;
+    });
+  }
+
+  // 🎯 플로깅 결과 설정 메서드 (MapScreen에서 호출)
+  void _setPloggingResult(dynamic result) {
+    setState(() {
+      _ploggingResult = result;
+      _selectedIndex = 0; // 커뮤니티 탭으로 자동 이동
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
+    // 🎯 화면 리스트를 build 메서드 내부에서 생성 (상태 업데이트 반영)
+    final List<Widget> screens = [
+      CommunityScreen(
+        ploggingResult: _ploggingResult, // 🎯 플로깅 결과 전달
+        onResultProcessed: _onPloggingResultProcessed, // 🎯 처리 완료 콜백
+      ),
+      const PartyScreen(),
+      MapScreen(
+        onPloggingComplete: _setPloggingResult, // 🎯 콜백 전달
+      ),
+      const RankingScreen(),
+      const SettingsScreen(),
+    ];
+
     return Scaffold(
-      // IndexedStack을 사용하여 화면 전환 시 상태 유지 (지도가 매번 리로딩되지 않도록 함)
-      extendBody: false, // Prevents background bleed-through
-      body: IndexedStack(index: _selectedIndex, children: _screens),
+      extendBody: false,
+      body: IndexedStack(index: _selectedIndex, children: screens),
       bottomNavigationBar: CustomBottomNavbar(
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,

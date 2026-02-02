@@ -10,25 +10,44 @@ class SignupScreen extends StatefulWidget {
   State<SignupScreen> createState() => _SignupScreenState();
 }
 
+//화현이: PageView 제거하여 단일 화면으로 변경
 class _SignupScreenState extends State<SignupScreen> {
-  final PageController _pageController = PageController();
-  int _currentPage = 0;
-
   final AuthService _authService = AuthService();
   bool _isLoading = false;
 
+  //화현이: region 제거
   final _idController = TextEditingController();
   final _pwController = TextEditingController();
   final _pwConfirmController = TextEditingController();
   final _emailController = TextEditingController();
   final _nicknameController = TextEditingController();
-  final _regionController = TextEditingController();
 
+  //화현이: region 검증 및 파라미터 제거
   Future<void> _signup() async {
-    if (_regionController.text.trim().isEmpty) {
+    // 모든 필드 검증
+    if (_idController.text.isEmpty ||
+        _pwController.text.isEmpty ||
+        _pwConfirmController.text.isEmpty ||
+        _emailController.text.isEmpty ||
+        _nicknameController.text.isEmpty) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('지역을 입력해주세요.')));
+      ).showSnackBar(const SnackBar(content: Text('모든 정보를 입력해주세요.')));
+      return;
+    }
+
+    //화현이: 이메일 형식 검증 추가
+    if (!_emailController.text.contains('@')) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('올바른 이메일 형식이 아닙니다. (@를 포함해주세요)')),
+      );
+      return;
+    }
+
+    if (_pwController.text != _pwConfirmController.text) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('비밀번호가 일치하지 않습니다.')));
       return;
     }
 
@@ -40,7 +59,6 @@ class _SignupScreenState extends State<SignupScreen> {
         pw: _pwController.text.trim(),
         email: _emailController.text.trim(),
         nickname: _nicknameController.text.trim(),
-        region: _regionController.text.trim(),
         profileImage: "",
         intro: "",
       );
@@ -60,81 +78,24 @@ class _SignupScreenState extends State<SignupScreen> {
     }
   }
 
-  void _nextStep() {
-    if (_idController.text.isEmpty ||
-        _pwController.text.isEmpty ||
-        _pwConfirmController.text.isEmpty ||
-        _emailController.text.isEmpty ||
-        _nicknameController.text.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('모든 정보를 입력해주세요.')));
-      return;
-    }
-
-    if (_pwController.text != _pwConfirmController.text) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('비밀번호가 일치하지 않습니다.')));
-      return;
-    }
-
-    _pageController.nextPage(
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeInOut,
-    );
-  }
-
+  //화현이: 단일 화면으로 변경
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('회원가입'),
-        leading: _currentPage > 0
-            ? IconButton(
-                icon: const Icon(Pixel.arrowleft),
-                onPressed: () => _pageController.previousPage(
-                  duration: const Duration(milliseconds: 300),
-                  curve: Curves.easeInOut,
-                ),
-              )
-            : null,
-      ),
-      body: SafeArea(
-        child: Column(
-          children: [
-            SizedBox(
-              height: 10,
-              child: LinearProgressIndicator(
-                value: (_currentPage + 1) / 2,
-                backgroundColor: Colors.black,
-                valueColor: const AlwaysStoppedAnimation<Color>(
-                  Color(0xFF1DCE70),
-                ),
-              ),
-            ),
-            Expanded(
-              child: PageView(
-                controller: _pageController,
-                physics: const NeverScrollableScrollPhysics(),
-                onPageChanged: (index) => setState(() => _currentPage = index),
-                children: [_buildStep1(), _buildStep2()],
-              ),
-            ),
-          ],
-        ),
-      ),
+      appBar: AppBar(title: const Text('회원가입')),
+      body: SafeArea(child: _buildSignupForm()),
     );
   }
 
-  Widget _buildStep1() {
+  //화현이: 단일 회원가입 폼으로 변경
+  Widget _buildSignupForm() {
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 28.0, vertical: 32.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'BASIC INFO',
+            'JOIN JUPDDANG',
             style: TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.w900,
@@ -173,33 +134,6 @@ class _SignupScreenState extends State<SignupScreen> {
             label: '비밀번호 확인',
             icon: Icons.lock_reset_outlined,
             isObscure: true,
-          ),
-          const SizedBox(height: 48),
-          PixelButton(text: 'NEXT STEP', onPressed: _nextStep),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStep2() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 28.0, vertical: 32.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'YOUR REGION',
-            style: TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.w900,
-              letterSpacing: 2,
-            ),
-          ),
-          const SizedBox(height: 40),
-          _buildField(
-            controller: _regionController,
-            label: '지역 (예: 서울 강남구)',
-            icon: Pixel.map,
           ),
           const SizedBox(height: 48),
           PixelButton(

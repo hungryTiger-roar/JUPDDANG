@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../../models/community_models.dart';
 import '../../services/auth_service.dart';
@@ -10,7 +11,14 @@ import '../../widgets/pixel_character.dart';
 import '../account/profile_screen.dart';
 
 class CommunityScreen extends StatefulWidget {
-  const CommunityScreen({super.key});
+  final dynamic ploggingResult; // 🎯 추가
+  final VoidCallback? onResultProcessed; // 🎯 추가
+
+  const CommunityScreen({
+    super.key,
+    this.ploggingResult, // 🎯 추가
+    this.onResultProcessed, // 🎯 추가
+  });
 
   @override
   State<CommunityScreen> createState() => _CommunityScreenState();
@@ -34,6 +42,55 @@ class _CommunityScreenState extends State<CommunityScreen> {
   void initState() {
     super.initState();
     _refreshAll();
+
+    // 플로깅 결과 처리
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _processPloggingResult();
+    });
+  }
+
+  @override
+  void didUpdateWidget(CommunityScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    // 🎯 플로깅 결과가 업데이트되면 처리
+    if (widget.ploggingResult != null &&
+        widget.ploggingResult != oldWidget.ploggingResult) {
+      _processPloggingResult();
+    }
+  }
+
+  // 🎯 새로 추가할 메서드
+  void _processPloggingResult() {
+    if (widget.ploggingResult == null) return;
+
+    try {
+      final result = widget.ploggingResult as Map<String, dynamic>;
+
+      debugPrint('========================================');
+      debugPrint('✅ 플로깅 완료!');
+      debugPrint('postId: ${result['postId']}');
+      debugPrint('========================================');
+
+      // 🎯 그냥 피드 새로고침만!
+      _loadPosts().then((_) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('플로깅 기록이 게시글로 등록되었습니다!'),
+              backgroundColor: Color(0xFF17C964),
+            ),
+          );
+        }
+      });
+
+      widget.onResultProcessed?.call();
+
+    } catch (e) {
+      debugPrint('❌ 플로깅 결과 처리 오류: $e');
+      _loadPosts();
+      widget.onResultProcessed?.call();
+    }
   }
 
   Future<void> _refreshAll() async {
@@ -139,11 +196,18 @@ class _CommunityScreenState extends State<CommunityScreen> {
   }
 
   Future<void> _deletePost(String postId) async {
+    // 임시 저장된 글인지 확인
+    final isLocalDraft = _localPosts.any((p) => p.id == postId);
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF1F1F1F),
         title: const Text('삭제하시겠습니까?', style: TextStyle(color: Colors.white)),
+        content: Text(
+          isLocalDraft ? '임시 저장된 글은 복구할 수 없습니다.' : '게시글을 삭제하시겠습니까?',
+          style: const TextStyle(color: Colors.white70),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -159,21 +223,71 @@ class _CommunityScreenState extends State<CommunityScreen> {
 
     if (confirmed == true) {
       try {
-        await _authService.deletePost(postId);
+        // 임시 글이 아니면 서버 삭제 요청
+        if (!isLocalDraft) {
+          await _authService.deletePost(postId);
+        }
+
         setState(() {
-          _remotePosts.removeWhere((p) => p.id == postId);
-          _localPosts.removeWhere((p) => p.id == postId);
+          if (isLocalDraft) {
+            _localPosts.removeWhere((p) => p.id == postId);
+          } else {
+            _remotePosts.removeWhere((p) => p.id == postId);
+
+          }
         });
-        if (mounted)
+        if (mounted) {
           ScaffoldMessenger.of(
             context,
           ).showSnackBar(const SnackBar(content: Text('게시글이 삭제되었습니다.')));
+        }
       } catch (e) {
-        if (mounted)
+        if (mounted) {
           ScaffoldMessenger.of(
             context,
           ).showSnackBar(const SnackBar(content: Text('삭제에 실패했습니다.')));
+        }
       }
+    }
+  }
+
+  // 이어쓰기 함수 (임시저장 글 -> 작성 화면 이동)
+  Future<void> _continueWriting(CommunityPost post) async {
+    // 현재 로그인된 작성자 계정 정보 찾기
+    final initialAccount = _accounts.firstWhere(
+        (account) => account.userId == AuthService.userId,
+        orElse: () => _accounts.isNotEmpty
+          ? _accounts.first
+          : AccountSummary(userId: 'guest', nickname: 'Guest'),
+    );
+
+    // Draft 객체 생성 (기존 포스트 내용을 바탕으로)
+    final initialDraft = CommunityPostDraft(
+      userId: post.userId ?? '',
+      nickname: post.nickname,
+      content: post.content,
+      localImagePaths: post.localImagePaths,
+    );
+
+    final newDraft = await Navigator.push<CommunityPostDraft>(
+        context,
+        MaterialPageRoute(
+            builder: (context) => CommunityComposeScreen(
+              accounts: _accounts.isNotEmpty ? _accounts : [initialAccount],
+              initialAccount: initialAccount,
+              initialDraft: initialDraft,
+            ),
+        ),
+    );
+
+    // 작성 완료 후 돌아왔을 때 처리
+    if (newDraft != null) {
+      // 기존 임시 글 삭제
+      setState(() {
+        _localPosts.removeWhere((p) => p.id == post.id);
+      });
+      // 새 글 업로드 시도
+      await _submitPost(newDraft);
     }
   }
 
@@ -477,129 +591,213 @@ class _CommunityScreenState extends State<CommunityScreen> {
   }
 
   Widget _buildPostCard(CommunityPost post) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1F1F1F),
-        border: Border.all(color: Colors.black, width: 3.0),
-        boxShadow: const [BoxShadow(color: Colors.black, offset: Offset(6, 6))],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                GestureDetector(
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) =>
-                            ProfileScreen(userId: post.nickname),
-                      ),
-                    );
-                  },
-                  child: Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF1F1F1F),
-                      border: Border.all(color: Colors.black, width: 2.0),
+  final recordText = _extractRecord(post.content);
+  
+  // 임시 글 여부 확인
+  final isLocalDraft = _localPosts.any((p) => p.id == post.id);
+  final String currentUserId = AuthService.userId?.toString() ?? '';
+  final String postUserId = post.userId?.toString() ?? '';
+  final isMine = postUserId.isNotEmpty && postUserId == currentUserId;
+
+  return Container(
+    margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+    decoration: BoxDecoration(
+      color: const Color(0xFF1F1F1F),
+      border: Border.all(color: Colors.black, width: 3.0),
+      boxShadow: const [BoxShadow(color: Colors.black, offset: Offset(6, 6))],
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Header
+        Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) =>
+                          ProfileScreen(userId: post.nickname),
                     ),
-                    child: Center(
-                      child: PixelCharacter(
-                        size: 24,
-                        color: _getColorForNickname(post.nickname),
-                      ),
+                  );
+                },
+                child: Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1F1F1F),
+                    border: Border.all(color: Colors.black, width: 2.0),
+                  ),
+                  child: Center(
+                    child: PixelCharacter(
+                      size: 24,
+                      color: _getColorForNickname(post.nickname),
                     ),
                   ),
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Text(
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
                             post.nickname.toUpperCase(),
                             style: const TextStyle(
                               color: Colors.white,
                               fontWeight: FontWeight.w900,
                               fontSize: 14,
                             ),
+                            overflow: TextOverflow.ellipsis,
                           ),
-                          const SizedBox(width: 12),
-                          _followButton(post.nickname),
-                          if (post.userId == AuthService.userId) ...[
-                            const SizedBox(width: 8),
-                            _myPostTag(),
-                          ],
-                        ],
-                      ),
-                      Text(
-                        _formatTime(post.createdAt).toUpperCase(),
-                        style: const TextStyle(
-                          color: Colors.white38,
-                          fontSize: 10,
                         ),
+                        const SizedBox(width: 8),
+                        // 팔로우 버튼 (내 글 아닐 때만)
+                        if (!isMine) _followButton(post.nickname),
+
+                        // 임시 저장 글 태그 (내 글이고 임시글일 때)
+                        if (isMine && isLocalDraft)
+                          Padding(
+                            padding: const EdgeInsets.only(left: 8),
+                            child: _myPostTag(),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      _formatTime(post.createdAt).toUpperCase(),
+                      style: const TextStyle(
+                        color: Colors.white38,
+                        fontSize: 10,
                       ),
-                    ],
+                    ),
+                  ],
+                ),
+              ),
+              // 삼선 메뉴 (내 글일 때만)
+              if (isMine)
+                SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: PopupMenuButton<String>(
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    icon: const Icon(Pixel.menu, color: Colors.white38, size: 20),
+                    color: const Color(0xFF2A2A2A),
+                    onSelected: (value) {
+                      if (value == 'delete') {
+                        _deletePost(post.id);
+                      } else if (value == 'continue') {
+                        _continueWriting(post);
+                      }
+                    },
+                    itemBuilder: (BuildContext context) {
+                      final List<PopupMenuEntry<String>> items = [];
+
+                      // 임시 저장 글일 경우 '이어쓰기' 메뉴 추가
+                      if (isLocalDraft) {
+                        items.add(
+                          const PopupMenuItem<String>(
+                            value: 'continue',
+                            child: Row(
+                              children: [
+                                Icon(Pixel.edit, color: Colors.white, size: 18),
+                                SizedBox(width: 8),
+                                Text('이어쓰기', style: TextStyle(color: Colors.white)),
+                              ],
+                            ),
+                          ),
+                        );
+                      }
+
+                      // '삭제' 메뉴 추가
+                      items.add(
+                        const PopupMenuItem<String>(
+                          value: 'delete',
+                          child: Row(
+                            children: [
+                              Icon(Pixel.trash, color: Colors.redAccent, size: 18),
+                              SizedBox(width: 8),
+                              Text('삭제', style: TextStyle(color: Colors.white)),
+                            ],
+                          ),
+                        ),
+                      );
+
+                      return items;
+                    },
                   ),
                 ),
-                if (post.userId == AuthService.userId)
-                  GestureDetector(
-                    onTap: () => _deletePost(post.id),
-                    child: const Icon(
-                      Pixel.trash,
-                      color: Colors.redAccent,
-                      size: 24,
-                    ),
-                  )
-                else
-                  const Icon(Pixel.menu, color: Colors.white38, size: 20),
-              ],
-            ),
+            ],
           ),
+        ),
 
-          // Images
-          if (post.localImagePaths.isNotEmpty || post.imageUrls.isNotEmpty)
-            _buildPostImages(post),
+        // Images
+        if (post.localImagePaths.isNotEmpty || post.imageUrls.isNotEmpty)
+          _buildPostImages(post),
 
-          // Actions
+        // Content (본문)
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+          child: _buildPostContent(post),
+        ),
+
+        // Actions (좋아요 / 댓글)
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+          child: Row(
+            children: [
+              _actionButton(
+                Pixel.heart,
+                post.likeCount.toString(),
+                onTap: () => _toggleLike(post),
+                isActive: _likedPostIds.contains(post.id),
+              ),
+              const SizedBox(width: 20),
+              _actionButton(
+                Pixel.message,
+                post.comments.length.toString(),
+                onTap: () => _showComments(post),
+              ),
+            ],
+          ),
+        ),
+
+        // Record Card
+        if (recordText != null)
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-            child: Row(
-              children: [
-                _actionButton(
-                  Pixel.heart,
-                  post.likeCount.toString(),
-                  onTap: () => _toggleLike(post),
-                  isActive: _likedPostIds.contains(post.id),
-                ),
-                const SizedBox(width: 20),
-                _actionButton(
-                  Pixel.message,
-                  post.comments.length.toString(),
-                  onTap: () => _showComments(post),
-                ),
-                const Spacer(),
-                const Icon(Pixel.flag, color: Colors.white38),
-              ],
-            ),
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+            child: _buildRecordCard(recordText),
           ),
+      ],
+    ),
+  );
+}
 
-          // Content
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
-            child: _buildPostContent(post),
-          ),
-        ],
-      ),
-    );
+
+  String? _extractRecord(String content) {
+    final lines = content.split('\n');
+    bool inRecord = false;
+    final buffer = <String>[];
+
+    for (final line in lines) {
+      final trimmed = line.trim();
+      if (trimmed.startsWith('기록:')) {
+        inRecord = true;
+        buffer.add(trimmed.replaceFirst('기록:', '').trim());
+      } else if (inRecord && trimmed.isNotEmpty) {
+        buffer.add(trimmed);
+      }
+    }
+
+    return buffer.isEmpty ? null : buffer.join(' ');
   }
 
   Widget _buildPostContent(CommunityPost post) {
@@ -607,22 +805,15 @@ class _CommunityScreenState extends State<CommunityScreen> {
     final Map<String, List<String>> sections = {
       'hashtags': [],
       'body': [],
-      'record': [],
     };
 
-    bool inRecord = false;
     for (var line in lines) {
       final trimmed = line.trim();
       if (trimmed.isEmpty) continue;
 
       if (trimmed.startsWith('#')) {
         sections['hashtags']!.add(trimmed);
-      } else if (trimmed.startsWith('기록:')) {
-        inRecord = true;
-        sections['record']!.add(trimmed.replaceFirst('기록:', '').trim());
-      } else if (inRecord) {
-        sections['record']!.add(trimmed);
-      } else {
+      } else if (!trimmed.startsWith('기록:')) {
         sections['body']!.add(line);
       }
     }
@@ -638,37 +829,32 @@ class _CommunityScreenState extends State<CommunityScreen> {
               children: sections['hashtags']!
                   .map(
                     (tag) => Text(
-                      tag,
-                      style: const TextStyle(
-                        color: Color(0xFF17C964),
-                        fontWeight: FontWeight.bold,
-                        fontSize: 13,
-                      ),
-                    ),
-                  )
+                  tag,
+                  style: const TextStyle(
+                    color: Color(0xFF17C964),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                  ),
+                ),
+              )
                   .toList(),
             ),
           ),
         if (sections['body']!.isNotEmpty)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: Text(
-              sections['body']!.join('\n'),
-              style: const TextStyle(
-                color: Colors.white,
-                height: 1.5,
-                fontSize: 14,
-              ),
+          Text(
+            sections['body']!.join('\n'),
+            style: const TextStyle(
+              color: Colors.white,
+              height: 1.5,
+              fontSize: 14,
             ),
           ),
-        if (sections['record']!.isNotEmpty)
-          _buildRecordCard(sections['record']!.join(' ')),
       ],
     );
   }
 
   Widget _buildRecordCard(String recordText) {
-    // Expected format: Title · Date · Distance · Duration
+    // "기록: Title · Date · Distance · Duration" 형식 파싱
     final parts = recordText.split('·').map((e) => e.trim()).toList();
 
     return Container(
@@ -700,14 +886,19 @@ class _CommunityScreenState extends State<CommunityScreen> {
           Row(
             children: [
               if (parts.length > 2) ...[
-                _recordStat(Pixel.user, parts[2]),
+                _recordStat(Pixel.user, parts[2]), // Distance
                 const SizedBox(width: 16),
               ],
               if (parts.length > 3) ...[
-                _recordStat(Pixel.clock, parts[3]),
+                _recordStat(Pixel.clock, parts[3]), // Duration
                 const SizedBox(width: 16),
               ],
-              if (parts.length > 1) _recordStat(Pixel.calendar, parts[1]),
+              if (parts.length > 4) ...[
+                _recordStat(Pixel.coin, parts[4]), // SCORE
+                const SizedBox(width: 16),
+              ],
+              if (parts.length > 1)
+                _recordStat(Pixel.calendar, parts[1]), // Date
             ],
           ),
         ],
@@ -935,7 +1126,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
         border: Border.all(color: Colors.black, width: 2.0),
       ),
       child: const Text(
-        'MY POST',
+        '임시 저장된 글',
         style: TextStyle(
           color: Colors.black,
           fontSize: 8,
@@ -963,13 +1154,23 @@ class _CommentBottomSheet extends StatefulWidget {
 
 class _CommentBottomSheetState extends State<_CommentBottomSheet> {
   final TextEditingController _controller = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
   bool _isSubmitting = false;
   late List<CommunityComment> _comments;
 
   @override
   void initState() {
     super.initState();
+    // 초기 댓글 목록을 최신순으로 정렬
     _comments = List<CommunityComment>.from(widget.post.comments);
+    _comments.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _scrollController.dispose();
+    super.dispose();
   }
 
   Future<void> _deleteComment(CommunityComment comment) async {
@@ -992,22 +1193,55 @@ class _CommentBottomSheetState extends State<_CommentBottomSheet> {
     final text = _controller.text.trim();
     if (text.isEmpty || _isSubmitting) return;
 
+    FocusScope.of(context).unfocus();
     setState(() => _isSubmitting = true);
+
     try {
-      await widget.authService.addComment(
+      // 1. 서버에 댓글 전송, 응답으로 새 댓글 ID (또는 객체)를 받음
+      final response = await widget.authService.addComment(
         widget.post.id,
         AuthService.userId ?? 'guest',
         text,
       );
+
       _controller.clear();
+
+      // 2. 받은 응답으로 새 댓글 객체 생성
+      // 서버가 ID만 반환한다고 가정하고 로컬에서 객체를 생성합니다.
+      final newComment = CommunityComment(
+        id: response.toString(), // 서버가 ID를 반환한다고 가정
+        nickname: AuthService.nickname ?? 'You',
+        content: text,
+        createdAt: DateTime.now(),
+      );
+
+      // 3. 로컬 상태에 새 댓글 추가하고 UI 갱신 (맨 위에 추가)
+      setState(() {
+        _comments.insert(0, newComment);
+      });
+
+      // 4. 부모 위젯(피드)에 알려 전체 목록도 갱신하도록 함
       widget.onCommentAdded();
-      if (mounted) Navigator.pop(context);
+
+      // 5. 댓글이 맨 위에 추가되므로, 스크롤을 맨 위로 이동 (선택 사항)
+      // 또는 아무것도 하지 않아 현재 스크롤 위치를 유지
+      if (mounted && _scrollController.hasClients) {
+        _scrollController.animateTo(
+          0.0,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('댓글 작성에 실패했습니다.')));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('댓글 작성에 실패했습니다.')),
+        );
+      }
     } finally {
-      if (mounted) setState(() => _isSubmitting = false);
+      if (mounted) {
+        setState(() => _isSubmitting = false);
+      }
     }
   }
 
@@ -1046,108 +1280,111 @@ class _CommentBottomSheetState extends State<_CommentBottomSheet> {
             ),
           ),
           const SizedBox(height: 20),
-          Expanded(
-            child: _comments.isEmpty
-                ? const Center(
-                    child: Text(
-                      '댓글이 없습니다',
-                      style: TextStyle(color: Colors.white38, fontSize: 16),
-                    ),
-                  )
-                : ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    itemCount: _comments.length,
-                    itemBuilder: (context, index) {
-                      final comment = _comments[index];
-                      final isMine = AuthService.nickname == comment.nickname;
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 20),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Container(
-                              width: 32,
-                              height: 32,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF1F1F1F),
-                                border: Border.all(
-                                  color: Colors.black,
-                                  width: 2.0,
-                                ),
-                              ),
-                              child: Center(
-                                child: PixelCharacter(
-                                  size: 20,
-                                  color: _getColorForNickname(comment.nickname),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Expanded(
+                              Expanded(
+                                child: _comments.isEmpty
+                                    ? const Center(
                                         child: Text(
-                                          comment.nickname.toUpperCase(),
-                                          style: const TextStyle(
-                                            color: Colors.white,
-                                            fontWeight: FontWeight.w900,
-                                            fontSize: 14,
-                                          ),
+                                          '댓글이 없습니다',
+                                          style: TextStyle(color: Colors.white38, fontSize: 16),
                                         ),
-                                      ),
-                                      if (isMine)
-                                        DropdownButtonHideUnderline(
-                                          child: DropdownButton<String>(
-                                            isDense: true,
-                                            icon: const Icon(
-                                              Icons.more_vert,
-                                              color: Colors.white54,
-                                              size: 18,
-                                            ),
-                                            dropdownColor: const Color(
-                                              0xFF2A2A2A,
-                                            ),
-                                            items: const [
-                                              DropdownMenuItem(
-                                                value: 'delete',
-                                                child: Text(
-                                                  '삭제',
-                                                  style: TextStyle(
-                                                    color: Colors.white,
+                                      )
+                                    : ListView.builder(
+                                        controller: _scrollController,
+                                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                                        itemCount: _comments.length,
+                                        itemBuilder: (context, index) {
+                                          final comment = _comments[index];
+                                          final isMine = AuthService.nickname == comment.nickname;
+                                          return Padding(
+                                            padding: const EdgeInsets.only(bottom: 20),
+                                            child: Row(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                // 프로필사진
+                                                Container(
+                                                  width: 50,
+                                                  height: 50,
+                                                  decoration: BoxDecoration(
+                                                    color: const Color(0xFF1F1F1F),
+                                                    border: Border.all(
+                                                      color: Colors.black,
+                                                      width: 2.0,
+                                                    ),
+                                                  ),
+                                                  child: Center(
+                                                    child: PixelCharacter(
+                                                      size: 35,
+                                                      color: _getColorForNickname(comment.nickname),
+                                                    ),
                                                   ),
                                                 ),
-                                              ),
-                                            ],
-                                            onChanged: (value) {
-                                              if (value == 'delete') {
-                                                _deleteComment(comment);
-                                              }
-                                            },
-                                          ),
-                                        ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    comment.content,
-                                    style: const TextStyle(
-                                      color: Colors.white70,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
-          ),
+                                                const SizedBox(width: 12),
+                                                Expanded(
+                                                  child: Column(
+                                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                                    children: [
+                                                      Row(
+                                                        children: [
+                                                          Expanded(
+                                                            // 닉네임
+                                                            child: Text(
+                                                              comment.nickname.toUpperCase(),
+                                                              style: const TextStyle(
+                                                                color: Colors.white54,
+                                                                fontWeight: FontWeight.bold,
+                                                                fontSize: 14,
+                                                              ),
+                                                            ),
+                                                          ),
+                                                          if (isMine)
+                                                            DropdownButtonHideUnderline(
+                                                              child: DropdownButton<String>(
+                                                                isDense: true,
+                                                                icon: const Icon(
+                                                                  Icons.more_vert,
+                                                                  color: Colors.white54,
+                                                                  size: 18,
+                                                                ),
+                                                                dropdownColor: const Color(
+                                                                  0xFF2A2A2A,
+                                                                ),
+                                                                items: const [
+                                                                  DropdownMenuItem(
+                                                                    value: 'delete',
+                                                                    child: Text(
+                                                                      '삭제',
+                                                                      style: TextStyle(
+                                                                        color: Colors.white,
+                                                                      ),
+                                                                    ),
+                                                                  ),
+                                                                ],
+                                                                onChanged: (value) {
+                                                                  if (value == 'delete') {
+                                                                    _deleteComment(comment);
+                                                                  }
+                                                                },
+                                                              ),
+                                                            ),
+                                                        ],
+                                                      ),
+                                                      const SizedBox(height: 4),
+                                                      // 댓글
+                                                      Text(
+                                                        comment.content,
+                                                        style: const TextStyle(
+                                                          color: Colors.white,
+                                                          fontSize: 14
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          );
+                                        },
+                                      ),          ),
           _commentInput(),
         ],
       ),

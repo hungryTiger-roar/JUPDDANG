@@ -1,5 +1,4 @@
 
-
 package com.jupddang.jupddang.plogging.domain;
 
 import com.jupddang.jupddang.account.entity.Account; // Account 임포트 필수!

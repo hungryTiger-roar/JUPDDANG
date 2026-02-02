@@ -65,17 +65,26 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 })
 class PloggingIntegrationTest {
 
-    @Autowired private MockMvc mockMvc;
-    @Autowired private ObjectMapper objectMapper;
-    @Autowired private AccountRepository accountRepository;
-    @Autowired private PloggingRepository ploggingRepository;
-    @Autowired private PloggingRedisRepository redisRepository;
+    @Autowired
+    private MockMvc mockMvc;
+    @Autowired
+    private ObjectMapper objectMapper;
+    @Autowired
+    private AccountRepository accountRepository;
+    @Autowired
+    private PloggingRepository ploggingRepository;
+    @Autowired
+    private PloggingRedisRepository redisRepository;
 
     // --- Mock Beans ---
-    @MockBean private GcsImageService gcsImageService;
-    @MockBean private Storage storage; // GCP 에러 방지
-    @MockBean private RaidService raidService;
-    @MockBean private JwtTokenProvider jwtTokenProvider; // 인증 우회용
+    @MockBean
+    private GcsImageService gcsImageService;
+    @MockBean
+    private Storage storage; // GCP 에러 방지
+    @MockBean
+    private RaidService raidService;
+    @MockBean
+    private JwtTokenProvider jwtTokenProvider; // 인증 우회용
 
     private Account testUser;
     private final String MOCK_IMG_URL = "https://gcs/mock-image.jpg";
@@ -114,8 +123,7 @@ class PloggingIntegrationTest {
         given(jwtTokenProvider.getAuthentication(anyString())).willAnswer(invocation -> {
             String userId = invocation.getArgument(0);
             return new UsernamePasswordAuthenticationToken(
-                    userId, "", List.of(new SimpleGrantedAuthority("ROLE_USER"))
-            );
+                    userId, "", List.of(new SimpleGrantedAuthority("ROLE_USER")));
         });
     }
 
@@ -126,7 +134,8 @@ class PloggingIntegrationTest {
         accountRepository.deleteAll();
         try {
             redisRepository.deleteUserState("plogger");
-        } catch (Exception e) { /* Redis 정리 실패 무시 */ }
+        } catch (Exception e) {
+            /* Redis 정리 실패 무시 */ }
     }
 
     // -------------------------------------------------------------------------
@@ -140,24 +149,22 @@ class PloggingIntegrationTest {
         redisRepository.addCapturedGrid(testUser.getUserId(), "8930e128077ffff");
 
         PloggingEndRequest requestDto = new PloggingEndRequest(
-                null, 5.5, List.of("line"), List.of("trash"), 3600
-        );
+                null, "오늘 플로깅 완료!", 5.5, 3600, java.time.LocalDateTime.now());
 
         MockMultipartFile requestPart = new MockMultipartFile(
                 "data", "", "application/json",
-                objectMapper.writeValueAsString(requestDto).getBytes(StandardCharsets.UTF_8)
-        );
+                objectMapper.writeValueAsString(requestDto).getBytes(StandardCharsets.UTF_8));
         MockMultipartFile img = new MockMultipartFile("beforeImage", "b.jpg", "image/jpeg", "d".getBytes());
         MockMultipartFile img2 = new MockMultipartFile("afterImage", "a.jpg", "image/jpeg", "d".getBytes());
         MockMultipartFile img3 = new MockMultipartFile("mapImage", "m.jpg", "image/jpeg", "d".getBytes());
 
         // when
         mockMvc.perform(multipart("/api/v1/plogging/end")
-                        .file(requestPart).file(img).file(img2).file(img3)
-                        // [핵심] 헤더 2개 모두 필수
-                        .header("Authorization", "Bearer " + testUser.getUserId()) // Security Filter용
-                        .header("userId", testUser.getUserId())                    // Controller용
-                        .contentType(MediaType.MULTIPART_FORM_DATA))
+                .file(requestPart).file(img).file(img2).file(img3)
+                // [핵심] 헤더 2개 모두 필수
+                .header("Authorization", "Bearer " + testUser.getUserId()) // Security Filter용
+                .header("userId", testUser.getUserId()) // Controller용
+                .contentType(MediaType.MULTIPART_FORM_DATA))
                 .andDo(print())
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.distance").value(5.5))
@@ -180,18 +187,17 @@ class PloggingIntegrationTest {
     @DisplayName("⚠️ 예외: 필수 이미지 누락 시 400 에러")
     void endPlogging_MissingImage() throws Exception {
         // given
-        PloggingEndRequest requestDto = new PloggingEndRequest(null, 1.0, List.of(), List.of(), 100);
+        PloggingEndRequest requestDto = new PloggingEndRequest(null, "테스트", 1.0, 100, java.time.LocalDateTime.now());
         MockMultipartFile requestPart = new MockMultipartFile(
                 "data", "", "application/json",
-                objectMapper.writeValueAsString(requestDto).getBytes(StandardCharsets.UTF_8)
-        );
+                objectMapper.writeValueAsString(requestDto).getBytes(StandardCharsets.UTF_8));
         MockMultipartFile img = new MockMultipartFile("beforeImage", "b.jpg", "image/jpeg", "d".getBytes());
 
         // when (afterImage, mapImage 누락)
         mockMvc.perform(multipart("/api/v1/plogging/end")
-                        .file(requestPart).file(img)
-                        .header("Authorization", "Bearer " + testUser.getUserId())
-                        .header("userId", testUser.getUserId()))
+                .file(requestPart).file(img)
+                .header("Authorization", "Bearer " + testUser.getUserId())
+                .header("userId", testUser.getUserId()))
                 .andDo(print())
                 .andExpect(status().isBadRequest()); // ExceptionHandler가 400 처리
     }
@@ -229,18 +235,20 @@ class PloggingIntegrationTest {
                 try {
                     String userId = "user" + index;
 
-                    PloggingEndRequest reqDto = new PloggingEndRequest(null, 10.0, List.of(), List.of(), 100);
-                    MockMultipartFile reqPart = new MockMultipartFile("data", "", "application/json", objectMapper.writeValueAsString(reqDto).getBytes());
+                    PloggingEndRequest reqDto = new PloggingEndRequest(null, "부하테스트", 10.0, 100,
+                            java.time.LocalDateTime.now());
+                    MockMultipartFile reqPart = new MockMultipartFile("data", "", "application/json",
+                            objectMapper.writeValueAsString(reqDto).getBytes());
                     MockMultipartFile img = new MockMultipartFile("beforeImage", "i.jpg", "image/jpeg", "d".getBytes());
                     MockMultipartFile img2 = new MockMultipartFile("afterImage", "i.jpg", "image/jpeg", "d".getBytes());
                     MockMultipartFile img3 = new MockMultipartFile("mapImage", "i.jpg", "image/jpeg", "d".getBytes());
 
                     mockMvc.perform(multipart("/api/v1/plogging/end")
-                                    .file(reqPart).file(img).file(img2).file(img3)
-                                    // [핵심] 헤더 2개 모두 주입
-                                    .header("Authorization", "Bearer " + userId) // Filter 통과
-                                    .header("userId", userId)                    // Controller 파라미터
-                                    .contentType(MediaType.MULTIPART_FORM_DATA))
+                            .file(reqPart).file(img).file(img2).file(img3)
+                            // [핵심] 헤더 2개 모두 주입
+                            .header("Authorization", "Bearer " + userId) // Filter 통과
+                            .header("userId", userId) // Controller 파라미터
+                            .contentType(MediaType.MULTIPART_FORM_DATA))
                             .andExpect(status().isOk());
 
                     successCount.incrementAndGet();

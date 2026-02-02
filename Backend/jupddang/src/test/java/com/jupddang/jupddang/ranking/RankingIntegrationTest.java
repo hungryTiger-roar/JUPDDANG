@@ -6,7 +6,7 @@ import com.jupddang.jupddang.account.entity.Account;
 import com.jupddang.jupddang.account.repository.AccountRepository;
 import com.jupddang.jupddang.common.infrastructure.storage.GcsImageService; // ✅ 추가
 import com.jupddang.jupddang.config.EmbeddedRedisConfig;
-import com.jupddang.jupddang.plogging.repository.PloggingRedisRepository;
+import com.jupddang.jupddang.ranking.repository.RankingRedisRepository;
 import com.jupddang.jupddang.ranking.dto.RankingListResponseDto;
 import com.jupddang.jupddang.ranking.service.RankingService;
 import com.jupddang.jupddang.security.JwtTokenProvider;
@@ -40,8 +40,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @ActiveProfiles("test")
 @Import(EmbeddedRedisConfig.class)
 @TestPropertySource(properties = {
-        "spring.cloud.gcp.core.enabled=false",               // ✅ 추가
-        "spring.cloud.gcp.storage.enabled=false",            // ✅ 추가
+        "spring.cloud.gcp.core.enabled=false", // ✅ 추가
+        "spring.cloud.gcp.storage.enabled=false", // ✅ 추가
         "spring.cloud.gcp.credentials.location=classpath:non-existent.json", // ✅ 추가
         "spring.data.redis.port=6379",
         "spring.data.redis.host=localhost",
@@ -51,17 +51,25 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class RankingIntegrationTest {
 
-    @Autowired private MockMvc mockMvc;
-    @Autowired private ObjectMapper objectMapper;
-    @Autowired private RankingService rankingService;
-    @Autowired private AccountRepository accountRepository;
-    @Autowired private PloggingRedisRepository redisRepository;
+    @Autowired
+    private MockMvc mockMvc;
+    @Autowired
+    private ObjectMapper objectMapper;
+    @Autowired
+    private RankingService rankingService;
+    @Autowired
+    private AccountRepository accountRepository;
+    @Autowired
+    private RankingRedisRepository redisRepository;
 
     // ✅ GCS 관련 MockBean 추가 (필수!)
-    @MockBean private GcsImageService gcsImageService;
-    @MockBean private Storage storage;
+    @MockBean
+    private GcsImageService gcsImageService;
+    @MockBean
+    private Storage storage;
 
-    @MockBean private JwtTokenProvider jwtTokenProvider;
+    @MockBean
+    private JwtTokenProvider jwtTokenProvider;
 
     private static final String TOTAL_RANKING_KEY = "ranking:total";
     private String monthlyRankingKey;
@@ -150,8 +158,7 @@ class RankingIntegrationTest {
         given(jwtTokenProvider.getAuthentication(anyString())).willAnswer(invocation -> {
             String userId = invocation.getArgument(0);
             return new UsernamePasswordAuthenticationToken(
-                    userId, "", List.of(new SimpleGrantedAuthority("ROLE_USER"))
-            );
+                    userId, "", List.of(new SimpleGrantedAuthority("ROLE_USER")));
         });
     }
 
@@ -176,8 +183,8 @@ class RankingIntegrationTest {
     void getTotalRanking_Success() throws Exception {
         // when
         mockMvc.perform(get("/api/ranking/total")
-                        .param("userId", "user3")
-                        .header("Authorization", "Bearer user3"))
+                .param("userId", "user3")
+                .header("Authorization", "Bearer user3"))
                 .andDo(print())
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.topRankers").isArray())
@@ -200,8 +207,8 @@ class RankingIntegrationTest {
     void getTotalRanking_FirstPlace() throws Exception {
         // when
         mockMvc.perform(get("/api/ranking/total")
-                        .param("userId", "user1")
-                        .header("Authorization", "Bearer user1"))
+                .param("userId", "user1")
+                .header("Authorization", "Bearer user1"))
                 .andDo(print())
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.myRankWindow[0].rank").value(1))
@@ -215,8 +222,8 @@ class RankingIntegrationTest {
     void getTotalRanking_LastPlace() throws Exception {
         // when
         mockMvc.perform(get("/api/ranking/total")
-                        .param("userId", "user5")
-                        .header("Authorization", "Bearer user5"))
+                .param("userId", "user5")
+                .header("Authorization", "Bearer user5"))
                 .andDo(print())
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.myRankWindow.length()").value(3)) // 3~5등만 표시
@@ -252,8 +259,8 @@ class RankingIntegrationTest {
     void getMonthlyRanking_CurrentMonth() throws Exception {
         // when
         mockMvc.perform(get("/api/ranking/monthly")
-                        .param("userId", "user2")
-                        .header("Authorization", "Bearer user2"))
+                .param("userId", "user2")
+                .header("Authorization", "Bearer user2"))
                 .andDo(print())
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.topRankers").isArray())
@@ -274,10 +281,10 @@ class RankingIntegrationTest {
 
         // when
         mockMvc.perform(get("/api/ranking/monthly")
-                        .param("year", String.valueOf(year))
-                        .param("month", String.valueOf(month))
-                        .param("userId", "user3")
-                        .header("Authorization", "Bearer user3"))
+                .param("year", String.valueOf(year))
+                .param("month", String.valueOf(month))
+                .param("userId", "user3")
+                .header("Authorization", "Bearer user3"))
                 .andDo(print())
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.topRankers[0].score").value(5000))
@@ -312,7 +319,7 @@ class RankingIntegrationTest {
     void getTotalRanking_MissingUserId() throws Exception {
         // when & then
         mockMvc.perform(get("/api/ranking/total")
-                        .header("Authorization", "Bearer user1"))
+                .header("Authorization", "Bearer user1"))
                 .andDo(print())
                 .andExpect(status().isBadRequest());
     }
@@ -332,8 +339,8 @@ class RankingIntegrationTest {
 
         // when - Redis에 없는 사용자
         mockMvc.perform(get("/api/ranking/total")
-                        .param("userId", "newUser")
-                        .header("Authorization", "Bearer newUser"))
+                .param("userId", "newUser")
+                .header("Authorization", "Bearer newUser"))
                 .andDo(print())
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.topRankers").isArray())
@@ -350,8 +357,8 @@ class RankingIntegrationTest {
 
         // when
         mockMvc.perform(get("/api/ranking/total")
-                        .param("userId", "user1")
-                        .header("Authorization", "Bearer user1"))
+                .param("userId", "user1")
+                .header("Authorization", "Bearer user1"))
                 .andDo(print())
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.topRankers").isEmpty())

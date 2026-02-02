@@ -5,6 +5,8 @@ import 'auth_service.dart';
 
 class PartySocketService {
 
+  static const String wsUrl = 'wss://i14d208.p.ssafy.io/dev-api/ws';
+
   StompClient? _client;
   Function(List<PartyActivity>)? onActivitiesUpdated;
   Function(String)? onStatusUpdated;

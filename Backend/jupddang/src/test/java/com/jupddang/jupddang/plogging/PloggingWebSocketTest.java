@@ -71,7 +71,7 @@ class PloggingWebSocketTest {
     private JwtTokenProvider jwtTokenProvider;
 
     private String wsUrl;
-    private final String SOLO_PATH = "/pub/plogging/location/solo";
+    private final String TRACK_PATH = "/pub/plogging/track";
 
     @BeforeEach
     void setUp() {
@@ -94,7 +94,7 @@ class PloggingWebSocketTest {
         LocationRequest request = new LocationRequest(37.5, 127.0, null);
 
         // when
-        session.send(SOLO_PATH, request);
+        session.send(TRACK_PATH, request);
 
         // then
         verify(ploggingService, timeout(2000).times(1))
@@ -116,7 +116,8 @@ class PloggingWebSocketTest {
         mockJwt(token, userId);
 
         // [수정] null 대신 실제 에러 코드 사용 (INVALID_COORDINATE)
-        // PloggingErrorCode 임포트 필요: import com.jupddang.jupddang.plogging.exception.PloggingErrorCode;
+        // PloggingErrorCode 임포트 필요: import
+        // com.jupddang.jupddang.plogging.exception.PloggingErrorCode;
         doThrow(new PloggingException(PloggingErrorCode.INVALID_COORDINATE))
                 .when(ploggingService)
                 .processLocation(eq(userId), argThat(req -> req.getLat() > 90));
@@ -127,7 +128,7 @@ class PloggingWebSocketTest {
         LocationRequest invalidRequest = new LocationRequest(200.0, 127.0, null);
 
         // when
-        session.send(SOLO_PATH, invalidRequest);
+        session.send(TRACK_PATH, invalidRequest);
 
         // then
         verify(ploggingService, timeout(2000).times(1))
@@ -157,7 +158,8 @@ class PloggingWebSocketTest {
             public Object answer(InvocationOnMock invocation) {
                 String token = invocation.getArgument(0);
                 String userId = token.replace("token-", "user-");
-                return new UsernamePasswordAuthenticationToken(userId, "", List.of(new SimpleGrantedAuthority("ROLE_USER")));
+                return new UsernamePasswordAuthenticationToken(userId, "",
+                        List.of(new SimpleGrantedAuthority("ROLE_USER")));
             }
         });
 
@@ -173,7 +175,7 @@ class PloggingWebSocketTest {
 
                     // 위치 전송
                     LocationRequest req = new LocationRequest(37.5 + (index * 0.0001), 127.0, null);
-                    session.send(SOLO_PATH, req);
+                    session.send(TRACK_PATH, req);
 
                     successConnect.incrementAndGet();
                     session.disconnect(); // 테스트니까 바로 끊기
@@ -205,11 +207,11 @@ class PloggingWebSocketTest {
     private void mockJwt(String token, String userId) {
         given(jwtTokenProvider.validateToken(token)).willReturn(true);
         given(jwtTokenProvider.getAuthentication(token)).willReturn(
-                new UsernamePasswordAuthenticationToken(userId, "", List.of(new SimpleGrantedAuthority("ROLE_USER")))
-        );
+                new UsernamePasswordAuthenticationToken(userId, "", List.of(new SimpleGrantedAuthority("ROLE_USER"))));
     }
 
-    private StompSession connectSession(String token) throws ExecutionException, InterruptedException, TimeoutException {
+    private StompSession connectSession(String token)
+            throws ExecutionException, InterruptedException, TimeoutException {
         WebSocketStompClient client = new WebSocketStompClient(new SockJsClient(
                 List.of(new WebSocketTransport(new StandardWebSocketClient()))));
         client.setMessageConverter(new MappingJackson2MessageConverter());
@@ -220,7 +222,8 @@ class PloggingWebSocketTest {
         WebSocketHttpHeaders handshakeHeaders = new WebSocketHttpHeaders();
         handshakeHeaders.add("Authorization", "Bearer " + token);
 
-        return client.connectAsync(wsUrl, handshakeHeaders, headers, new StompSessionHandlerAdapter() {})
+        return client.connectAsync(wsUrl, handshakeHeaders, headers, new StompSessionHandlerAdapter() {
+        })
                 .get(5, TimeUnit.SECONDS); // 타임아웃 5초
     }
 }

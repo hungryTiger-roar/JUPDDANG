@@ -11,5 +11,6 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     List<Post> findAllByOrderByCreatedAtDesc();
     Optional<Post> findByPloggingId(Long ploggingId);
     List<Post> findAllByAccountInOrderByCreatedAtDesc(List<Account> accounts);
-
+    // 내가 작성한 피드 확인용
+    List<Post> findByAccount_UserId(String userId);
 }

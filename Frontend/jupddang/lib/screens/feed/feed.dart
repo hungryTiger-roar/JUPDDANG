@@ -12,7 +12,14 @@ import '../../widgets/pixel_character.dart';
 import '../account/profile_screen.dart';
 
 class CommunityScreen extends StatefulWidget {
-  const CommunityScreen({super.key});
+  final dynamic ploggingResult; // 🎯 추가
+  final VoidCallback? onResultProcessed; // 🎯 추가
+
+  const CommunityScreen({
+    super.key,
+    this.ploggingResult, // 🎯 추가
+    this.onResultProcessed, // 🎯 추가
+  });
 
   @override
   State<CommunityScreen> createState() => _CommunityScreenState();
@@ -36,6 +43,55 @@ class _CommunityScreenState extends State<CommunityScreen> {
   void initState() {
     super.initState();
     _refreshAll();
+
+    // 플로깅 결과 처리
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _processPloggingResult();
+    });
+  }
+
+  @override
+  void didUpdateWidget(CommunityScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    // 🎯 플로깅 결과가 업데이트되면 처리
+    if (widget.ploggingResult != null &&
+        widget.ploggingResult != oldWidget.ploggingResult) {
+      _processPloggingResult();
+    }
+  }
+
+  // 🎯 새로 추가할 메서드
+  void _processPloggingResult() {
+    if (widget.ploggingResult == null) return;
+
+    try {
+      final result = widget.ploggingResult as Map<String, dynamic>;
+
+      debugPrint('========================================');
+      debugPrint('✅ 플로깅 완료!');
+      debugPrint('postId: ${result['postId']}');
+      debugPrint('========================================');
+
+      // 🎯 그냥 피드 새로고침만!
+      _loadPosts().then((_) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('플로깅 기록이 게시글로 등록되었습니다!'),
+              backgroundColor: Color(0xFF17C964),
+            ),
+          );
+        }
+      });
+
+      widget.onResultProcessed?.call();
+
+    } catch (e) {
+      debugPrint('❌ 플로깅 결과 처리 오류: $e');
+      _loadPosts();
+      widget.onResultProcessed?.call();
+    }
   }
 
   Future<void> _refreshAll() async {
@@ -558,194 +614,213 @@ class _CommunityScreenState extends State<CommunityScreen> {
   }
 
   Widget _buildPostCard(CommunityPost post) {
-    // 임시 글 여부 확인
-    final isLocalDraft = _localPosts.any((p) => p.id == post.id);
-    final String currentUserId = AuthService.userId?.toString() ?? '';
-    final String postUserId = post.userId?.toString() ?? '';
-    final isMine = postUserId.isNotEmpty && postUserId == currentUserId;
+  final recordText = _extractRecord(post.content);
+  
+  // 임시 글 여부 확인
+  final isLocalDraft = _localPosts.any((p) => p.id == post.id);
+  final String currentUserId = AuthService.userId?.toString() ?? '';
+  final String postUserId = post.userId?.toString() ?? '';
+  final isMine = postUserId.isNotEmpty && postUserId == currentUserId;
 
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1F1F1F),
-        border: Border.all(color: Colors.black, width: 3.0),
-        boxShadow: const [BoxShadow(color: Colors.black, offset: Offset(6, 6))],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                GestureDetector(
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) =>
-                            ProfileScreen(userId: post.nickname),
-                      ),
-                    );
-                  },
-                  child: Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF1F1F1F),
-                      border: Border.all(color: Colors.black, width: 2.0),
+  return Container(
+    margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+    decoration: BoxDecoration(
+      color: const Color(0xFF1F1F1F),
+      border: Border.all(color: Colors.black, width: 3.0),
+      boxShadow: const [BoxShadow(color: Colors.black, offset: Offset(6, 6))],
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Header
+        Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) =>
+                          ProfileScreen(userId: post.nickname),
                     ),
-                    child: Center(
-                      child: PixelCharacter(
-                        size: 24,
-                        color: _getColorForNickname(post.nickname),
-                      ),
+                  );
+                },
+                child: Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1F1F1F),
+                    border: Border.all(color: Colors.black, width: 2.0),
+                  ),
+                  child: Center(
+                    child: PixelCharacter(
+                      size: 24,
+                      color: _getColorForNickname(post.nickname),
                     ),
                   ),
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Flexible( // 닉네임이 길어질 경우를 대비해 Flexible 사용
-                            child: Text(
-                              post.nickname.toUpperCase(),
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w900,
-                                fontSize: 14,
-                              ),
-                              overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            post.nickname.toUpperCase(),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w900,
+                              fontSize: 14,
                             ),
+                            overflow: TextOverflow.ellipsis,
                           ),
-                          const SizedBox(width: 8),
-                          // 팔로우 버튼 (내 글 아닐 때만)
-                          if (!isMine) _followButton(post.nickname),
-
-                          // 임시 저장 글 태그 (내 글이고 임시글일 때)
-                          if (isMine && isLocalDraft)
-                            Padding(
-                              padding: const EdgeInsets.only(left: 8),
-                              child: _myPostTag(),
-                            ),
-                        ],
-                      ),
-                      const SizedBox(height: 2), // 간격 미세 조정
-                      Text(
-                        _formatTime(post.createdAt).toUpperCase(),
-                        style: const TextStyle(
-                          color: Colors.white38,
-                          fontSize: 10,
                         ),
+                        const SizedBox(width: 8),
+                        // 팔로우 버튼 (내 글 아닐 때만)
+                        if (!isMine) _followButton(post.nickname),
+
+                        // 임시 저장 글 태그 (내 글이고 임시글일 때)
+                        if (isMine && isLocalDraft)
+                          Padding(
+                            padding: const EdgeInsets.only(left: 8),
+                            child: _myPostTag(),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      _formatTime(post.createdAt).toUpperCase(),
+                      style: const TextStyle(
+                        color: Colors.white38,
+                        fontSize: 10,
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-                // ★ 삼선 메뉴 (통일 및 정렬 수정) ★
-                if (isMine)
-                  SizedBox(
-                    width: 24, // 아이콘 크기에 맞춰 영역 제한
-                    height: 24,
-                    child: PopupMenuButton<String>(
-                      padding: EdgeInsets.zero, // 패딩 제거 (중요!)
-                      constraints: const BoxConstraints(), // 불필요한 공간 제거
-                      icon: const Icon(Pixel.menu, color: Colors.white38, size: 20),
-                      color: const Color(0xFF2A2A2A),
-                      onSelected: (value) {
-                        if (value == 'delete') {
-                          _deletePost(post.id);
-                        } else if (value == 'continue') {
-                          _continueWriting(post);
-                        }
-                      },
-                      itemBuilder: (BuildContext context) {
-                        final List<PopupMenuEntry<String>> items = [];
+              ),
+              // 삼선 메뉴 (내 글일 때만)
+              if (isMine)
+                SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: PopupMenuButton<String>(
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    icon: const Icon(Pixel.menu, color: Colors.white38, size: 20),
+                    color: const Color(0xFF2A2A2A),
+                    onSelected: (value) {
+                      if (value == 'delete') {
+                        _deletePost(post.id);
+                      } else if (value == 'continue') {
+                        _continueWriting(post);
+                      }
+                    },
+                    itemBuilder: (BuildContext context) {
+                      final List<PopupMenuEntry<String>> items = [];
 
-                        // 1. 임시 저장 글일 경우 '이어쓰기' 메뉴 추가
-                        if (isLocalDraft) {
-                          items.add(
-                            const PopupMenuItem<String>(
-                              value: 'continue',
-                              child: Row(
-                                children: [
-                                  Icon(Pixel.edit, color: Colors.white, size: 18),
-                                  SizedBox(width: 8),
-                                  Text('이어쓰기', style: TextStyle(color: Colors.white)),
-                                ],
-                              ),
-                            ),
-                          );
-                        }
-
-                        // 2. 공통: '삭제' 메뉴 추가
+                      // 임시 저장 글일 경우 '이어쓰기' 메뉴 추가
+                      if (isLocalDraft) {
                         items.add(
                           const PopupMenuItem<String>(
-                            value: 'delete',
+                            value: 'continue',
                             child: Row(
                               children: [
-                                Icon(Pixel.trash, color: Colors.redAccent, size: 18),
+                                Icon(Pixel.edit, color: Colors.white, size: 18),
                                 SizedBox(width: 8),
-                                Text('삭제', style: TextStyle(color: Colors.white)),
+                                Text('이어쓰기', style: TextStyle(color: Colors.white)),
                               ],
                             ),
                           ),
                         );
+                      }
 
-                        return items;
-                      },
-                    ),
-                  )
-                // else
-                // // 남의 글인 경우 (단순 아이콘)
-                //   const SizedBox(
-                //     width: 24,
-                //     height: 24,
-                //     child: Icon(Pixel.menu, color: Colors.white38, size: 20),
-                //   ),
-              ],
-            ),
-          ),
+                      // '삭제' 메뉴 추가
+                      items.add(
+                        const PopupMenuItem<String>(
+                          value: 'delete',
+                          child: Row(
+                            children: [
+                              Icon(Pixel.trash, color: Colors.redAccent, size: 18),
+                              SizedBox(width: 8),
+                              Text('삭제', style: TextStyle(color: Colors.white)),
+                            ],
+                          ),
+                        ),
+                      );
 
-          // Images
-          if (post.localImagePaths.isNotEmpty || post.imageUrls.isNotEmpty)
-            _buildPostImages(post),
-
-          // Actions
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-            child: Row(
-              children: [
-                _actionButton(
-                  Pixel.heart,
-                  post.likeCount.toString(),
-                  onTap: () => _toggleLike(post),
-                  isActive: _likedPostIds.contains(post.id),
+                      return items;
+                    },
+                  ),
                 ),
-                const SizedBox(width: 20),
-                _actionButton(
-                  Pixel.message,
-                  post.comments.length.toString(),
-                  onTap: () => _showComments(post),
-                ),
-                const Spacer(),
-                const Icon(Pixel.flag, color: Colors.white38),
-              ],
-            ),
+            ],
           ),
+        ),
 
-          // Content
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
-            child: _buildPostContent(post),
+        // Images
+        if (post.localImagePaths.isNotEmpty || post.imageUrls.isNotEmpty)
+          _buildPostImages(post),
+
+        // Content (본문)
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+          child: _buildPostContent(post),
+        ),
+
+        // Actions (좋아요 / 댓글)
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+          child: Row(
+            children: [
+              _actionButton(
+                Pixel.heart,
+                post.likeCount.toString(),
+                onTap: () => _toggleLike(post),
+                isActive: _likedPostIds.contains(post.id),
+              ),
+              const SizedBox(width: 20),
+              _actionButton(
+                Pixel.message,
+                post.comments.length.toString(),
+                onTap: () => _showComments(post),
+              ),
+            ],
           ),
-        ],
-      ),
-    );
+        ),
+
+        // Record Card
+        if (recordText != null)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+            child: _buildRecordCard(recordText),
+          ),
+      ],
+    ),
+  );
+}
+
+
+  String? _extractRecord(String content) {
+    final lines = content.split('\n');
+    bool inRecord = false;
+    final buffer = <String>[];
+
+    for (final line in lines) {
+      final trimmed = line.trim();
+      if (trimmed.startsWith('기록:')) {
+        inRecord = true;
+        buffer.add(trimmed.replaceFirst('기록:', '').trim());
+      } else if (inRecord && trimmed.isNotEmpty) {
+        buffer.add(trimmed);
+      }
+    }
+
+    return buffer.isEmpty ? null : buffer.join(' ');
   }
 
   Widget _buildPostContent(CommunityPost post) {
@@ -753,22 +828,15 @@ class _CommunityScreenState extends State<CommunityScreen> {
     final Map<String, List<String>> sections = {
       'hashtags': [],
       'body': [],
-      'record': [],
     };
 
-    bool inRecord = false;
     for (var line in lines) {
       final trimmed = line.trim();
       if (trimmed.isEmpty) continue;
 
       if (trimmed.startsWith('#')) {
         sections['hashtags']!.add(trimmed);
-      } else if (trimmed.startsWith('기록:')) {
-        inRecord = true;
-        sections['record']!.add(trimmed.replaceFirst('기록:', '').trim());
-      } else if (inRecord) {
-        sections['record']!.add(trimmed);
-      } else {
+      } else if (!trimmed.startsWith('기록:')) {
         sections['body']!.add(line);
       }
     }
@@ -784,37 +852,32 @@ class _CommunityScreenState extends State<CommunityScreen> {
               children: sections['hashtags']!
                   .map(
                     (tag) => Text(
-                      tag,
-                      style: const TextStyle(
-                        color: Color(0xFF17C964),
-                        fontWeight: FontWeight.bold,
-                        fontSize: 13,
-                      ),
-                    ),
-                  )
+                  tag,
+                  style: const TextStyle(
+                    color: Color(0xFF17C964),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                  ),
+                ),
+              )
                   .toList(),
             ),
           ),
         if (sections['body']!.isNotEmpty)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: Text(
-              sections['body']!.join('\n'),
-              style: const TextStyle(
-                color: Colors.white,
-                height: 1.5,
-                fontSize: 14,
-              ),
+          Text(
+            sections['body']!.join('\n'),
+            style: const TextStyle(
+              color: Colors.white,
+              height: 1.5,
+              fontSize: 14,
             ),
           ),
-        if (sections['record']!.isNotEmpty)
-          _buildRecordCard(sections['record']!.join(' ')),
       ],
     );
   }
 
   Widget _buildRecordCard(String recordText) {
-    // Expected format: Title · Date · Distance · Duration
+    // "기록: Title · Date · Distance · Duration" 형식 파싱
     final parts = recordText.split('·').map((e) => e.trim()).toList();
 
     return Container(
@@ -846,14 +909,19 @@ class _CommunityScreenState extends State<CommunityScreen> {
           Row(
             children: [
               if (parts.length > 2) ...[
-                _recordStat(Pixel.user, parts[2]),
+                _recordStat(Pixel.user, parts[2]), // Distance
                 const SizedBox(width: 16),
               ],
               if (parts.length > 3) ...[
-                _recordStat(Pixel.clock, parts[3]),
+                _recordStat(Pixel.clock, parts[3]), // Duration
                 const SizedBox(width: 16),
               ],
-              if (parts.length > 1) _recordStat(Pixel.calendar, parts[1]),
+              if (parts.length > 4) ...[
+                _recordStat(Pixel.coin, parts[4]), // SCORE
+                const SizedBox(width: 16),
+              ],
+              if (parts.length > 1)
+                _recordStat(Pixel.calendar, parts[1]), // Date
             ],
           ),
         ],

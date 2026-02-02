@@ -95,11 +95,9 @@ class _PartyRoomScreenState extends State<PartyRoomScreen> {
     }
   }
 
-  Future<void> _startParty() async {
+  Future<void> _moveToMapScreen() async {
     setState(() => _starting = true);
     try {
-      await _partyService.startParty(widget.partyId);
-
       // 시작 후 바로 플로깅 화면으로 이동
       if (mounted) {
         _pollTimer?.cancel();
@@ -386,7 +384,7 @@ class _PartyRoomScreenState extends State<PartyRoomScreen> {
                         width: double.infinity,
                         child: PixelButton(
                           text: _starting ? 'STARTING...' : 'START PLOGGING',
-                          onPressed: _starting ? null : _startParty,
+                          onPressed: _starting ? null : _moveToMapScreen,
                           height: 56,
                         ),
                       )

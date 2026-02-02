@@ -4,6 +4,8 @@ import com.google.cloud.storage.BlobId;
 import com.google.cloud.storage.BlobInfo;
 import com.google.cloud.storage.Storage;
 import com.jupddang.jupddang.common.exception.ImageUploadException;
+import com.jupddang.jupddang.sns.entity.Post;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -30,7 +32,7 @@ public class GcsImageService {
             "image/jpeg", "image/jpg", "image/png"
     );
 
-    // 최대 파일 크기 (5MB)
+    // 최대 파일 크기 (10MB)
     private static final long MAX_FILE_SIZE = 10 * 1024 * 1024;
 
     /**
@@ -102,20 +104,16 @@ public class GcsImageService {
      * GCS에서 이미지 삭제
      */
     public void deleteImage(String imageUrl) {
+        // [중요] 여기서 null 체크를 하므로, 서비스 코드에서 if문 없이 호출 가능!
+        if (imageUrl == null || imageUrl.isEmpty()) {
+            return;
+        }
+
         try {
             String objectName = extractObjectName(imageUrl);
-
             log.info("GCS 삭제 시작: {}", objectName);
-
             BlobId blobId = BlobId.of(bucketName, objectName);
-            boolean deleted = storage.delete(blobId);
-
-            if (deleted) {
-                log.info("GCS 삭제 완료: {}", objectName);
-            } else {
-                log.warn("GCS 삭제 실패 (파일 없음): {}", objectName);
-            }
-
+            storage.delete(blobId);
         } catch (Exception e) {
             log.error("GCS 삭제 중 에러", e);
         }

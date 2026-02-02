@@ -29,6 +29,7 @@ class _PloggingRecord {
   final String date;
   final String distance;
   final String duration;
+  final int score;
 
   const _PloggingRecord({
     required this.id,
@@ -36,6 +37,7 @@ class _PloggingRecord {
     required this.date,
     required this.distance,
     required this.duration,
+    required this.score
   });
 }
 
@@ -60,6 +62,7 @@ class _CommunityComposeScreenState extends State<CommunityComposeScreen> {
       date: '2024-11-02',
       distance: '3.2km',
       duration: '32분',
+      score: 55
     ),
     _PloggingRecord(
       id: '2',
@@ -67,6 +70,7 @@ class _CommunityComposeScreenState extends State<CommunityComposeScreen> {
       date: '2024-10-29',
       distance: '2.1km',
       duration: '24분',
+      score: 20
     ),
     _PloggingRecord(
       id: '3',
@@ -74,6 +78,7 @@ class _CommunityComposeScreenState extends State<CommunityComposeScreen> {
       date: '2024-10-24',
       distance: '1.4km',
       duration: '18분',
+      score: 30
     ),
   ];
 
@@ -182,7 +187,7 @@ class _CommunityComposeScreenState extends State<CommunityComposeScreen> {
               return ListTile(
                 title: Text(record.title, style: const TextStyle(color: Colors.white)),
                 subtitle: Text(
-                  '${record.date} · ${record.distance} · ${record.duration}',
+                  '${record.date} · ${record.distance} · ${record.duration}  · ${record.score}',
                   style: const TextStyle(color: Colors.white70),
                 ),
                 trailing: selected
@@ -543,7 +548,7 @@ class _CommunityComposeScreenState extends State<CommunityComposeScreen> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        '${_selectedRecord!.date} · ${_selectedRecord!.distance} · ${_selectedRecord!.duration}',
+                        '${_selectedRecord!.date} · ${_selectedRecord!.distance} · ${_selectedRecord!.duration} · ${_selectedRecord!.score}',
                         style: const TextStyle(color: Colors.white70),
                       ),
                     ],

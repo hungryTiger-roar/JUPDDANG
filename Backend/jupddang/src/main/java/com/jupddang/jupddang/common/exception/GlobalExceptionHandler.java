@@ -85,4 +85,14 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body("필수 파일이 누락되었습니다: " + e.getRequestPartName());
     }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ErrorResponse> handleIllegalArgumentException(IllegalArgumentException e) {
+        log.warn("Invalid Argument: {}", e.getMessage());
+        ErrorResponse response = new ErrorResponse(
+                "NOT_FOUND",
+                e.getMessage()
+        );
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+    }
 }

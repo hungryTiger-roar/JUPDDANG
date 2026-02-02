@@ -1,8 +1,6 @@
 import 'dart:async';
-import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart'; // kIsWeb 사용을 위해 추가
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
@@ -16,10 +14,13 @@ import '../../models/hexagon.dart';
 import '../../widgets/pixel_button.dart';
 import '../../widgets/pixel_character.dart';
 import '../../models/party_models.dart';
-import '../../models/plogging_models.dart';
 import '../../services/party_service.dart';
 import '../../services/party_socket_service.dart';
+import '../../models/raid_models.dart';
+import '../../services/raid_service.dart';
+import 'boss_detail_screen.dart';
 import 'package:gal/gal.dart';
+import '../../widgets/animated_boss_widget.dart'; // Added for AnimatedBossWidget
 
 enum PloggingPhase { idle, plogging, paused, summary }
 
@@ -33,7 +34,6 @@ class MapScreen extends StatefulWidget {
 
 class _MapScreenState extends State<MapScreen> {
   final MapController _mapController = MapController();
-  final GlobalKey _mapRepaintKey = GlobalKey();
   final LocationH3Service _h3Service = LocationH3Service();
 
   List<Polygon> _hexagons = [];
@@ -41,12 +41,17 @@ class _MapScreenState extends State<MapScreen> {
   bool _isInitialCenterSet = false;
   StreamSubscription<Position>? _positionStream;
   Timer? _debounceTimer;
-  bool _isLoading = false;
+
   // 파티 연동을 위한 서비스
   final PartySocketService _socketService = PartySocketService();
   final PartyService _partyService = PartyService();
   Party? _party;
-  Timer? _partyPollTimer; // RES
+  Timer? _partyPollTimer; // REST API 폴링 타이머
+
+  // 레이드 보스 연동
+  final RaidService _raidService = RaidService();
+  List<RaidBossModel> _raidBosses = [];
+  Set<String> _bossH3Indices = {};
 
   String? _currentH3Index;
   Timer? _stayTimer;
@@ -59,7 +64,6 @@ class _MapScreenState extends State<MapScreen> {
   final ImagePicker _picker = ImagePicker();
   XFile? _beforeImage;
   XFile? _afterImage;
-  XFile? _mapImage;
 
   // Session Data
   String? _startAddress;
@@ -83,7 +87,6 @@ class _MapScreenState extends State<MapScreen> {
   List<LatLng> _pathPoints = [];
   int _coinsGained = 0;
   Timer? _statsTimer;
-  bool _isCapturingMap = false;
 
   static const double _minZoomLevel = 15.0;
 
@@ -91,6 +94,7 @@ class _MapScreenState extends State<MapScreen> {
   void initState() {
     super.initState();
     _initLocation();
+    _loadRaidBosses(); // 레이드 보스 데이터 로드
 
     // 파티 정보 로드 및 웹소켓 연결
     if (widget.partyId != null) {
@@ -180,6 +184,35 @@ class _MapScreenState extends State<MapScreen> {
     } catch (e) {
       debugPrint("Party load error: $e");
     }
+  }
+
+  Future<void> _loadRaidBosses() async {
+    try {
+      final bosses = await _raidService.getAllRaidBosses();
+      if (!mounted) return;
+      setState(() {
+        _raidBosses = bosses;
+        _bossH3Indices = bosses.map((b) => b.h3Index).toSet();
+      });
+      debugPrint("🎯 Loaded ${bosses.length} raid bosses (will use fallback positioning)");
+    } catch (e) {
+      debugPrint("❌ Failed to load raid bosses: $e");
+    }
+  }
+
+  void _showBossDetail(int bossId) {
+    // Find the boss object to pass it to the detail screen
+    final boss = _raidBosses.firstWhere(
+      (b) => b.id == bossId,
+      orElse: () => RaidBossModel(id: bossId, h3Index: '', name: 'Unknown', bossType: 0),
+    );
+    
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => BossDetailScreen(bossId: bossId, boss: boss),
+      ),
+    );
   }
 
   @override
@@ -285,7 +318,13 @@ class _MapScreenState extends State<MapScreen> {
     if (h3Index != null) {
       if (_currentH3Index != h3Index) {
         _currentH3Index = h3Index;
-        if (_phase == PloggingPhase.plogging) _startOccupationTimer();
+        // 보스 지역이면 점령 타이머 시작 안함
+        if (_bossH3Indices.contains(h3Index)) {
+            _stopOccupationTimer();
+             // (선택사항) 토스트 메시지 등? 
+        } else if (_phase == PloggingPhase.plogging) {
+             _startOccupationTimer();
+        }
       }
     } else {
       _stopOccupationTimer();
@@ -353,7 +392,7 @@ class _MapScreenState extends State<MapScreen> {
     });
   }
 
-  Future<void> _finishPlogging() async {
+  void _finishPlogging() {
     setState(() {
       _phase = PloggingPhase.summary;
       _sessionStopwatch.stop();
@@ -369,14 +408,6 @@ class _MapScreenState extends State<MapScreen> {
         }
       });
     }
-
-    final mapPath = await _captureMapImage();
-    if (!mounted) return;
-    if (mapPath != null) {
-      setState(() {
-        _mapImage = XFile(mapPath);
-      });
-    }
   }
 
   void _resetPlogging() {
@@ -385,7 +416,6 @@ class _MapScreenState extends State<MapScreen> {
       _sessionStopwatch.reset();
       _beforeImage = null;
       _afterImage = null;
-      _mapImage = null;
       _pathPoints = [];
     });
   }
@@ -398,63 +428,6 @@ class _MapScreenState extends State<MapScreen> {
           _beforeImage = picked;
         else
           _afterImage = picked;
-      });
-    }
-  }
-
-  Future<String?> _captureMapImage() async {
-    if (!mounted) return null;
-    final previousCenter = _mapController.camera.center;
-    final previousZoom = _mapController.camera.zoom;
-
-    if (_currentPosition != null) {
-      _mapController.move(_currentPosition!, 16.0);
-      await Future.delayed(const Duration(milliseconds: 250));
-      await _updateHexagons(_mapController.camera.visibleBounds);
-    }
-    setState(() {
-      _isCapturingMap = true;
-    });
-    await WidgetsBinding.instance.endOfFrame;
-    final renderObject = _mapRepaintKey.currentContext?.findRenderObject();
-    if (renderObject is! RenderRepaintBoundary) {
-      if (mounted) {
-        setState(() {
-          _isCapturingMap = false;
-        });
-      }
-      return null;
-    }
-    final image = await renderObject.toImage(pixelRatio: 2.0);
-    final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
-    if (byteData == null) {
-      if (mounted) {
-        setState(() {
-          _isCapturingMap = false;
-        });
-      }
-      return null;
-    }
-    final bytes = byteData.buffer.asUint8List();
-    final file =
-        File('${Directory.systemTemp.path}/map_${DateTime.now().millisecondsSinceEpoch}.png');
-    await file.writeAsBytes(bytes);
-    if (mounted) {
-      setState(() {
-        _isCapturingMap = false;
-      });
-    }
-    if (_currentPosition != null) {
-      _mapController.move(previousCenter, previousZoom);
-    }
-    return file.path;
-  }
-
-  Future<void> _pickMapImage() async {
-    final picked = await _picker.pickImage(source: ImageSource.gallery);
-    if (picked != null) {
-      setState(() {
-        _mapImage = picked;
       });
     }
   }
@@ -583,6 +556,7 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   void _generatePolygons() {
+    int bossHexCount = 0;
     final newPolygons = _visibleHexagonModels
         .map((model) {
           final boundary = _h3Service.getHexagonBoundary(model.h3Index);
@@ -592,38 +566,57 @@ class _MapScreenState extends State<MapScreen> {
               .map((coord) => LatLng(coord.lat, coord.lon))
               .toList();
 
+          // Check if this is a boss hexagon
+          final isBossHex = _bossH3Indices.contains(model.h3Index);
+          if (isBossHex) {
+            bossHexCount++;
+            debugPrint("🔴 Boss hexagon found: ${model.h3Index}");
+          }
+
           // Apply customization
           Color baseColor;
-          if (model.ownerId == null) {
+          Color borderColor;
+          double borderWidth;
+
+          if (isBossHex) {
+            // Boss hexagons: Transparent fill with Red border
+            baseColor = Colors.transparent;
+            borderColor = Colors.red.withOpacity(0.8);
+            borderWidth = 3.0;
+          } else if (model.ownerId == null) {
             // Unowned lands: Fixed subtle gray (the "default" look)
             baseColor = Colors.black.withOpacity(0.05 * _gridOpacity);
+            borderColor = Colors.black.withOpacity(0.4 * _gridOpacity);
+            borderWidth = 2.0;
           } else {
             // Owned lands: Use the color selected from the palette
             baseColor = _selectedGridColor.withOpacity(_gridOpacity);
+            borderColor = Colors.black.withOpacity(0.4 * _gridOpacity);
+            borderWidth = 2.0;
           }
 
           Color fillColor = baseColor;
 
-          // 점령 중인 칸 강조 (자기 데이터 사용)
+          // 점령 중인 칸 강조 (자기 데이터 사용) - only if not a boss hex
           String? targetH3Index = _currentH3Index;
           double targetProgress = _occupyProgress;
 
-          if (model.h3Index == targetH3Index && targetProgress > 0) {
+          if (!isBossHex && model.h3Index == targetH3Index && targetProgress > 0) {
             // While occupying, fade from the unowned color to the SELECTED palette color
             final targetColor = _selectedGridColor
                 .withOpacity(_gridOpacity * 1.5)
                 .withAlpha((_gridOpacity * 1.5 * 255).toInt().clamp(0, 255));
             fillColor =
-                Color.lerp(fillColor, targetColor, _occupyProgress) ??
-                fillColor;
+                Color.lerp(fillColor, targetColor, targetProgress) ?? fillColor;
           }
+
           return Polygon(
             points: points,
             color: fillColor,
-            borderColor: model.h3Index == targetH3Index
+            borderColor: model.h3Index == targetH3Index && !isBossHex
                 ? Colors.white.withOpacity(0.8)
-                : Colors.black.withOpacity(0.4 * _gridOpacity),
-            borderStrokeWidth: model.h3Index == targetH3Index ? 3.0 : 2.0,
+                : borderColor,
+            borderStrokeWidth: model.h3Index == targetH3Index && !isBossHex ? 3.0 : borderWidth,
           );
         })
         .whereType<Polygon>()
@@ -636,17 +629,24 @@ class _MapScreenState extends State<MapScreen> {
     }
   }
 
+  // Helper to get hexagon center
+  LatLng? _getHexagonCenter(String h3Index) {
+    final boundary = _h3Service.getHexagonBoundary(h3Index);
+    if (boundary.isEmpty) {
+      return null;
+    }
+
+    double lat = boundary.map((c) => c.lat).reduce((a, b) => a + b) / boundary.length;
+    double lon = boundary.map((c) => c.lon).reduce((a, b) => a + b) / boundary.length;
+    return LatLng(lat, lon);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Stack(
-        children: [
-          Positioned.fill(
-            child: RepaintBoundary(
-              key: _mapRepaintKey,
-              child: FlutterMap(
-                mapController: _mapController,
-                options: MapOptions(
+      body: FlutterMap(
+        mapController: _mapController,
+        options: MapOptions(
           initialCenter: const LatLng(37.5665, 126.9780),
           initialZoom: 16.0,
           minZoom: 5.0,
@@ -663,11 +663,11 @@ class _MapScreenState extends State<MapScreen> {
             flags: InteractiveFlag.all,
           ),
         ),
-                children: [
+        children: [
           TileLayer(
             urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
           ),
-          if (_pathPoints.isNotEmpty && !_isCapturingMap)
+          if (_pathPoints.isNotEmpty)
             PolylineLayer(
               polylines: [
                 Polyline(
@@ -685,21 +685,75 @@ class _MapScreenState extends State<MapScreen> {
             key: ValueKey('grid_${_selectedGridColor.value}_$_gridOpacity'),
             polygons: _hexagons,
           ),
-          if (_currentPosition != null)
-            MarkerLayer(
-              markers: [
-                // 내 마커
-                Marker(
-                  point: _currentPosition!,
-                  width: 48,
-                  height: 48,
-                  child: PixelCharacter(
-                    size: 48,
-                    color: _selectedGridColor,
-                    isMoving: _phase == PloggingPhase.plogging,
+          // Boss markers - ALWAYS show
+          MarkerLayer(
+            markers: [
+              // Boss markers
+              ..._raidBosses.asMap().entries.map((entry) {
+                final index = entry.key;
+                final boss = entry.value;
+                
+                // Try to get H3 center, fallback to fixed position
+                LatLng? center = _getHexagonCenter(boss.h3Index);
+                
+                // 🎯 FALLBACK: H3 실패 시 구미 중심 주변에 강제 배치
+                if (center == null) {
+                  debugPrint("⚠️ Using fallback position for boss #${boss.id}");
+                  final baseLatitude = 36.109648;
+                  final baseLongitude = 128.417922;
+                  // 각 보스를 약간씩 다른 위치에 배치 (0.001 = 약 100m)
+                  center = LatLng(
+                    baseLatitude + (index * 0.001),
+                    baseLongitude + (index * 0.001),
+                  );
+                }
+
+                // Determine boss type
+                BossType bossType;
+                switch (boss.bossType % 4) {
+                  case 0:
+                    bossType = BossType.trashCan;
+                    break;
+                  case 1:
+                    bossType = BossType.trashBag;
+                    break;
+                  case 2:
+                    bossType = BossType.dustCloud;
+                    break;
+                  case 3:
+                    bossType = BossType.rottenSprout;
+                    break;
+                  default:
+                    bossType = BossType.trashCan;
+                }
+
+                return Marker(
+                  point: center,
+                  width: 70,
+                  height: 70,
+                  child: GestureDetector(
+                    onTap: () => _showBossDetail(boss.id),
+                    child: AnimatedBossWidget(
+                      bossType: bossType,
+                      size: 60,
+                    ),
                   ),
-                ),
-                if (_currentH3Index != null && !_isCapturingMap)
+                );
+              }).toList(),
+                
+                // 내 마커 (위치 있을 때만)
+                if (_currentPosition != null)
+                  Marker(
+                    point: _currentPosition!,
+                    width: 48,
+                    height: 48,
+                    child: PixelCharacter(
+                      size: 48,
+                      color: _selectedGridColor,
+                      isMoving: _phase == PloggingPhase.plogging,
+                    ),
+                  ),
+                if (_currentH3Index != null)
                   Marker(
                     point: _currentPosition!,
                     width: 120,
@@ -741,10 +795,7 @@ class _MapScreenState extends State<MapScreen> {
                   ),
               ],
             ),
-                ],
-              ),
-            ),
-          ),
+          // Stats Overlay (Top)
           if (_isPlogging)
             Positioned(
               top: 100,
@@ -879,7 +930,7 @@ class _MapScreenState extends State<MapScreen> {
       return SizedBox(
         width: 200,
         child: PixelButton(
-          text: "START JUPDDANG",
+          text: "START JUPKING",
           isGreen: false,
           color: _selectedGridColor,
           onPressed: _startPlogging,
@@ -1009,7 +1060,7 @@ class _MapScreenState extends State<MapScreen> {
                   const Align(
                     alignment: Alignment.centerLeft,
                     child: Text(
-                      "CONTENT",
+                      "DESCRIPTION",
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
@@ -1033,29 +1084,6 @@ class _MapScreenState extends State<MapScreen> {
                         borderSide: BorderSide(color: Colors.black, width: 2),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 24),
-                  const Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      "MAP PHOTO",
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildPhotoSlot(
-                          "MAP",
-                          _mapImage,
-                          () {},
-                        ),
-                      ),
-                    ],
                   ),
                   const SizedBox(height: 24),
                   const Align(
@@ -1093,7 +1121,7 @@ class _MapScreenState extends State<MapScreen> {
                     text: "PUBLISH RECORD",
                     isGreen: false,
                     color: _selectedGridColor,
-                    onPressed: () async {
+                    onPressed: () {
                       if (AuthService.accessToken == null) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
@@ -1103,23 +1131,6 @@ class _MapScreenState extends State<MapScreen> {
                         );
                         return;
                       }
-
-                      final request = PloggingEndRequest(
-                        distance: _totalDistance / 1000.0,
-                        content: _descriptionController.text.trim(),
-                        times: _sessionStopwatch.elapsed.inSeconds,
-                        endTime: _formatEndTime(DateTime.now()),
-                      );
-                      final mapPath = await _captureMapImage();
-                      if (mapPath != null) {
-                        _mapImage = XFile(mapPath);
-                      }
-                      AuthService().endPlogging(
-                        requestData: request,
-                        beforeImagePath: _beforeImage!.path,
-                        afterImagePath: _afterImage!.path,
-                        mapImagePath: mapPath ?? _afterImage!.path,
-                      );
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(content: Text("기록이 업로드되었습니다!")),
                       );
@@ -1205,11 +1216,6 @@ class _MapScreenState extends State<MapScreen> {
     String mm = twoDigits(d.inMinutes.remainder(60));
     String ss = twoDigits(d.inSeconds.remainder(60));
     return "$mm:$ss";
-  }
-
-  String _formatEndTime(DateTime dt) {
-    final iso = dt.toIso8601String();
-    return iso.split('.').first;
   }
 
   Widget _buildMapCustomizer() {

@@ -4,15 +4,17 @@ import '../models/party_models.dart';
 import 'auth_service.dart';
 
 class PartySocketService {
+
   static const String wsUrl = 'wss://i14d208.p.ssafy.io/dev-api/ws';
 
   StompClient? _client;
   Function(List<PartyActivity>)? onActivitiesUpdated;
   Function(String)? onStatusUpdated;
+  Function(PartyMemberLocation)? onLeaderLocationUpdated;
 
   void connect(int partyId) {
     _client = StompClient(
-      config: StompConfig(
+      config: StompConfig.sockJS(
         url: wsUrl,
         onConnect: (frame) => _onConnect(frame, partyId),
         onWebSocketError: (error) => print('WebSocket Error: $error'),
@@ -59,15 +61,54 @@ class PartySocketService {
         }
       },
     );
+
+    // 파티장 위치 정보만 구독 (엔드포인트 변경)
+    _client?.subscribe(
+      destination: '/sub/party/$partyId/leader',
+      callback: (frame) {
+        if (frame.body != null) {
+          _handleLeaderLocationUpdate(frame.body!);
+        }
+      },
+    );
   }
 
+  // 위치 정보를 파싱하고 Map으로 관리
+  PartyMemberLocation? _leaderLocation;
+
+  void _handleLeaderLocationUpdate(String body) {
+    try {
+      print('===== 파티장 위치 데이터 수신 =====');
+      print('Raw data: $body');
+
+      final Map<String, dynamic> data = jsonDecode(body);
+      print('Parsed data: $data');
+
+      final location = PartyMemberLocation.fromJson(data);
+
+      print('파티장 ID: ${location.userId}');
+      print('위도: ${location.lat}');
+      print('경도: ${location.lon}');
+      print('경과시간: ${location.elapsedTime}초');
+      print('총 거리: ${location.totalDistance}m');
+      print('점수: ${location.score}');
+      print('================================');
+
+      _leaderLocation = location;
+      onLeaderLocationUpdated?.call(location);
+    } catch (e) {
+      print('❌ Leader location update parsing error: $e');
+    }
+  }
+
+
   /// 자신의 활동 정보 전송 (방장이 주로 사용)
-  void sendActivity(int partyId, PartyActivity activity) {
+  void sendLocation(int partyId, LocationRequest location) {
     if (_client == null || !_client!.connected) return;
 
     _client?.send(
-      destination: '/pub/party/$partyId/activity',
-      body: jsonEncode(activity.toJson()),
+      destination: '/pub/plogging/location/party/$partyId',
+      body: jsonEncode(location.toJson()),
     );
   }
 
@@ -75,4 +116,5 @@ class PartySocketService {
     _client?.deactivate();
     _client = null;
   }
+
 }

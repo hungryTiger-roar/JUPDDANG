@@ -2,7 +2,7 @@ package com.jupddang.jupddang.ranking.controller;
 
 import com.jupddang.jupddang.account.entity.Account;
 import com.jupddang.jupddang.account.repository.AccountRepository;
-import com.jupddang.jupddang.plogging.repository.PloggingRedisRepository;
+import com.jupddang.jupddang.ranking.repository.RankingRedisRepository;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -24,7 +24,7 @@ import java.util.Optional;
 public class RankingTestController {
 
     private final AccountRepository accountRepository;
-    private final PloggingRedisRepository ploggingRedisRepository;
+    private final RankingRedisRepository rankingRedisRepository;
 
     @GetMapping("/init") // ★ 2. 방식 변경! (@PostMapping -> @GetMapping, /setup -> /init)
     @Transactional
@@ -35,11 +35,12 @@ public class RankingTestController {
 
         // 2. 랭킹 데이터 키 정의
         String totalKey = "ranking:total";
-        String monthlyKey = String.format("ranking:monthly:%04d%02d", LocalDate.now().getYear(), LocalDate.now().getMonthValue());
+        String monthlyKey = String.format("ranking:monthly:%04d%02d", LocalDate.now().getYear(),
+                LocalDate.now().getMonthValue());
 
         // 3. 기존 랭킹 데이터 삭제
-        ploggingRedisRepository.deleteRankingKey(totalKey);
-        ploggingRedisRepository.deleteRankingKey(monthlyKey);
+        rankingRedisRepository.deleteRankingKey(totalKey);
+        rankingRedisRepository.deleteRankingKey(monthlyKey);
 
         // 4. 테스트 데이터 (userId, totalScore, monthlyScore)
         // ★ 주의: 실제 랭킹 조회할 때 이 아이디(testuser1 등)로 조회해야 나와요!
@@ -48,16 +49,38 @@ public class RankingTestController {
                 "testuser2", List.of(2200, 800),
                 "testuser3", List.of(800, 150),
                 "testuser4", List.of(3100, 1200),
-                "testuser5", List.of(1800, 700)
-        );
+                "testuser5", List.of(1800, 700));
 
         // 5. Redis에 랭킹 데이터 추가
         testData.forEach((userId, scores) -> {
-            ploggingRedisRepository.updateRanking(totalKey, userId, scores.get(0));
-            ploggingRedisRepository.updateRanking(monthlyKey, userId, scores.get(1));
+            rankingRedisRepository.updateRanking(totalKey, userId, scores.get(0));
+            rankingRedisRepository.updateRanking(monthlyKey, userId, scores.get(1));
         });
 
         return ResponseEntity.ok("랭킹 테스트 데이터 생성 완료! (testuser1~5)");
+    }
+
+    @GetMapping("/clear") // ★ 청소용 주소: /api/ranking/test/clear
+    @Transactional
+    @Operation(summary = "테스트 데이터 삭제", description = "생성된 테스트 유저와 Redis 랭킹 데이터를 모두 삭제합니다.")
+    public ResponseEntity<String> clearTestData() {
+        // 1. Redis 랭킹 데이터 삭제 (Init 때 썼던 키랑 똑같은 걸 지워야 해요!)
+        String totalKey = "ranking:total";
+        String monthlyKey = String.format("ranking:monthly:%04d%02d",
+                LocalDate.now().getYear(), LocalDate.now().getMonthValue());
+
+        rankingRedisRepository.deleteRankingKey(totalKey);
+        rankingRedisRepository.deleteRankingKey(monthlyKey);
+
+        // 2. DB 테스트 계정 삭제 (testuser1 ~ testuser5)
+        List<String> userIds = List.of("testuser1", "testuser2", "testuser3", "testuser4", "testuser5");
+        for (String userId : userIds) {
+            Optional<Account> account = accountRepository.findByUserId(userId);
+            // 계정이 있으면 삭제!
+            account.ifPresent(accountRepository::delete);
+        }
+
+        return ResponseEntity.ok("🧹 청소 끝! 테스트 데이터(Redis + DB)가 싹 삭제되었습니다.");
     }
 
     private void setupTestAccounts() {

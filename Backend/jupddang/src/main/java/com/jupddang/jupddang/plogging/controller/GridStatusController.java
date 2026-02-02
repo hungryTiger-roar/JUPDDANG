@@ -22,12 +22,17 @@ public class GridStatusController {
     public ResponseEntity<GridStatusResponse> checkGridStatus(
             @RequestParam String h3Index,
             // [수정 1] Long -> String 변경 (단순 타입 불일치 해결)
-            @RequestHeader("userId") String userId
-    ) {
+            @RequestHeader("userId") String userId) {
         // Service 메서드가 이제 (String, String)을 받으므로 타입이 일치합니다.
         boolean isClaimable = gridStatusService.checkClaimability(userId, h3Index);
         return ResponseEntity.ok(new GridStatusResponse(h3Index, isClaimable));
     }
 
-    public record GridStatusResponse(String h3Index, boolean isClaimable) {}
+    public record GridStatusResponse(String h3Index, boolean isClaimable) {
+    }
+
+    @GetMapping("/all")
+    public ResponseEntity<java.util.List<com.jupddang.jupddang.plogging.domain.Grids>> getAllGrids() {
+        return ResponseEntity.ok(gridStatusService.getAllGrids());
+    }
 }

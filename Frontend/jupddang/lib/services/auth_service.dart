@@ -488,4 +488,40 @@ class AuthService {
     return {'Authorization': 'Bearer $accessToken'};
   }
 
+  //화현이: 본인 작성 게시글 조회
+  Future<List<dynamic>> getMyPosts() async {
+    try {
+      final response = await _dio.get(
+        '$postsBase/myposts',
+        options: Options(headers: _authHeaders()),
+      );
+      if (response.data is List) {
+        return response.data as List<dynamic>;
+      }
+      throw Exception('Invalid response format');
+    } catch (e) {
+      print('Get My Posts Error: $e');
+      rethrow;
+    }
+  }
+
+  // 상대방 프로필 정보 조회(검색용)
+  Future<Map<String, dynamic>> searchUser(String targetId) async {
+    try {
+      final response = await _dio.get(
+        '$accountBase/profile/$targetId', // 기존 accountBase 변수 사용
+        options: Options(headers: _authHeaders()), // 기존 헤더 함수 사용
+      );
+      // Dio는 자동으로 JSON을 디코딩해주므로 바로 리턴 가능
+      return response.data as Map<String, dynamic>;
+
+    } on DioException catch (e) {
+      // Dio 에러 처리
+      if (e.response?.statusCode == 404) {
+        throw Exception('User not found');
+      }
+      print('Search User Error: $e');
+      rethrow;
+    }
+  }
 }

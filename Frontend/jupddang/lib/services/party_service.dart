@@ -1,11 +1,14 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:dio/dio.dart';
+import 'package:image_picker/image_picker.dart';
 import '../models/party_models.dart';
+import '../models/plogging_models.dart';
 import 'auth_service.dart';
 
 class PartyService {
-  static const String apiBase = 'https://i14d208.p.ssafy.io/dev-api/api';
+
+  // static const String apiBase = 'https://i14d208.p.ssafy.io/dev-api/api';
   static const String partyBase = '$apiBase/party';
 
   final Dio _dio = Dio(
@@ -17,9 +20,11 @@ class PartyService {
 
   Map<String, String> _authHeaders() {
     final token = AuthService.accessToken;
+
     if (token == null || token.isEmpty) {
       return {};
     }
+
     return {'Authorization': 'Bearer $token'};
   }
 
@@ -115,29 +120,31 @@ class PartyService {
     }
   }
 
-  /// 개별 활동 완료 (팀장용 - 이미지 포함)
-  Future<void> completeActivity({
-    required int partyId,
-    required double distance,
-    required int trashCount,
-    required String description,
-    required File beforeImage,
-    required File afterImage,
-    required File mapImage,
-  }) async {
+  Future<dynamic> completeActivity( // 🎯 Future<void> → Future<dynamic>
+      int partyId,
+      PloggingEndRequest request,
+      XFile beforeImage,
+      XFile afterImage,
+      XFile mapImage,
+      ) async {
     try {
       final formData = FormData.fromMap({
-        'data': jsonEncode({
-          'distance': distance,
-          'trashCount': trashCount,
-          'description': description,
-        }),
-        'beforeImage': await MultipartFile.fromFile(beforeImage.path),
-        'afterImage': await MultipartFile.fromFile(afterImage.path),
-        'mapImage': await MultipartFile.fromFile(mapImage.path),
+        'request': jsonEncode(request.toJson()),
+        'beforeImage': await MultipartFile.fromFile(
+          beforeImage.path,
+          filename: 'before.jpg',
+        ),
+        'afterImage': await MultipartFile.fromFile(
+          afterImage.path,
+          filename: 'after.jpg',
+        ),
+        'mapImage': await MultipartFile.fromFile(
+          mapImage.path,
+          filename: 'map.png',
+        ),
       });
 
-      await _dio.post(
+      final response = await _dio.post( // 🎯 응답 저장
         '$partyBase/$partyId/activities/complete',
         data: formData,
         options: Options(
@@ -145,6 +152,9 @@ class PartyService {
           contentType: 'multipart/form-data',
         ),
       );
+
+      print('파티 활동 완료 성공!');
+      return response.data; // 🎯 응답 반환
     } catch (e) {
       print('Complete Activity Error: $e');
       rethrow;

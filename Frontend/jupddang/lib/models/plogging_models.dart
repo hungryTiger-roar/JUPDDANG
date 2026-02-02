@@ -1,31 +1,26 @@
 class PloggingEndRequest {
-  final int? ploggingId;
+  final double distance;
   final String content;
-  final double distance; // km
-  final int times; // seconds
-  final String endTime; // yyyy-MM-dd'T'HH:mm:ss
+  final int times;
+  final String endTime;
+  final int? partyId;
+  final String? recordTitle;
 
   PloggingEndRequest({
-    this.ploggingId,
     required this.distance,
     required this.content,
     required this.times,
     required this.endTime,
+    this.partyId,
+    required this.recordTitle,
   });
 
-  Map<String, dynamic> toJson() {
-    final payload = <String, dynamic>{
-      'distance': distance,
-      'content': content,
-      'times': times,
-      'endTime': endTime,
-    };
-
-    if (ploggingId != null) {
-      payload['ploggingId'] = ploggingId;
-    }
-
-    return payload;
-  }
-
+  Map<String, dynamic> toJson() => {
+    'distance': distance,
+    'content': content,
+    'times': times,
+    'endTime': endTime,
+    if (partyId != null) 'partyId': partyId,
+    if (recordTitle != null) 'recordTitle': recordTitle,
+  };
 }

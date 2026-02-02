@@ -1,5 +1,7 @@
 import 'package:dio/dio.dart';
+import 'package:latlong2/latlong.dart';
 import 'auth_service.dart';
+import 'location_h3_service.dart';
 import '../models/raid_models.dart';
 
 class RaidService {
@@ -35,37 +37,50 @@ class RaidService {
       
       // 🧪 에뮬레이터 테스트용 더미 데이터 반환
       print('🧪 [RaidService] Using dummy data for testing');
-      return _getDummyBosses();
+      return await _getDummyBosses();
     }
   }
 
   /// 🧪 테스트용 더미 보스 데이터 (구미 지역 - Fallback 사용)
-  List<RaidBossModel> _getDummyBosses() {
+  Future<List<RaidBossModel>> _getDummyBosses() async {
     // 구미 중심: 36.109648, 128.417922
-    // H3 인덱스를 무효화하여 Fallback 위치 사용 (구미 좌표)
+    final baseLat = 36.109648;
+    final baseLon = 128.417922;
+    final h3Service = LocationH3Service();
+    
+    // H3 서비스 초기화 확인 (보통 MapScreen에서 하지만 안전을 위해)
+    await h3Service.init();
+
+    String? getIndex(int idx) {
+       // 각 보스를 약간씩 다른 위치에 배치 (약 500m ~ 1km 간격)
+       // 0.005도 = 약 500m
+       final lat = baseLat + (idx == 1 ? 0.005 : idx == 2 ? -0.005 : 0);
+       final lon = baseLon + (idx == 3 ? 0.005 : idx == 0 ? -0.005 : 0);
+       return h3Service.latLngToH3(LatLng(lat, lon));
+    }
     
     return [
       RaidBossModel(
         id: 1,
-        h3Index: 'invalid1', // Fallback: 구미 중심
+        h3Index: getIndex(0) ?? '8930e466317ffff', // Fallback or Valid
         name: '구미역 쓰레기존',
         bossType: 0, // 쓰레기통
       ),
       RaidBossModel(
         id: 2,
-        h3Index: 'invalid2', // Fallback: 구미 중심 + 100m
+        h3Index: getIndex(1) ?? '8930e46630bffff', 
         name: '금오공대 먼지구역',
         bossType: 2, // 먼지구름
       ),
       RaidBossModel(
         id: 3,
-        h3Index: 'invalid3', // Fallback: 구미 중심 + 200m
+        h3Index: getIndex(2) ?? '8930e466387ffff', 
         name: '공단 쓰레기봉투',
         bossType: 1, // 쓰레기봉투
       ),
       RaidBossModel(
         id: 4,
-        h3Index: 'invalid4', // Fallback: 구미 중심 + 300m
+        h3Index: getIndex(3) ?? '8930e466313ffff', 
         name: '썩은 새싹 구역',
         bossType: 3, // 썩은 새싹
       ),
@@ -101,7 +116,13 @@ class RaidService {
 
   /// 🧪 테스트용 더미 보스 상세 데이터
   RaidDetailModel _getDummyBossDetail(int bossId) {
-    final bosses = _getDummyBosses();
+    final bosses = [
+        // 동기적 더미 데이터 반환 (상세 정보용)
+        RaidBossModel(id: 1, h3Index: 'dummy', name: '구미역 쓰레기존', bossType: 0),
+        RaidBossModel(id: 2, h3Index: 'dummy', name: '금오공대 먼지구역', bossType: 2),
+        RaidBossModel(id: 3, h3Index: 'dummy', name: '공단 쓰레기봉투', bossType: 1),
+        RaidBossModel(id: 4, h3Index: 'dummy', name: '썩은 새싹 구역', bossType: 3),
+    ];
     final boss = bosses.firstWhere(
       (b) => b.id == bossId,
       orElse: () => bosses.first,

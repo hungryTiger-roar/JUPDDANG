@@ -318,7 +318,13 @@ class _MapScreenState extends State<MapScreen> {
     if (h3Index != null) {
       if (_currentH3Index != h3Index) {
         _currentH3Index = h3Index;
-        if (_phase == PloggingPhase.plogging) _startOccupationTimer();
+        // 보스 지역이면 점령 타이머 시작 안함
+        if (_bossH3Indices.contains(h3Index)) {
+            _stopOccupationTimer();
+             // (선택사항) 토스트 메시지 등? 
+        } else if (_phase == PloggingPhase.plogging) {
+             _startOccupationTimer();
+        }
       }
     } else {
       _stopOccupationTimer();
@@ -573,10 +579,10 @@ class _MapScreenState extends State<MapScreen> {
           double borderWidth;
 
           if (isBossHex) {
-            // Boss hexagons: Red with pulsing effect
-            baseColor = Colors.red.withOpacity(0.3 * _gridOpacity);
+            // Boss hexagons: Transparent fill with Red border
+            baseColor = Colors.transparent;
             borderColor = Colors.red.withOpacity(0.8);
-            borderWidth = 4.0;
+            borderWidth = 3.0;
           } else if (model.ownerId == null) {
             // Unowned lands: Fixed subtle gray (the "default" look)
             baseColor = Colors.black.withOpacity(0.05 * _gridOpacity);

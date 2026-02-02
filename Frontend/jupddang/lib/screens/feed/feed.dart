@@ -10,7 +10,14 @@ import '../../widgets/pixel_character.dart';
 import '../account/profile_screen.dart';
 
 class CommunityScreen extends StatefulWidget {
-  const CommunityScreen({super.key});
+  final dynamic ploggingResult; // 🎯 추가
+  final VoidCallback? onResultProcessed; // 🎯 추가
+
+  const CommunityScreen({
+    super.key,
+    this.ploggingResult, // 🎯 추가
+    this.onResultProcessed, // 🎯 추가
+  });
 
   @override
   State<CommunityScreen> createState() => _CommunityScreenState();
@@ -34,6 +41,55 @@ class _CommunityScreenState extends State<CommunityScreen> {
   void initState() {
     super.initState();
     _refreshAll();
+
+    // 플로깅 결과 처리
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _processPloggingResult();
+    });
+  }
+
+  @override
+  void didUpdateWidget(CommunityScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    // 🎯 플로깅 결과가 업데이트되면 처리
+    if (widget.ploggingResult != null &&
+        widget.ploggingResult != oldWidget.ploggingResult) {
+      _processPloggingResult();
+    }
+  }
+
+  // 🎯 새로 추가할 메서드
+  void _processPloggingResult() {
+    if (widget.ploggingResult == null) return;
+
+    try {
+      final result = widget.ploggingResult as Map<String, dynamic>;
+
+      debugPrint('========================================');
+      debugPrint('✅ 플로깅 완료!');
+      debugPrint('postId: ${result['postId']}');
+      debugPrint('========================================');
+
+      // 🎯 그냥 피드 새로고침만!
+      _loadPosts().then((_) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('플로깅 기록이 게시글로 등록되었습니다!'),
+              backgroundColor: Color(0xFF17C964),
+            ),
+          );
+        }
+      });
+
+      widget.onResultProcessed?.call();
+
+    } catch (e) {
+      debugPrint('❌ 플로깅 결과 처리 오류: $e');
+      _loadPosts();
+      widget.onResultProcessed?.call();
+    }
   }
 
   Future<void> _refreshAll() async {
@@ -477,6 +533,9 @@ class _CommunityScreenState extends State<CommunityScreen> {
   }
 
   Widget _buildPostCard(CommunityPost post) {
+
+    final recordText = _extractRecord(post.content);
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       decoration: BoxDecoration(
@@ -569,9 +628,15 @@ class _CommunityScreenState extends State<CommunityScreen> {
           if (post.localImagePaths.isNotEmpty || post.imageUrls.isNotEmpty)
             _buildPostImages(post),
 
-          // Actions
+          // Content (본문)
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+            child: _buildPostContent(post),
+          ),
+
+          // Actions (좋아요 / 댓글)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
             child: Row(
               children: [
                 _actionButton(
@@ -586,20 +651,38 @@ class _CommunityScreenState extends State<CommunityScreen> {
                   post.comments.length.toString(),
                   onTap: () => _showComments(post),
                 ),
-                const Spacer(),
-                const Icon(Pixel.flag, color: Colors.white38),
               ],
             ),
           ),
 
-          // Content
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
-            child: _buildPostContent(post),
-          ),
+          // Record Card
+          if (recordText != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+              child: _buildRecordCard(recordText),
+            ),
         ],
       ),
     );
+  }
+
+
+  String? _extractRecord(String content) {
+    final lines = content.split('\n');
+    bool inRecord = false;
+    final buffer = <String>[];
+
+    for (final line in lines) {
+      final trimmed = line.trim();
+      if (trimmed.startsWith('기록:')) {
+        inRecord = true;
+        buffer.add(trimmed.replaceFirst('기록:', '').trim());
+      } else if (inRecord && trimmed.isNotEmpty) {
+        buffer.add(trimmed);
+      }
+    }
+
+    return buffer.isEmpty ? null : buffer.join(' ');
   }
 
   Widget _buildPostContent(CommunityPost post) {
@@ -607,22 +690,15 @@ class _CommunityScreenState extends State<CommunityScreen> {
     final Map<String, List<String>> sections = {
       'hashtags': [],
       'body': [],
-      'record': [],
     };
 
-    bool inRecord = false;
     for (var line in lines) {
       final trimmed = line.trim();
       if (trimmed.isEmpty) continue;
 
       if (trimmed.startsWith('#')) {
         sections['hashtags']!.add(trimmed);
-      } else if (trimmed.startsWith('기록:')) {
-        inRecord = true;
-        sections['record']!.add(trimmed.replaceFirst('기록:', '').trim());
-      } else if (inRecord) {
-        sections['record']!.add(trimmed);
-      } else {
+      } else if (!trimmed.startsWith('기록:')) {
         sections['body']!.add(line);
       }
     }
@@ -638,37 +714,32 @@ class _CommunityScreenState extends State<CommunityScreen> {
               children: sections['hashtags']!
                   .map(
                     (tag) => Text(
-                      tag,
-                      style: const TextStyle(
-                        color: Color(0xFF17C964),
-                        fontWeight: FontWeight.bold,
-                        fontSize: 13,
-                      ),
-                    ),
-                  )
+                  tag,
+                  style: const TextStyle(
+                    color: Color(0xFF17C964),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                  ),
+                ),
+              )
                   .toList(),
             ),
           ),
         if (sections['body']!.isNotEmpty)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: Text(
-              sections['body']!.join('\n'),
-              style: const TextStyle(
-                color: Colors.white,
-                height: 1.5,
-                fontSize: 14,
-              ),
+          Text(
+            sections['body']!.join('\n'),
+            style: const TextStyle(
+              color: Colors.white,
+              height: 1.5,
+              fontSize: 14,
             ),
           ),
-        if (sections['record']!.isNotEmpty)
-          _buildRecordCard(sections['record']!.join(' ')),
       ],
     );
   }
 
   Widget _buildRecordCard(String recordText) {
-    // Expected format: Title · Date · Distance · Duration
+    // "기록: Title · Date · Distance · Duration" 형식 파싱
     final parts = recordText.split('·').map((e) => e.trim()).toList();
 
     return Container(
@@ -700,14 +771,19 @@ class _CommunityScreenState extends State<CommunityScreen> {
           Row(
             children: [
               if (parts.length > 2) ...[
-                _recordStat(Pixel.user, parts[2]),
+                _recordStat(Pixel.user, parts[2]), // Distance
                 const SizedBox(width: 16),
               ],
               if (parts.length > 3) ...[
-                _recordStat(Pixel.clock, parts[3]),
+                _recordStat(Pixel.clock, parts[3]), // Duration
                 const SizedBox(width: 16),
               ],
-              if (parts.length > 1) _recordStat(Pixel.calendar, parts[1]),
+              if (parts.length > 4) ...[
+                _recordStat(Pixel.coin, parts[4]), // SCORE
+                const SizedBox(width: 16),
+              ],
+              if (parts.length > 1)
+                _recordStat(Pixel.calendar, parts[1]), // Date
             ],
           ),
         ],

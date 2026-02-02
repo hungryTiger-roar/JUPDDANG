@@ -166,7 +166,7 @@ class _CommunityComposeScreenState extends State<CommunityComposeScreen> {
   void _openRecordPicker() {
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFF1F1F1F),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -175,18 +175,19 @@ class _CommunityComposeScreenState extends State<CommunityComposeScreen> {
           child: ListView.separated(
             padding: const EdgeInsets.symmetric(vertical: 16),
             itemCount: _records.length,
-            separatorBuilder: (_, __) => const Divider(height: 1),
+            separatorBuilder: (_, __) => const Divider(height: 1, color: Colors.white24),
             itemBuilder: (context, index) {
               final record = _records[index];
               final selected = _selectedRecord?.id == record.id;
               return ListTile(
-                title: Text(record.title),
+                title: Text(record.title, style: const TextStyle(color: Colors.white)),
                 subtitle: Text(
                   '${record.date} · ${record.distance} · ${record.duration}',
+                  style: const TextStyle(color: Colors.white70),
                 ),
                 trailing: selected
                     ? const Icon(Icons.check_circle, color: _navAccent)
-                    : const Icon(Icons.circle_outlined),
+                    : const Icon(Icons.circle_outlined, color: Colors.white24),
                 onTap: () {
                   setState(() {
                     _selectedRecord = record;
@@ -277,9 +278,11 @@ class _CommunityComposeScreenState extends State<CommunityComposeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      backgroundColor: const Color(0xFF141414),
       appBar: AppBar(
         title: const Text('NEW POST'),
+        backgroundColor: Colors.transparent, // ★ 투명 배경
+        foregroundColor: Colors.white,       // ★ 흰색 글씨/아이콘
         leading: IconButton(
           icon: const Icon(Icons.close_rounded, size: 24),
           onPressed: () => Navigator.pop(context),
@@ -343,8 +346,10 @@ class _CommunityComposeScreenState extends State<CommunityComposeScreen> {
     return _buildInputContainer(
       TextField(
         controller: _hashtagController,
+        style: const TextStyle(color: Colors.white),
         decoration: const InputDecoration(
           hintText: '#플로깅 #환경',
+          hintStyle: TextStyle(color: Colors.white38),
           border: InputBorder.none,
         ),
       ),
@@ -357,8 +362,10 @@ class _CommunityComposeScreenState extends State<CommunityComposeScreen> {
         controller: _contentController,
         maxLines: 6,
         maxLength: 1000,
+        style: const TextStyle(color: Colors.white),
         decoration: const InputDecoration(
           hintText: '내용을 입력하세요',
+          hintStyle: TextStyle(color: Colors.white38),
           border: InputBorder.none,
           counterText: '',
         ),
@@ -369,7 +376,7 @@ class _CommunityComposeScreenState extends State<CommunityComposeScreen> {
                 alignment: Alignment.centerRight,
                 child: Text(
                   '$currentLength / 최대 $limit자',
-                  style: const TextStyle(color: Colors.black45, fontSize: 12),
+                  style: const TextStyle(color: Colors.white38, fontSize: 12),
                 ),
               );
             },
@@ -413,7 +420,7 @@ class _CommunityComposeScreenState extends State<CommunityComposeScreen> {
         aspectRatio: 1,
         child: Container(
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: const Color(0xFF1F1F1F),
             border: Border.all(color: _borderColor, width: 2.0),
             boxShadow: [
               BoxShadow(
@@ -437,11 +444,11 @@ class _CommunityComposeScreenState extends State<CommunityComposeScreen> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Pixel.camera, color: Colors.black54),
+                      const Icon(Pixel.camera, color: Colors.white54),
                       const SizedBox(height: 6),
                       Text(
                         label,
-                        style: const TextStyle(color: Colors.black54),
+                        style: const TextStyle(color: Colors.white54),
                       ),
                     ],
                   ),
@@ -484,7 +491,7 @@ class _CommunityComposeScreenState extends State<CommunityComposeScreen> {
             const Spacer(),
             TextButton(
               onPressed: _openRecordPicker,
-              child: const Text('기록 선택'),
+              child: const Text('기록 선택', style: TextStyle(color: _navAccent)),
             ),
           ],
         ),
@@ -493,7 +500,7 @@ class _CommunityComposeScreenState extends State<CommunityComposeScreen> {
             width: double.infinity,
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: const Color(0xFF1F1F1F),
               border: Border.all(color: _borderColor, width: 2.0),
               boxShadow: [
                 BoxShadow(
@@ -520,7 +527,7 @@ class _CommunityComposeScreenState extends State<CommunityComposeScreen> {
                       ),
                     ],
                   ),
-                  child: const Icon(Pixel.arrowright, color: Colors.black87),
+                  child: const Icon(Pixel.arrowright, color: Colors.white),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -531,20 +538,20 @@ class _CommunityComposeScreenState extends State<CommunityComposeScreen> {
                         _selectedRecord!.title,
                         style: const TextStyle(
                           fontWeight: FontWeight.w600,
-                          color: Colors.black87,
+                          color: Colors.white,
                         ),
                       ),
                       const SizedBox(height: 4),
                       Text(
                         '${_selectedRecord!.date} · ${_selectedRecord!.distance} · ${_selectedRecord!.duration}',
-                        style: const TextStyle(color: Colors.black54),
+                        style: const TextStyle(color: Colors.white70),
                       ),
                     ],
                   ),
                 ),
                 IconButton(
                   onPressed: () => setState(() => _selectedRecord = null),
-                  icon: const Icon(Pixel.close, color: Colors.black54),
+                  icon: const Icon(Pixel.close, color: Colors.white54),
                 ),
               ],
             ),
@@ -554,7 +561,7 @@ class _CommunityComposeScreenState extends State<CommunityComposeScreen> {
             width: double.infinity,
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: const Color(0xFF1F1F1F),
               border: Border.all(color: _borderColor, width: 2.0),
               boxShadow: [
                 BoxShadow(
@@ -567,7 +574,7 @@ class _CommunityComposeScreenState extends State<CommunityComposeScreen> {
             ),
             child: const Text(
               '플로깅 기록을 선택하면 게시글에 함께 올라갑니다.',
-              style: TextStyle(color: Colors.black45),
+              style: TextStyle(color: Colors.white38),
             ),
           ),
       ],

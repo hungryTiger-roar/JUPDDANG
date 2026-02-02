@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../../models/community_models.dart';
 import '../../services/auth_service.dart';
+import '../account/search_screen.dart';
 import 'feed_compose.dart';
 import '../../widgets/pixel_button.dart';
 import '../../widgets/pixel_loader.dart';
@@ -320,7 +321,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
     final double navClearance = navBarHeight + navBarMargin + bottomInset;
 
     return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      backgroundColor: const Color(0xFF141414),
       floatingActionButton: Padding(
         padding: const EdgeInsets.only(bottom: 10, right: 10),
         child: SizedBox(
@@ -341,7 +342,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
             physics: const AlwaysScrollableScrollPhysics(),
             slivers: [
               SliverToBoxAdapter(child: _buildHeader()),
-              SliverToBoxAdapter(child: _buildAccountStories()),
+              // SliverToBoxAdapter(child: _buildAccountStories()),
               SliverToBoxAdapter(child: _buildFilterTabs()),
               _buildFeed(),
               SliverToBoxAdapter(child: SizedBox(height: navClearance + 80)),
@@ -358,15 +359,37 @@ class _CommunityScreenState extends State<CommunityScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'COMMUNITY',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 28,
-              fontWeight: FontWeight.w900,
-
-              letterSpacing: 2.0,
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween, // 양끝 정렬
+            children: [
+              const Text(
+                'COMMUNITY',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 28,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 2.0,
+                ),
+              ),
+              // ★ [추가] 돋보기 버튼
+              IconButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const SearchScreen(),
+                    ),
+                  );
+                },
+                icon: const Icon(
+                  Icons.search,
+                  color: Colors.white,
+                  size: 28,
+                ),
+                padding: EdgeInsets.zero, // 패딩 제거해서 정렬 맞추기
+                constraints: const BoxConstraints(), // 불필요한 여백 제거
+              ),
+            ],
           ),
           const SizedBox(height: 6),
           Text(

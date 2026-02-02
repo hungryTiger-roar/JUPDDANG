@@ -92,7 +92,6 @@ class AuthService {
     required String pw,
     required String email,
     required String nickname,
-    required String region,
     String? profileImage,
     String? intro,
   }) async {
@@ -104,7 +103,6 @@ class AuthService {
           'pw': pw,
           'email': email,
           'nickname': nickname,
-          'region': region,
           'profileImage': profileImage ?? '',
           'intro': intro ?? '',
         },
@@ -271,6 +269,23 @@ class AuthService {
     }
   }
 
+  //화현이: 프로필 정보 조회 (score, isFollowing, followerCount, followingCount 포함)
+  Future<Map<String, dynamic>> getProfileById(String targetId) async {
+    try {
+      final response = await _dio.get(
+        '$accountBase/profile/$targetId',
+        options: Options(headers: _authHeaders()),
+      );
+      if (response.data is Map) {
+        return response.data as Map<String, dynamic>;
+      }
+      throw Exception('Invalid response format');
+    } catch (e) {
+      print('Get Profile By ID Error: $e');
+      rethrow;
+    }
+  }
+
   // 계정 정보 업데이트
   Future<Map<String, dynamic>> updateAccount(
     String userId,
@@ -359,7 +374,58 @@ class AuthService {
     }
   }
 
-  Future<dynamic> endPlogging({ // 🎯 Future<void> → Future<dynamic>
+  //화현: 팔로잉 목록 조회 - GET /api/follow/followings/{userId}
+  Future<List<dynamic>> getFollowings(String userId) async {
+    try {
+      final response = await _dio.get(
+        '$apiBase/follow/followings/$userId',
+        options: Options(headers: _authHeaders()),
+      );
+      if (response.data is List) {
+        return response.data as List<dynamic>;
+      }
+      return [];
+    } catch (e) {
+      print('Get Followings Error: $e');
+      return [];
+    }
+  }
+
+  //화현: 팔로워 목록 조회 - GET /api/follow/followers/{userId}
+  Future<List<dynamic>> getFollowers(String userId) async {
+    try {
+      final response = await _dio.get(
+        '$apiBase/follow/followers/$userId',
+        options: Options(headers: _authHeaders()),
+      );
+      if (response.data is List) {
+        return response.data as List<dynamic>;
+      }
+      return [];
+    } catch (e) {
+      print('Get Followers Error: $e');
+      return [];
+    }
+  }
+
+  //화현: 팔로우/언팔로우 토글 - POST /api/follow/{targetId}
+  Future<bool> toggleFollow(String targetId) async {
+    try {
+      final response = await _dio.post(
+        '$apiBase/follow/$targetId',
+        options: Options(headers: _authHeaders()),
+      );
+      if (response.statusCode == 200) {
+        return true;
+      }
+      return false;
+    } catch (e) {
+      print('Toggle Follow Error: $e');
+      return false;
+    }
+  }
+
+  Future<dynamic> endPlogging({
     required PloggingEndRequest requestData,
     required String beforeImagePath,
     required String afterImagePath,
@@ -402,4 +468,20 @@ class AuthService {
     return {'Authorization': 'Bearer $accessToken'};
   }
 
+  //화현이: 본인 작성 게시글 조회
+  Future<List<dynamic>> getMyPosts() async {
+    try {
+      final response = await _dio.get(
+        '$postsBase/myposts',
+        options: Options(headers: _authHeaders()),
+      );
+      if (response.data is List) {
+        return response.data as List<dynamic>;
+      }
+      throw Exception('Invalid response format');
+    } catch (e) {
+      print('Get My Posts Error: $e');
+      rethrow;
+    }
+  }
 }

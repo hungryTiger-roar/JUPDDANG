@@ -35,7 +35,6 @@ public class PloggingScoreListener {
             Plogging plogging = ploggingRepository.findById(event.ploggingId())
                     .orElseThrow(() -> new RuntimeException("Plogging info not found: " + event.ploggingId()));
 
-
             // 2. Account 조회 (Plogging 엔티티의 연관관계 활용)
             // FetchType.LAZY여도 @Transactional 안이므로 접근 가능
             Account account = plogging.getAccount();
@@ -44,26 +43,23 @@ public class PloggingScoreListener {
                 throw new RuntimeException("Plogging record has no associated account.");
             }
 
-            // 3. 점수 계산 로직
-            // 거리 점수: 1km당 100점 (예시)
-            int distanceScore = (int) (plogging.getDistance() * 100);
-
-            // 그리드 점수: 점유한 땅 개수 * 500점
-            int gridScore = event.occupiedGridCnt() * 500;
-
-            // 레이드 점수: 이벤트에서 전달받은 기여도 점수
-            int raidBonus = event.raidScore();
-
-            int totalAddedScore = distanceScore + gridScore + raidBonus;
+            // 3. ✅ 이벤트에서 받은 점수 사용 (재계산 X)
+            // 플로깅 점수 + 레이드 점수 = 총 점수
+            int totalAddedScore = event.ploggingScore() + event.raidScore();
 
             // 4. Account 업데이트 (점수 누적 & 티어 갱신)
-            account.addScore(totalAddedScore);
+            // addActivityStats: totalScore, totalDistance, totalTime 업데이트 + 티어 재계산
+            account.addActivityStats(
+                    totalAddedScore,
+                    plogging.getDistance(),
+                    plogging.getTimes());
 
             // 명시적 저장 (Dirty Checking이 리스너 트랜잭션 범위에 따라 안 될 수도 있어서 안전하게 save)
             accountRepository.save(account);
 
-            log.info("✅ 점수 반영 완료: User={}, Added={}, Total={}",
-                    account.getNickname(), totalAddedScore, account.getTotalScore());
+            log.info("✅ 점수 반영 완료: User={}, PloggingScore={}, RaidScore={}, Total={}, NewTotalScore={}",
+                    account.getNickname(), event.ploggingScore(), event.raidScore(),
+                    totalAddedScore, account.getTotalScore());
 
         } catch (Exception e) {
             log.error("❌ 점수 정산 실패 - ploggingId: {}", event.ploggingId(), e);

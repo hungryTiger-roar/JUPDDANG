@@ -6,7 +6,8 @@ import com.jupddang.jupddang.plogging.domain.event.PloggingCompletedEvent;
 import com.jupddang.jupddang.account.entity.Account;
 import com.jupddang.jupddang.account.repository.AccountRepository;
 import com.jupddang.jupddang.sns.dto.CommentRequestDto;
-import com.jupddang.jupddang.sns.dto.PostCreateRequestDto;
+import com.jupddang.jupddang.sns.dto.MyCommentResponseDto;
+import com.jupddang.jupddang.sns.dto.PostCreateRequest;
 import com.jupddang.jupddang.sns.dto.PostResponseDto;
 import com.jupddang.jupddang.sns.entity.Comment;
 import com.jupddang.jupddang.sns.entity.Post;
@@ -20,7 +21,6 @@ import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -62,64 +62,6 @@ public class SnsService {
                 .collect(Collectors.toList());
     }
     // 전체 포스트 조회
-    @Transactional
-    public PostResponseDto createPost(PostCreateRequestDto request) {
-        return createPostInternal(request, List.of());
-    }
-
-    @Transactional
-    public PostResponseDto createPostWithImages(
-            PostCreateRequestDto request,
-            List<MultipartFile> images
-    ) {
-        return createPostInternal(request, images);
-    }
-
-    private PostResponseDto createPostInternal(
-            PostCreateRequestDto request,
-            List<MultipartFile> images
-    ) {
-        Account account = accountRepository.findByUserId(request.getUserId())
-                .orElseThrow(() -> new IllegalArgumentException("Account not found."));
-
-        List<String> uploadedUrls = new ArrayList<>();
-        if (images != null) {
-            for (MultipartFile image : images) {
-                if (image == null || image.isEmpty()) {
-                    continue;
-                }
-                uploadedUrls.add(gcsImageService.uploadImage(image, "community"));
-                if (uploadedUrls.size() >= 3) {
-                    break;
-                }
-            }
-        }
-
-        String beforeImageUrl = request.getBeforeImageUrl();
-        String afterImageUrl = request.getAfterImageUrl();
-        String mapImageUrl = request.getMapImageUrl();
-
-        if (!uploadedUrls.isEmpty()) {
-            beforeImageUrl = uploadedUrls.get(0);
-        }
-        if (uploadedUrls.size() > 1) {
-            afterImageUrl = uploadedUrls.get(1);
-        }
-        if (uploadedUrls.size() > 2) {
-            mapImageUrl = uploadedUrls.get(2);
-        }
-
-        Post post = Post.builder()
-                .account(account)
-                .content(request.getContent())
-                .beforeImageUrl(beforeImageUrl)
-                .afterImageUrl(afterImageUrl)
-                .mapImageUrl(mapImageUrl)
-                .build();
-
-        return new PostResponseDto(postRepository.save(post));
-    }
-
     @Transactional(readOnly = true)
     public List<PostResponseDto> getAllPost() {
         return postRepository.findAllByOrderByCreatedAtDesc().stream()
@@ -141,7 +83,6 @@ public class SnsService {
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new IllegalArgumentException("게시글이 없습니다."));
 
-        // 삭제는 여기서 하는게 맞습니다 (Post가 삭제될 때 이미지도 지워야 하니까)
         gcsImageService.deleteImage(post.getBeforeImageUrl());
         gcsImageService.deleteImage(post.getAfterImageUrl());
         gcsImageService.deleteImage(post.getMapImageUrl());
@@ -180,5 +121,55 @@ public class SnsService {
         commentRepository.delete(comment);
     }
 
+    /**
+     * 일반 게시글 작성 (플로깅 데이터 없음)
+     */
+    @Transactional
+    public Long createPost(Account account, PostCreateRequest request,
+                           MultipartFile beforeImage, MultipartFile afterImage, MultipartFile mapImage) {
 
+        String beforeUrl = uploadImageIfPresent(beforeImage);
+        String afterUrl = uploadImageIfPresent(afterImage);
+        String mapUrl = uploadImageIfPresent(mapImage);
+
+        Post post = Post.builder()
+                .account(account)
+                .content(request.getContent())
+                .beforeImageUrl(beforeUrl)
+                .afterImageUrl(afterUrl)
+                .mapImageUrl(mapUrl)
+                .ploggingId(null)
+                .build();
+
+        Post savedPost = postRepository.save(post);
+        return savedPost.getPostId();
+    }
+
+    /**
+     * 이미지 null 체크 및 업로드 헬퍼 메서드
+     * GcsImageService를 사용하여 실제 이미지를 업로드합니다.
+     */
+    private String uploadImageIfPresent(MultipartFile image) {
+        if (image != null && !image.isEmpty()) {
+            try {
+                return gcsImageService.uploadImage(image, "sns");
+            } catch (Exception e) {
+                log.error("SNS 이미지 업로드 실패: {}", e.getMessage());
+                throw new RuntimeException("이미지 업로드에 실패했습니다.", e);
+            }
+        }
+        return null;
+    }
+
+    public List<PostResponseDto> getMyPosts(String userId) {
+        return postRepository.findByAccount_UserId(userId).stream()
+                .map(PostResponseDto::new)
+                .collect(Collectors.toList());
+    }
+
+    public List<MyCommentResponseDto> getMyComments(String userId) {
+        return commentRepository.findByAccount_UserId(userId).stream()
+                .map(MyCommentResponseDto::new)
+                .collect(Collectors.toList());
+    }
 }

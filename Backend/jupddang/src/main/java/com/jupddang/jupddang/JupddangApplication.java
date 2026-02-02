@@ -9,7 +9,12 @@ import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 @SpringBootApplication
 public class JupddangApplication {
     public static void main(String[] args) {
-
+        // Load .env file
+        Dotenv dotenv = Dotenv.configure().ignoreIfMissing().load();
+        dotenv.entries().forEach(entry -> 
+            System.setProperty(entry.getKey(), entry.getValue())
+        );
+        
         SpringApplication.run(JupddangApplication.class, args);
     }
 

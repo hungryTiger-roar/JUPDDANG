@@ -45,5 +45,23 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	
+	<!-- 카메라 권한 (image_picker) -->
+	<key>NSCameraUsageDescription</key>
+	<string>사진 촬영을 위해 카메라 접근 권한이 필요합니다.</string>
+	
+	<!-- 사진 라이브러리 권한 (image_picker, gal) -->
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>사진을 선택하거나 저장하기 위해 사진 라이브러리 접근 권한이 필요합니다.</string>
+	
+	<!-- 사진 라이브러리 추가 권한 (gal - 사진 저장용) -->
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>사진을 저장하기 위해 사진 라이브러리 접근 권한이 필요합니다.</string>
+	
+	<!-- 위치 권한 (geolocator, geocoding) -->
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>현재 위치 기반 서비스를 제공하기 위해 위치 접근 권한이 필요합니다.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>백그라운드에서도 위치 서비스를 제공하기 위해 위치 접근 권한이 필요합니다.</string>
 </dict>
 </plist>

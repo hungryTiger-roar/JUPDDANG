@@ -17,6 +17,7 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   final AuthService _authService = AuthService();
   bool _loading = true;
+  String _profileNickname = '';
 
   // Mock stats - replace with actual API calls
   final Map<String, int> _stats = {
@@ -76,8 +77,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final totalScore = profileData['totalScore'] ?? 0;
       final followerCount = profileData['followerCount'] ?? 0;
       final followingCount = profileData['followingCount'] ?? 0;
+      final fetchedNickname = profileData['nickname'] ?? widget.userId;
 
       setState(() {
+        _profileNickname = fetchedNickname;
         _stats['posts'] = userPosts.length;
         _stats['comments'] = commentCount;
         _stats['likes'] = totalLikes;
@@ -173,9 +176,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ),
                           ),
                           const Spacer(),
-                          const Text(
-                            'PROFILE',
-                            style: TextStyle(
+                          Text(
+                            widget.userId.toUpperCase(),
+                            style: const TextStyle(
                               color: Colors.white,
                               fontSize: 20,
                               fontWeight: FontWeight.w900,
@@ -263,7 +266,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
           // Nickname
           Text(
-            widget.userId.toUpperCase(),
+              (_profileNickname.isEmpty ? widget.userId : _profileNickname).toUpperCase(),
             style: const TextStyle(
               color: Colors.white,
               fontSize: 24,

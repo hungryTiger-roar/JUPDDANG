@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'login_screen.dart';
 import 'signup_screen.dart';
 import '../../widgets/pixel_button.dart';
-import '../core/main_screen.dart';
 
 class IntroScreen extends StatefulWidget {
   const IntroScreen({super.key});
@@ -137,23 +136,7 @@ class _IntroScreenState extends State<IntroScreen>
                   ),
                 ),
                 const SizedBox(height: 20),
-                // 게스트 모드 버튼
-                _buildAnimatedItem(
-                  delay: 0.3,
-                  child: PixelButton(
-                    text: 'GUEST MODE',
-                    isGreen: false,
-                    onPressed: () {
-                      Navigator.pushAndRemoveUntil(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const MainScreen(),
-                        ),
-                        (route) => false,
-                      );
-                    },
-                  ),
-                ),
+
                 const Spacer(flex: 1),
               ],
             ),

@@ -120,20 +120,8 @@ class _LoginScreenState extends State<LoginScreen> {
                 isPulse: true,
                 onPressed: _isLoading ? null : _login,
               ),
-              const SizedBox(height: 20),
 
-              // 로그인 없이 사용하기 버튼
-              PixelButton(
-                text: 'GUEST MODE',
-                isGreen: false,
-                onPressed: () {
-                  Navigator.pushAndRemoveUntil(
-                    context,
-                    MaterialPageRoute(builder: (context) => const MainScreen()),
-                    (route) => false,
-                  );
-                },
-              ),
+              // [Removed] Guest Mode Button
             ],
           ),
         ),

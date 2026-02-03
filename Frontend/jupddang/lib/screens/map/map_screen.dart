@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:dio/dio.dart'; // Added for DioException handling
 import 'package:flutter/foundation.dart'; // kIsWeb 사용을 위해 추가
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -21,6 +22,9 @@ import '../../services/raid_service.dart';
 import 'boss_detail_screen.dart';
 import 'package:gal/gal.dart';
 import '../../widgets/animated_boss_widget.dart'; // Added for AnimatedBossWidget
+import '../../services/trashcan_service.dart';
+import '../../models/trashcan_model.dart';
+import '../../models/plogging_models.dart';
 
 enum PloggingPhase { idle, plogging, paused, summary }
 
@@ -45,6 +49,7 @@ class _MapScreenState extends State<MapScreen> {
 
   // 파티 연동을 위한 서비스
   final PartySocketService _socketService = PartySocketService();
+  final AuthService _authService = AuthService();
   final PartyService _partyService = PartyService();
   Party? _party;
   Timer? _partyPollTimer; // REST API 폴링 타이머
@@ -53,6 +58,10 @@ class _MapScreenState extends State<MapScreen> {
   final RaidService _raidService = RaidService();
   List<RaidBossModel> _raidBosses = [];
   Set<String> _bossH3Indices = {};
+
+  // 쓰레기통 연동
+  final TrashcanService _trashcanService = TrashcanService();
+  List<TrashcanModel> _trashcans = [];
 
   String? _currentH3Index;
   Timer? _stayTimer;
@@ -548,15 +557,39 @@ class _MapScreenState extends State<MapScreen> {
       return;
     }
 
+    // 1. 헥사곤 업데이트
     final List<String> h3Indices = _h3Service.getHexagonsInBounds(
       bounds.southWest,
       bounds.northEast,
     );
-    if (h3Indices.isEmpty) return;
-    final owners = await _h3Service.fetchHexagonOwners(h3Indices);
-    if (!mounted) return;
-    _visibleHexagonModels = owners;
-    _generatePolygons();
+    if (h3Indices.isNotEmpty) {
+      final owners = await _h3Service.fetchHexagonOwners(h3Indices);
+      if (mounted) {
+        _visibleHexagonModels = owners;
+        _generatePolygons();
+      }
+    }
+
+    // 2. 쓰레기통 업데이트 (지도 범위 내)
+    _updateTrashcans(bounds);
+  }
+
+  Future<void> _updateTrashcans(LatLngBounds bounds) async {
+    try {
+      final trashcans = await _trashcanService.getTrashcansInArea(
+        minLat: bounds.southWest.latitude,
+        maxLat: bounds.northEast.latitude,
+        minLng: bounds.southWest.longitude,
+        maxLng: bounds.northEast.longitude,
+      );
+      if (mounted) {
+        setState(() {
+          _trashcans = trashcans;
+        });
+      }
+    } catch (e) {
+      debugPrint("Failed to load trashcans: $e");
+    }
   }
 
   void _generatePolygons() {
@@ -649,6 +682,175 @@ class _MapScreenState extends State<MapScreen> {
     double lon =
         boundary.map((c) => c.lon).reduce((a, b) => a + b) / boundary.length;
     return LatLng(lat, lon);
+  }
+
+  // --- Trashcan Reporting Logic ---
+  Future<void> _onReportTrashcan() async {
+    if (_currentPosition == null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("위치를 찾을 수 없습니다.")));
+      return;
+    }
+
+    final currentPos = _currentPosition!;
+    const distanceCalc = Distance();
+
+    // 10m 이내에 있는 쓰레기통 찾기
+    TrashcanModel? closest;
+    double minDst = double.infinity;
+
+    for (var t in _trashcans) {
+      final dst = distanceCalc.as(
+        LengthUnit.Meter,
+        currentPos,
+        LatLng(t.latitude, t.longitude),
+      );
+      if (dst <= 10.0) {
+        if (dst < minDst) {
+          minDst = dst;
+          closest = t;
+        }
+      }
+    }
+
+    if (closest != null) {
+      // Case: 10m 이내에 이미 쓰레기통이 있음
+      if (closest.status == TrashcanStatus.VERIFIED ||
+          closest.status == TrashcanStatus.OFFICIAL) {
+        // 이미 공인되거나 인증된 경우
+        showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text("알림"),
+            content: const Text("이미 근처에 등록된 쓰레기통이 있습니다."),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text("확인"),
+              ),
+            ],
+          ),
+        );
+      } else {
+        // PENDING 상태인 경우 -> 인증(추천) 하시겠습니까?
+        showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text("쓰레기통 인증"),
+            content: const Text(
+              "근처에 제보된 쓰레기통이 있습니다.\n이 쓰레기통이 맞나요?\n(맞으면 인증 횟수가 올라갑니다)",
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text("취소"),
+              ),
+              TextButton(
+                onPressed: () async {
+                  Navigator.pop(ctx);
+                  await _verifyTrashcan(closest!.id);
+                },
+                child: const Text("인증하기"),
+              ),
+            ],
+          ),
+        );
+      }
+    } else {
+      // Case: 10m 이내에 없음 -> 신규 등록
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text("쓰레기통 제보"),
+          content: const Text("현재 위치에 새로운 쓰레기통을 제보하시겠습니까?"),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text("취소"),
+            ),
+            TextButton(
+              onPressed: () async {
+                Navigator.pop(ctx);
+                await _createTrashcan(currentPos);
+              },
+              child: const Text("제보하기"),
+            ),
+          ],
+        ),
+      );
+    }
+  }
+
+  Future<void> _verifyTrashcan(int id) async {
+    try {
+      await _trashcanService.verifyTrashcan(id);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("인증되었습니다! (횟수 증가/상태 변경)")));
+      // 목록 갱신
+      _updateTrashcans(_mapController.camera.visibleBounds);
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 409) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text("이미 인증에 참여하셨습니다.")));
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("인증 실패: ${e.response?.statusCode ?? 'Unknown'}"),
+          ),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("인증 실패: $e")));
+    }
+  }
+
+  Future<void> _createTrashcan(LatLng pos) async {
+    try {
+      // 주소 가져오기 (옵션)
+      String address = "Unknown Address";
+      try {
+        List<Placemark> placemarks = await placemarkFromCoordinates(
+          pos.latitude,
+          pos.longitude,
+        );
+        if (placemarks.isNotEmpty) {
+          final p = placemarks.first;
+          address = "${p.locality} ${p.thoroughfare}".trim();
+        }
+      } catch (_) {}
+
+      final req = TrashcanCreateRequest(
+        latitude: pos.latitude,
+        longitude: pos.longitude,
+        address: address,
+      );
+
+      final newTrashcan = await _trashcanService.createTrashcan(req);
+
+      // 자동 인증 (Count 0 -> 1) 백엔드 수정 없이 프론트에서 처리
+      try {
+        await _trashcanService.verifyTrashcan(newTrashcan.id);
+      } catch (_) {
+        // 자동 인증 실패는 무시
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("새로운 쓰레기통이 제보되었습니다! (초기 인증 +1)")),
+        );
+      }
+      // 목록 갱신
+      _updateTrashcans(_mapController.camera.visibleBounds);
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("제보 실패: $e")));
+    }
   }
 
   @override
@@ -748,6 +950,46 @@ class _MapScreenState extends State<MapScreen> {
                 );
               }).toList(),
 
+              // Trashcan markers
+              ..._trashcans.map((t) {
+                return Marker(
+                  point: LatLng(t.latitude, t.longitude),
+                  width: 48,
+                  height: 48,
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      // Shadow (Pixel art style - solid black offset)
+                      Positioned(
+                        top: 4,
+                        left: 4,
+                        child: Container(
+                          width: 40,
+                          height: 40,
+                          color: Colors.black26,
+                        ),
+                      ),
+                      // Main Body
+                      Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          border: Border.all(color: Colors.black, width: 3),
+                        ),
+                        child: Center(
+                          child: Icon(
+                            Pixel.trash,
+                            size: 24,
+                            color: _getTrashcanColor(t.status),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
+
               // 내 마커 (위치 있을 때만)
               if (_currentPosition != null)
                 Marker(
@@ -796,43 +1038,35 @@ class _MapScreenState extends State<MapScreen> {
                 ),
             ],
           ),
-          // Stats Overlay (Top)
+          // 상단 오버레이들
           if (_isPlogging)
             Positioned(
-              top: 100,
-              left: 20,
-              right: 20,
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  vertical: 16,
-                  horizontal: 20,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.8),
-                  border: Border.all(color: _selectedGridColor, width: 3),
-                  boxShadow: const [
-                    BoxShadow(color: Colors.black54, offset: Offset(4, 4)),
-                  ],
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    _buildStatColumn(
-                      Pixel.clock,
-                      _formatDuration(_sessionStopwatch.elapsed),
-                      "TIME",
-                    ),
-                    _buildStatColumn(
-                      Pixel.user,
-                      "${(_totalDistance / 1000).toStringAsFixed(2)}km",
-                      "DIST",
-                    ),
-                    _buildStatColumn(Pixel.coin, "$_coinsGained", "POINT"),
-                  ],
-                ),
-              ),
+              top: 60,
+              left: 16,
+              right: 16,
+              child: _buildSessionStatsOverlay(),
             ),
 
+          if (_showCustomizer)
+            Positioned(top: 100, right: 16, child: _buildMapCustomizer()),
+
+          // 쓰레기통 제보 버튼 (우측 하단, 플로깅 컨트롤 위)
+          Positioned(
+            bottom: _phase == PloggingPhase.idle ? 100 : 160,
+            right: 20,
+            child: FloatingActionButton(
+              heroTag: 'report_trashcan',
+              backgroundColor: Colors.white,
+              shape: const BeveledRectangleBorder(
+                side: BorderSide(color: Colors.black, width: 3),
+                borderRadius: BorderRadius.zero,
+              ),
+              onPressed: _onReportTrashcan,
+              child: const Icon(Pixel.trash, color: Colors.black),
+            ),
+          ),
+
+          // 하단 컨트롤 (시작/일시정지/종료)
           Positioned(
             top: 20,
             left: 20,
@@ -908,7 +1142,7 @@ class _MapScreenState extends State<MapScreen> {
           // 파티인 경우 방장에게만 제어 버튼 표시
           if (widget.partyId == null || (_party?.isCurrentUserLeader ?? false))
             Positioned(
-              bottom: 120,
+              bottom: 40,
               left: 20,
               right: 20,
               child: Center(
@@ -1360,5 +1594,66 @@ class _MapScreenState extends State<MapScreen> {
     }
 
     return Colors.grey;
+  }
+
+  Widget _buildSessionStatsOverlay() {
+    return Center(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.black.withOpacity(0.8),
+          border: Border.all(color: _selectedGridColor, width: 2),
+          boxShadow: const [
+            BoxShadow(color: Colors.black45, offset: Offset(4, 4)),
+          ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _buildOverlayStatItem(
+              Pixel.clock,
+              _formatDuration(_sessionStopwatch.elapsed),
+            ),
+            const SizedBox(width: 16),
+            _buildOverlayStatItem(
+              Pixel.user,
+              "${(_totalDistance / 1000).toStringAsFixed(2)}km",
+            ),
+            const SizedBox(width: 16),
+            _buildOverlayStatItem(Pixel.coin, "$_coinsGained"),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOverlayStatItem(IconData icon, String value) {
+    return Row(
+      children: [
+        Icon(icon, color: _selectedGridColor, size: 16),
+        const SizedBox(width: 4),
+        Text(
+          value,
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 14,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Color _getTrashcanColor(TrashcanStatus status) {
+    switch (status) {
+      case TrashcanStatus.VERIFIED:
+        return Colors.blueAccent; // 인증됨 (파란색)
+      case TrashcanStatus.PENDING:
+        return Colors.orangeAccent; // 유저 제보 대기 (주황색/노란색)
+      case TrashcanStatus.OFFICIAL:
+        return Colors.green; // 공공 (초록색)
+      default:
+        return Colors.grey;
+    }
   }
 }

@@ -18,6 +18,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final AuthService _authService = AuthService();
   bool _loading = true;
   String _profileNickname = '';
+  bool _isFollowing = false;
 
   // Mock stats - replace with actual API calls
   final Map<String, int> _stats = {
@@ -74,13 +75,32 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       //화현이: 프로필 정보를 한 번에 가져오기 (최적화: 3번 호출 -> 1번 호출)
       final profileData = await _authService.getProfileById(widget.userId);
+
+      bool realIsFollowing = false;
+      if (AuthService.userId != null) {
+        try {
+          final myFollowings = await _authService.getFollowings(AuthService.userId!);
+          // 내 팔로잉 목록에 이 사람(widget.userId)이 있는지 확인!
+          realIsFollowing = myFollowings.any((user) =>
+          user['userId'] == widget.userId || user['followerId'] == widget.userId
+          );
+        } catch (e) {
+          print('팔로잉 목록 확인 실패: $e');
+          // 실패하면 원래대로 profileData 값 사용
+          realIsFollowing = profileData['isFollowing'] ?? false;
+        }
+      }
+
       final totalScore = profileData['totalScore'] ?? 0;
       final followerCount = profileData['followerCount'] ?? 0;
       final followingCount = profileData['followingCount'] ?? 0;
       final fetchedNickname = profileData['nickname'] ?? widget.userId;
 
+      print('서버 isFollowing: ${profileData['isFollowing']} / 내 검증 결과: $realIsFollowing');
+
       setState(() {
         _profileNickname = fetchedNickname;
+        _isFollowing = realIsFollowing;
         _stats['posts'] = userPosts.length;
         _stats['comments'] = commentCount;
         _stats['likes'] = totalLikes;
@@ -131,6 +151,49 @@ class _ProfileScreenState extends State<ProfileScreen> {
     } catch (e) {
       setState(() => _loadingPosts = false);
       print('My Posts Load Error: $e');
+    }
+  }
+
+  // 팔로우/언팔로우 토글 함수
+  Future<void> _toggleFollow() async {
+    if (widget.userId == AuthService.userId) return; // 내 프로필이면 무시
+
+    // 현재 상태를 기준으로 토글
+    final wasFollowing = _isFollowing;
+    final currentFollowers = _stats['followers'] ?? 0;
+
+    // UI 선반영 (Optimistic UI Update)
+    setState(() {
+      _isFollowing = !wasFollowing;
+      if (_isFollowing) {
+        _stats['followers'] = currentFollowers + 1;
+      } else {
+        _stats['followers'] = currentFollowers - 1;
+      }
+    });
+
+    try {
+      final success = await _authService.toggleFollow(widget.userId);
+
+      // 요청 실패 시 롤백
+      if (!success) {
+        setState(() {
+          _isFollowing = wasFollowing;
+          _stats['followers'] = currentFollowers;
+        });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('요청 처리에 실패했습니다.')),
+          );
+        }
+      }
+    } catch (e) {
+      print('Follow toggle error: $e');
+      // 에러 발생 시 롤백
+      setState(() {
+        _isFollowing = wasFollowing;
+        _stats['followers'] = currentFollowers;
+      });
     }
   }
 
@@ -278,21 +341,50 @@ class _ProfileScreenState extends State<ProfileScreen> {
           const SizedBox(height: 8),
 
           // Tier Badge
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: const Color(0xFFFFD700),
-              border: Border.all(color: Colors.black, width: 2),
-            ),
-            child: const Text(
-              'BRONZE 5',
-              style: TextStyle(
-                color: Colors.black,
-                fontSize: 12,
-                fontWeight: FontWeight.w900,
+          // Container(
+          //   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          //   decoration: BoxDecoration(
+          //     color: const Color(0xFFFFD700),
+          //     border: Border.all(color: Colors.black, width: 2),
+          //   ),
+          //   child: const Text(
+          //     'BRONZE 5',
+          //     style: TextStyle(
+          //       color: Colors.black,
+          //       fontSize: 12,
+          //       fontWeight: FontWeight.w900,
+          //     ),
+          //   ),
+          // ),
+
+          const SizedBox(height: 16),
+
+          if (widget.userId != AuthService.userId)
+            GestureDetector(
+              onTap: _toggleFollow,
+              child: Container(
+                width: 120,
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                decoration: BoxDecoration(
+                  color: _isFollowing ? const Color(0xFF2A2A2A) : const Color(0xFF17C964),
+                  border: Border.all(color: Colors.black, width: 2),
+                  boxShadow: _isFollowing ? [] : const [
+                    BoxShadow(color: Colors.black, offset: Offset(2, 2))
+                  ],
+                ),
+                child: Center(
+                  child: Text(
+                    _isFollowing ? 'UNFOLLOW' : 'FOLLOW',
+                    style: TextStyle(
+                      color: _isFollowing ? Colors.white54 : Colors.black,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 1.0,
+                    ),
+                  ),
+                ),
               ),
             ),
-          ),
 
           const SizedBox(height: 12), //화현이: 간격 조정
           //화현이: Score 표시 추가

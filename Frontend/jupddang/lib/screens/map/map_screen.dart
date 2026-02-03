@@ -27,7 +27,8 @@ enum PloggingPhase { idle, plogging, paused, summary }
 
 class MapScreen extends StatefulWidget {
   final int? partyId;
-  const MapScreen({super.key, this.partyId});
+  final Function(dynamic)? onPloggingComplete; // 🎯 추가
+  const MapScreen({super.key, this.partyId, this.onPloggingComplete});
 
   @override
   State<MapScreen> createState() => _MapScreenState();
@@ -196,7 +197,9 @@ class _MapScreenState extends State<MapScreen> {
         _raidBosses = bosses;
         _bossH3Indices = bosses.map((b) => b.h3Index).toSet();
       });
-      debugPrint("🎯 Loaded ${bosses.length} raid bosses (will use fallback positioning)");
+      debugPrint(
+        "🎯 Loaded ${bosses.length} raid bosses (will use fallback positioning)",
+      );
     } catch (e) {
       debugPrint("❌ Failed to load raid bosses: $e");
     }
@@ -206,9 +209,10 @@ class _MapScreenState extends State<MapScreen> {
     // Find the boss object to pass it to the detail screen
     final boss = _raidBosses.firstWhere(
       (b) => b.id == bossId,
-      orElse: () => RaidBossModel(id: bossId, h3Index: '', name: 'Unknown', bossType: 0),
+      orElse: () =>
+          RaidBossModel(id: bossId, h3Index: '', name: 'Unknown', bossType: 0),
     );
-    
+
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -300,17 +304,17 @@ class _MapScreenState extends State<MapScreen> {
 
       // 파티장인 경우 데이터 실시간 전송 (웹소켓으로만)
       if (widget.partyId != null && (_party?.isCurrentUserLeader ?? false)) {
-        final activity = PartyActivity(
-          userId: AuthService.userId ?? 'Unknown',
-          totalDistance: _totalDistance,
+        final locationRequest = LocationRequest(
+          lat: newPos.latitude,
+          lon: newPos.longitude,
+          partyId: widget.partyId!,
           elapsedTime: _sessionStopwatch.elapsed.inSeconds,
-          isCompleted: false,
-          currentLatitude: newPos.latitude,
-          currentLongitude: newPos.longitude,
+          totalDistance: _totalDistance,
+          score: _coinsGained,
           occupyProgress: _occupyProgress,
           currentH3Index: _currentH3Index,
         );
-        _socketService.sendActivity(widget.partyId!, activity);
+        _socketService.sendLocation(widget.partyId!, locationRequest);
       }
     }
 
@@ -329,10 +333,10 @@ class _MapScreenState extends State<MapScreen> {
         _currentH3Index = h3Index;
         // 보스 지역이면 점령 타이머 시작 안함
         if (_bossH3Indices.contains(h3Index)) {
-            _stopOccupationTimer();
-             // (선택사항) 토스트 메시지 등? 
+          _stopOccupationTimer();
+          // (선택사항) 토스트 메시지 등?
         } else if (_phase == PloggingPhase.plogging) {
-             _startOccupationTimer();
+          _startOccupationTimer();
         }
       }
     } else {
@@ -486,17 +490,17 @@ class _MapScreenState extends State<MapScreen> {
 
       // 파티장인 경우 진행도 실시간 공유 (웹소켓으로만)
       if (widget.partyId != null && (_party?.isCurrentUserLeader ?? false)) {
-        final activity = PartyActivity(
-          userId: AuthService.userId ?? 'Unknown',
-          totalDistance: _totalDistance,
+        final locationRequest = LocationRequest(
+          lat: _currentPosition?.latitude ?? 0.0,
+          lon: _currentPosition?.longitude ?? 0.0,
+          partyId: widget.partyId!,
           elapsedTime: _sessionStopwatch.elapsed.inSeconds,
-          isCompleted: false,
-          currentLatitude: _currentPosition?.latitude,
-          currentLongitude: _currentPosition?.longitude,
+          totalDistance: _totalDistance,
+          score: _coinsGained,
           occupyProgress: _occupyProgress,
           currentH3Index: _currentH3Index,
         );
-        _socketService.sendActivity(widget.partyId!, activity);
+        _socketService.sendLocation(widget.partyId!, locationRequest);
       }
 
       if (_occupyProgress >= 1.0) {
@@ -610,7 +614,9 @@ class _MapScreenState extends State<MapScreen> {
           String? targetH3Index = _currentH3Index;
           double targetProgress = _occupyProgress;
 
-          if (!isBossHex && model.h3Index == targetH3Index && targetProgress > 0) {
+          if (!isBossHex &&
+              model.h3Index == targetH3Index &&
+              targetProgress > 0) {
             // While occupying, fade from the unowned color to the SELECTED palette color
             final targetColor = _selectedGridColor
                 .withOpacity(_gridOpacity * 1.5)
@@ -625,7 +631,9 @@ class _MapScreenState extends State<MapScreen> {
             borderColor: model.h3Index == targetH3Index && !isBossHex
                 ? Colors.white.withOpacity(0.8)
                 : borderColor,
-            borderStrokeWidth: model.h3Index == targetH3Index && !isBossHex ? 3.0 : borderWidth,
+            borderStrokeWidth: model.h3Index == targetH3Index && !isBossHex
+                ? 3.0
+                : borderWidth,
           );
         })
         .whereType<Polygon>()
@@ -645,8 +653,10 @@ class _MapScreenState extends State<MapScreen> {
       return null;
     }
 
-    double lat = boundary.map((c) => c.lat).reduce((a, b) => a + b) / boundary.length;
-    double lon = boundary.map((c) => c.lon).reduce((a, b) => a + b) / boundary.length;
+    double lat =
+        boundary.map((c) => c.lat).reduce((a, b) => a + b) / boundary.length;
+    double lon =
+        boundary.map((c) => c.lon).reduce((a, b) => a + b) / boundary.length;
     return LatLng(lat, lon);
   }
 
@@ -701,10 +711,10 @@ class _MapScreenState extends State<MapScreen> {
               ..._raidBosses.asMap().entries.map((entry) {
                 final index = entry.key;
                 final boss = entry.value;
-                
+
                 // Try to get H3 center, fallback to fixed position
                 LatLng? center = _getHexagonCenter(boss.h3Index);
-                
+
                 // 🎯 FALLBACK: H3 실패 시 구미 중심 주변에 강제 배치
                 if (center == null) {
                   debugPrint("⚠️ Using fallback position for boss #${boss.id}");
@@ -742,68 +752,59 @@ class _MapScreenState extends State<MapScreen> {
                   height: 70,
                   child: GestureDetector(
                     onTap: () => _showBossDetail(boss.id),
-                    child: AnimatedBossWidget(
-                      bossType: bossType,
-                      size: 60,
-                    ),
+                    child: AnimatedBossWidget(bossType: bossType, size: 60),
                   ),
                 );
               }).toList(),
-                
-                // 내 마커 (위치 있을 때만)
-                if (_currentPosition != null)
-                  Marker(
-                    point: _currentPosition!,
-                    width: 48,
-                    height: 48,
-                    child: PixelCharacter(
-                      size: 48,
-                      color: _selectedGridColor,
-                      isMoving: _phase == PloggingPhase.plogging,
-                    ),
+
+              // 내 마커 (위치 있을 때만)
+              if (_currentPosition != null)
+                Marker(
+                  point: _currentPosition!,
+                  width: 48,
+                  height: 48,
+                  child: PixelCharacter(
+                    size: 48,
+                    color: _selectedGridColor,
+                    isMoving: _phase == PloggingPhase.plogging,
                   ),
-                if (_currentH3Index != null)
-                  Marker(
-                    point: _currentPosition!,
-                    width: 120,
-                    height: 50,
-                    child: Transform.translate(
-                      offset: const Offset(
-                        0,
-                        -65,
-                      ), // Increased gap from -50 to -65
-                      child: Container(
-                        alignment: Alignment.center,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.black,
-                          border: Border.all(
-                            color: _getStatusColor(),
-                            width: 3,
-                          ),
-                          boxShadow: const [
-                            BoxShadow(
-                              color: Colors.black,
-                              offset: Offset(4, 4),
-                            ),
-                          ],
-                        ),
-                        child: Text(
-                          _getStatusLabel(),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 10,
-                          ),
+                ),
+              if (_currentH3Index != null)
+                Marker(
+                  point: _currentPosition!,
+                  width: 120,
+                  height: 50,
+                  child: Transform.translate(
+                    offset: const Offset(
+                      0,
+                      -65,
+                    ), // Increased gap from -50 to -65
+                    child: Container(
+                      alignment: Alignment.center,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.black,
+                        border: Border.all(color: _getStatusColor(), width: 3),
+                        boxShadow: const [
+                          BoxShadow(color: Colors.black, offset: Offset(4, 4)),
+                        ],
+                      ),
+                      child: Text(
+                        _getStatusLabel(),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 10,
                         ),
                       ),
                     ),
                   ),
-              ],
-            ),
+                ),
+            ],
+          ),
           // Stats Overlay (Top)
           if (_isPlogging)
             Positioned(

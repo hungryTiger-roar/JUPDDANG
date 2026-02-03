@@ -9,6 +9,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:geocoding/geocoding.dart';
 import 'dart:io';
 import '../../services/location_h3_service.dart';
+import '../../services/gps_signal_filter.dart'; // Added: GPS Filter
 import '../../services/auth_service.dart';
 import '../../models/hexagon.dart';
 import '../../widgets/pixel_button.dart';
@@ -35,6 +36,7 @@ class MapScreen extends StatefulWidget {
 class _MapScreenState extends State<MapScreen> {
   final MapController _mapController = MapController();
   final LocationH3Service _h3Service = LocationH3Service();
+  final GpsSignalFilter _gpsFilter = GpsSignalFilter(); // Added: Filter instance
 
   List<Polygon> _hexagons = [];
   LatLng? _currentPosition; // Start null to detect first fix
@@ -246,7 +248,14 @@ class _MapScreenState extends State<MapScreen> {
       _positionStream = _h3Service.getPositionStream().listen((
         Position position,
       ) {
-        _updateCurrentPosition(LatLng(position.latitude, position.longitude));
+        // [New] Apply GPS Filter - Minimal Conflict Logic
+        // 튀는 값이면 null 반환 -> 무시 (Return), 유효하면 보정된 값 반환
+        final Position? correctedPos = _gpsFilter.filter(position);
+        
+        if (correctedPos == null) return; // 튀는 값은 UI 반영 안 함
+
+        // 통과된 값만 기존 로직으로 전달
+        _updateCurrentPosition(LatLng(correctedPos.latitude, correctedPos.longitude));
       });
     }
   }

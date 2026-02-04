@@ -10,6 +10,8 @@ import org.springframework.web.multipart.MultipartFile;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+
 public interface PloggingService {
     PloggingResultResponse endPlogging(
             String userId,
@@ -26,4 +28,5 @@ public interface PloggingService {
             MultipartFile before,
             MultipartFile after,
             MultipartFile map);
+    List<PloggingTempDetailResponse> getTempPloggings(String userId);
 }

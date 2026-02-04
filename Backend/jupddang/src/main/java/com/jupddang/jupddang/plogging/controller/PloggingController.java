@@ -88,10 +88,8 @@ public class PloggingController {
         return ResponseEntity.ok(response);
     }
 
-
-
     /**
-     * 임시 저장 목록 조회 (미완)
+     * 임시 저장 목록 조회
      */
     @GetMapping("/temp")
     public ResponseEntity<List<PloggingTempDetailResponse>> getTempPloggings(
@@ -102,7 +100,7 @@ public class PloggingController {
     }
 
     /**
-     * 임시 저장 상세 조회 (게시글 폼에 채우기) (미완)
+     * 임시 저장 상세 조회 (게시글 폼에 채우기)
      */
     @GetMapping("/temp/{ploggingId}")
     public ResponseEntity<PloggingTempDetailResponse> getTempPloggingDetail(

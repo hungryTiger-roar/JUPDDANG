@@ -52,6 +52,7 @@ class AuthService {
   // --- Social ---
   Future<List<dynamic>> getPosts({bool allPosts = false}) => _socialService.getPosts(allPosts: allPosts);
   Future<List<dynamic>> getMyPosts() => _socialService.getMyPosts();
+  Future<List<dynamic>> getMyComments() => _socialService.getMyComments();
   Future<List<dynamic>> getFollowings(String userId) => _socialService.getFollowings(userId);
   Future<List<dynamic>> getFollowers(String userId) => _socialService.getFollowers(userId);
   Future<bool> toggleFollow(String targetId) => _socialService.toggleFollow(targetId);

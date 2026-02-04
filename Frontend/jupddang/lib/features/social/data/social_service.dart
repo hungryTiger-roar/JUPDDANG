@@ -80,6 +80,20 @@ class SocialService {
     }
   }
 
+  // 내 댓글 조회
+  Future<List<dynamic>> getMyComments() async {
+    try {
+      final response = await _apiClient.dio.get('/posts/mycomments');
+      if (response.data is List) {
+        return response.data as List<dynamic>;
+      }
+      return [];
+    } catch (e) {
+      print('Get My Comments Error: $e');
+      rethrow;
+    }
+  }
+
   // 게시글 생성
   Future<dynamic> createPost({
     required String userId,

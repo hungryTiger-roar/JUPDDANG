@@ -11,6 +11,7 @@ import '../../../widgets/pixel_loader.dart';
 import 'package:pixelarticons/pixelarticons.dart';
 import '../../../widgets/pixel_character.dart';
 import '../../account/presentation/profile_screen.dart';
+import '../../../main.dart';
 
 class CommunityScreen extends StatefulWidget {
   const CommunityScreen({super.key});
@@ -19,7 +20,7 @@ class CommunityScreen extends StatefulWidget {
   State<CommunityScreen> createState() => _CommunityScreenState();
 }
 
-class _CommunityScreenState extends State<CommunityScreen> {
+class _CommunityScreenState extends State<CommunityScreen> with RouteAware {
   final AuthService _authService = AuthService();
   final List<CommunityPost> _localPosts = [];
   List<CommunityPost> _remotePosts = [];
@@ -38,6 +39,38 @@ class _CommunityScreenState extends State<CommunityScreen> {
     super.initState();
     _refreshAll();
   }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // RouteObserver 구독
+    final route = ModalRoute.of(context);
+    if (route is PageRoute) {
+      routeObserver.subscribe(this, route);
+    }
+  }
+
+  @override
+  void dispose() {
+    routeObserver.unsubscribe(this);
+    super.dispose();
+  }
+
+  // 다른 화면에서 돌아올 때 호출됨 (댓글 삭제 후 돌아올 때)
+  @override
+  void didPopNext() {
+    // 게시글 목록 새로고침하여 댓글이 동기화되도록 함
+    _loadPosts();
+  }
+
+  @override
+  void didPush() {}
+
+  @override
+  void didPushNext() {}
+
+  @override
+  void didPop() {}
 
   Future<void> _refreshAll() async {
     await Future.wait([_loadAccounts(), _loadPosts()]);

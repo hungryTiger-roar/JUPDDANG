@@ -4,6 +4,8 @@ import '../../../widgets/pixel_character.dart';
 import 'package:pixelarticons/pixelarticons.dart';
 import '../../social/models/community_models.dart';
 import '../../social/presentation/follow_list_screen.dart';
+import '../../social/presentation/my_comments_screen.dart';
+import '../../../main.dart';
 
 class ProfileScreen extends StatefulWidget {
   final String userId;
@@ -14,7 +16,7 @@ class ProfileScreen extends StatefulWidget {
   State<ProfileScreen> createState() => _ProfileScreenState();
 }
 
-class _ProfileScreenState extends State<ProfileScreen> {
+class _ProfileScreenState extends State<ProfileScreen> with WidgetsBindingObserver, RouteAware {
   final AuthService _authService = AuthService();
   bool _loading = true;
   String _profileNickname = '';
@@ -38,15 +40,72 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadProfile();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // RouteObserver 구독
+    routeObserver.subscribe(this, ModalRoute.of(context) as PageRoute);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    routeObserver.unsubscribe(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // 앱이 다시 활성화되면 프로필 정보 갱신
+    if (state == AppLifecycleState.resumed) {
+      _loadProfile();
+    }
+  }
+
+  // 다른 화면에서 돌아올 때 호출됨 (중요!)
+  @override
+  void didPopNext() {
+    // feed에서 댓글 작성 후 돌아왔을 때, 또는 다른 화면에서 돌아왔을 때 갱신
+    _loadProfile();
+  }
+
+  // 이 화면으로 처음 push되었을 때 호출됨
+  @override
+  void didPush() {
+    // 필요시 구현
+  }
+
+  // 이 화면에서 다른 화면으로 push했을 때 호출됨
+  @override
+  void didPushNext() {
+    // 필요시 구현
+  }
+
+  // 이 화면이 pop되었을 때 호출됨
+  @override
+  void didPop() {
+    // 필요시 구현
   }
 
   Future<void> _loadProfile() async {
     setState(() => _loading = true);
 
     try {
-      // 모든 게시글 가져오기
-      final postsData = await _authService.getPosts();
+      // 병렬로 데이터 가져오기
+      final results = await Future.wait([
+        _authService.getPosts(allPosts: true), // 전체 게시글 (해당 유저의 게시글 필터링을 위해)
+        _authService.getMyComments(), // 내 댓글
+        _authService.getProfileById(widget.userId), // 프로필 정보
+      ]);
+
+      final postsData = results[0] as List<dynamic>;
+      final commentsData = results[1] as List<dynamic>;
+      final profileData = results[2] as Map<String, dynamic>;
+
       final allPosts = postsData
           .whereType<Map>()
           .map(
@@ -62,20 +121,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
           )
           .toList();
 
-      // 해당 유저가 작성한 댓글 카운트
-      int commentCount = 0;
-      for (var post in allPosts) {
-        commentCount += post.comments
-            .where((comment) => comment.nickname == widget.userId)
-            .length;
-      }
+      // 내가 작성한 댓글 개수 (API에서 직접 가져오기)
+      final commentCount = commentsData.length;
 
       // 받은 좋아요 수 (작성한 게시글의 likeCount 합계)
       int totalLikes = userPosts.fold(0, (sum, post) => sum + post.likeCount);
 
-      //화현이: 프로필 정보를 한 번에 가져오기 (최적화: 3번 호출 -> 1번 호출)
-      final profileData = await _authService.getProfileById(widget.userId);
-
+      // 팔로우 상태 확인
       bool realIsFollowing = false;
       if (AuthService.userId != null) {
         try {
@@ -482,7 +534,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
           Expanded(child: _statCard(Pixel.file, 'POSTS', _stats['posts']!)),
           const SizedBox(width: 12),
           Expanded(
-            child: _statCard(Pixel.message, 'COMMENTS', _stats['comments']!),
+            child: GestureDetector(
+              onTap: () async {
+                // 내 프로필일 때만 댓글 목록 화면으로 이동
+                if (widget.userId == AuthService.userId ||
+                    widget.userId == AuthService.nickname) {
+                  await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => MyCommentsScreen(userId: widget.userId),
+                    ),
+                  );
+                  // 댓글 목록 화면에서 돌아오면 프로필 정보 갱신
+                  _loadProfile();
+                }
+              },
+              child: _statCard(Pixel.message, 'COMMENTS', _stats['comments']!),
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(child: _statCard(Pixel.heart, 'LIKES', _stats['likes']!)),

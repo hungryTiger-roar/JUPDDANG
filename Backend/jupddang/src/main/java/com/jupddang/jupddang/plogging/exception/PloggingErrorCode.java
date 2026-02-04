@@ -14,7 +14,7 @@ public enum PloggingErrorCode {
 
     // Plogging 관련
     PLOGGING_NOT_FOUND(HttpStatus.NOT_FOUND, "해당 플로깅 세션을 찾을 수 없습니다."),
-
+    LOCATION_PROCESSING_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "위치 정보 처리 중 오류가 발생했습니다."),  // 🎯 추가
 
     // Party / Plogging
     PARTY_NOT_FOUND(HttpStatus.NOT_FOUND, "Party not found."),

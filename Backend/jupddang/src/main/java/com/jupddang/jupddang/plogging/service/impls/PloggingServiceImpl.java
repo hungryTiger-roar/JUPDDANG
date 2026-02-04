@@ -98,6 +98,7 @@ public class PloggingServiceImpl implements PloggingService {
                 processLocationForMember(userId, request);
                 return;
             }
+
         } else {
             if (partyMemberRepository.existsByUserIdAndParty_Status(userId, PartyStatus.IN_PROGRESS)) {
                 throw new PloggingException(PloggingErrorCode.PARTY_ACTIVE_BLOCKS_SOLO);
@@ -185,6 +186,52 @@ public class PloggingServiceImpl implements PloggingService {
         }
     }
 
+    /**
+     * 파티원 위치 처리 (점령 로직 없음, 위치만 저장)
+     */
+    private void processLocationForMember(String userId, LocationRequest request) {
+        try {
+            String currentH3 = h3Core.latLngToCellAddress(
+                    request.getLat(),
+                    request.getLon(),
+                    H3_RESOLUTION
+            );
+
+            long currentTime = System.currentTimeMillis();
+            UserPloggingStatus lastStatus = redisRepository.getUserState(userId);
+
+            // 거리 계산
+            double dist = 0.0;
+            if (lastStatus != null) {
+                dist = calculateDistance(
+                        lastStatus.lastLat(),
+                        lastStatus.lastLon(),
+                        request.getLat(),
+                        request.getLon()
+                );
+            }
+
+            double newTotalDistance = (lastStatus != null ? lastStatus.totalDistance() : 0.0) + dist;
+
+            // 🎯 파티원은 점령 없이 위치만 저장
+            redisRepository.updateUserState(userId, new UserPloggingStatus(
+                    currentH3,
+                    request.getLat(),
+                    request.getLon(),
+                    newTotalDistance,
+                    currentTime,
+                    false  // 파티원은 점령 안 함
+            ));
+
+            log.info("👥 파티원 위치 업데이트: userId={}, h3={}, distance={}",
+                    userId, currentH3, newTotalDistance);
+
+        } catch (Exception e) {
+            log.error("파티원 위치 처리 실패: userId={}", userId, e);
+            throw new PloggingException(PloggingErrorCode.LOCATION_PROCESSING_ERROR);
+        }
+    }
+
     // Haversine 공식 (미터 단위)
     private double calculateDistance(double lat1, double lon1, double lat2, double lon2) {
         double theta = lon1 - lon2;
@@ -260,6 +307,15 @@ public class PloggingServiceImpl implements PloggingService {
         String beforeUrl = gcsImageService.uploadImage(before, folder);
         String afterUrl = gcsImageService.uploadImage(after, folder);
         String mapUrl = gcsImageService.uploadImage(map, folder);
+
+        // 🎯 작성 내용(content)도 저장
+        String recordInfo = buildRecordInfo(request, ploggingScore);
+        String finalContent = request.content();
+        if (finalContent == null || finalContent.trim().isEmpty()) {
+            finalContent = recordInfo;
+        } else {
+            finalContent = finalContent + "\n\n" + recordInfo;
+        }
 
         Post savedPost = postRepository.save(Post.builder()
                 .account(account)
@@ -452,6 +508,7 @@ public class PloggingServiceImpl implements PloggingService {
         } else {
             finalContent = finalContent + "\n\n" + recordInfo;
         }
+
         savedPlogging.updateContent(finalContent);
 
         // 이벤트 발행 (랭킹 업데이트 등)

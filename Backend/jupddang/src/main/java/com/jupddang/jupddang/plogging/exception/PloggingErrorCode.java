@@ -15,6 +15,13 @@ public enum PloggingErrorCode {
     // Plogging 관련
     PLOGGING_NOT_FOUND(HttpStatus.NOT_FOUND, "해당 플로깅 세션을 찾을 수 없습니다."),
 
+
+    // Party / Plogging
+    PARTY_NOT_FOUND(HttpStatus.NOT_FOUND, "Party not found."),
+    PARTY_MEMBER_NOT_FOUND(HttpStatus.FORBIDDEN, "User is not a member of the party."),
+    PARTY_NOT_IN_PROGRESS(HttpStatus.CONFLICT, "Party is not in progress."),
+    PARTY_ACTIVE_BLOCKS_SOLO(HttpStatus.CONFLICT, "User is in an active party."),
+
     // 공통
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "서버 내부 오류입니다."),
 

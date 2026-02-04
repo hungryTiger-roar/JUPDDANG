@@ -4,6 +4,7 @@ package com.jupddang.jupddang.plogging.repository;
 
 import com.jupddang.jupddang.account.entity.Account;
 import com.jupddang.jupddang.plogging.domain.Plogging;
+import com.jupddang.jupddang.plogging.domain.PloggingStatus;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -32,4 +33,13 @@ public interface PloggingRepository  extends JpaRepository<Plogging, Long> {
     Optional<Long> sumScoreByAccountAndDate(@Param("account") Account account,
                                             @Param("startDate") LocalDateTime startDate,
                                             @Param("endDate") LocalDateTime endDate);
+
+    // TEMP 상태의 Plogging 조회 (최신순)
+    List<Plogging> findByAccountUserIdAndStatusOrderByCreatedAtDesc(
+            String userId,
+            PloggingStatus status
+    );
+
+    // 특정 사용자의 모든 TEMP Plogging 개수
+    long countByAccountUserIdAndStatus(String userId, PloggingStatus status);
 }

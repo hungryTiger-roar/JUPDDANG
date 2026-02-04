@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:http_parser/http_parser.dart';
+import 'package:flutter/material.dart'; // Colors 사용을 위해
 import '../models/plogging_models.dart';
 
 class AuthService {
@@ -8,6 +9,7 @@ class AuthService {
   // Real Device: Use your PC's IP address (e.g., 192.168.x.x) or deploy to server
   // For now, let's assume we are testing on emulator or web.
   // Note: Web deals with localhost differently.
+  // static const String apiBase = 'http://192.168.213.132:8080/api';
   static const String apiBase = 'https://i14d208.p.ssafy.io/dev-api/api';
 
   static const String accountBase = '$apiBase/account';
@@ -17,33 +19,31 @@ class AuthService {
   static String? accessToken;
   static String? userId;
   static String? nickname;
+  static int? userColor; // ARGB int 값
 
   final Dio _dio =
-  Dio(
-    BaseOptions(
-      connectTimeout: const Duration(seconds: 10),
-      receiveTimeout: const Duration(seconds: 10),
-    ),
-  )
-    ..interceptors.add(
-      LogInterceptor(
-        requestBody: true,
-        responseBody: true,
-        requestHeader: false,
-        responseHeader: false,
-      ),
-    );
+      Dio(
+          BaseOptions(
+            connectTimeout: const Duration(seconds: 60),
+            receiveTimeout: const Duration(seconds: 60),
+            sendTimeout: const Duration(seconds: 60),
+          ),
+        )
+        ..interceptors.add(
+          LogInterceptor(
+            requestBody: true,
+            responseBody: true,
+            requestHeader: false,
+            responseHeader: false,
+          ),
+        );
 
   //회원 탈퇴
   Future<bool> deleteAccount() async {
     try {
       final response = await _dio.delete(
         '$accountBase/delete',
-        options: Options(
-          headers: {
-            'Authorization': 'Bearer $accessToken',
-          },
-        ),
+        options: Options(headers: {'Authorization': 'Bearer $accessToken'}),
       );
 
       if (response.statusCode == 200) {
@@ -73,11 +73,19 @@ class AuthService {
           accessToken = token;
         }
         final account = data['account'];
-        if (account is Map && account['userId'] != null) {
-          userId = account['userId'].toString();
-        }
-        if (account is Map && account['nickname'] != null) {
-          nickname = account['nickname'].toString();
+        if (account is Map) {
+          if (account['userId'] != null) userId = account['userId'].toString();
+          if (account['nickname'] != null)
+            nickname = account['nickname'].toString();
+
+          if (account['color'] != null) {
+            String c = account['color'].toString();
+            // #RRGGBB 형식 파싱
+            if (c.startsWith('#')) c = c.substring(1);
+            if (c.length == 6) {
+              userColor = int.parse('FF$c', radix: 16);
+            }
+          }
         }
       }
       return response.data;

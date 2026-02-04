@@ -39,8 +39,37 @@ public class Plogging {
     // 소요 시간 (기존 유지)
     private Integer times;
 
+    @Column(name = "record_name")
+    private String recordName;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private PloggingStatus status;
+
     // [추가] 월간 랭킹 집계용 날짜 필드
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
+
+    private String beforeImageUrl;   // Before 이미지
+    private String afterImageUrl;    // After 이미지
+    private String mapImageUrl;      // 맵 이미지
+
+    @Column(columnDefinition = "TEXT")
+    private String content;          // 작성 내용
+
+    public void updateImageUrls(String beforeUrl, String afterUrl, String mapUrl) {
+        this.beforeImageUrl = beforeUrl;
+        this.afterImageUrl = afterUrl;
+        this.mapImageUrl = mapUrl;
+    }
+
+    public void updateContent(String content) {
+        this.content = content;
+    }
+
+    // 플로깅 기록 상태 변경 TEMP -> USED
+    public void markAsUsed() {
+        this.status = PloggingStatus.USED;
+    }
 }

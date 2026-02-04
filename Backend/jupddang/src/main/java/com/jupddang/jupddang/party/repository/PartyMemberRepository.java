@@ -19,6 +19,9 @@ public interface PartyMemberRepository extends JpaRepository<PartyMember, Long> 
     // 멤버 참여 여부 확인
     boolean existsByPartyIdAndUserId(Long partyId, String userId);
 
+    // 특정 사용자가 진행 중인 파티에 참여 중인지 확인
+    boolean existsByUserIdAndParty_Status(String userId, com.jupddang.jupddang.party.domain.PartyStatus status);
+
     // 파티 인원 수 카운트
     long countByPartyId(Long partyId);
 

@@ -67,4 +67,10 @@ public class Post {
         this.likeCount++;
     }
 
+    public void updateImages(String beforeUrl, String afterUrl, String mapUrl) {
+        this.beforeImageUrl = beforeUrl;
+        this.afterImageUrl = afterUrl;
+        this.mapImageUrl = mapUrl;
+    }
+
 }

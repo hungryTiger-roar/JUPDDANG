@@ -37,18 +37,21 @@ public class Grids {
 
     /**
      * 점령 가능 여부 확인 (3시간 보호막)
+     * 
      * @param attackerId 공격하는 유저 ID
-     * @param now 현재 시간
+     * @param now        현재 시간
      */
     /**
      * 주인 변경 (땅 뺏기 성공)
      */
     // [수정] 점령 가능 여부 체크 시 파라미터도 String userId로
     public boolean isClaimable(String userId, LocalDateTime now) {
-        // 내 땅이면 보호막 시간 갱신만, 남의 땅이면 3분 지났는지 체크 등 로직
-        // 단순 예시:
-        if (this.userId.equals(userId)) return true; 
-        return now.isAfter(this.occupiedAt.plusMinutes(3));
+        // 내 땅이면 언제든 갱신(재점령) 가능 -> 방어 성공으로 시간 초기화
+        if (this.userId.equals(userId))
+            return true;
+
+        // 남의 땅이면 점령 후 3시간이 지났는지 확인
+        return now.isAfter(this.occupiedAt.plusHours(3));
     }
 
     // [수정] 소유자 변경 메서드 파라미터도 String userId로

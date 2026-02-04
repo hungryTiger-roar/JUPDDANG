@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:jupddang/screens/account/profile_screen.dart';
 
-import '../../services/auth_service.dart';
+import '../../../services/auth_service.dart';
 
 class SearchScreen extends StatefulWidget {
   const SearchScreen({super.key});
@@ -47,10 +47,10 @@ class _SearchScreenState extends State<SearchScreen> {
 
       // 프로필 화면으로 이동
       Navigator.push(
-          context,
-          MaterialPageRoute(
-              builder: (context) => ProfileScreen(userId: targetId),
-          ),
+        context,
+        MaterialPageRoute(
+          builder: (context) => ProfileScreen(userId: targetId),
+        ),
       );
     } catch (e) {
       if (!mounted) return;
@@ -105,12 +105,12 @@ class _SearchScreenState extends State<SearchScreen> {
                   prefixIcon: const Icon(Icons.search, color: Colors.white54),
                   suffixIcon: _searchController.text.isNotEmpty
                       ? IconButton(
-                          icon: const Icon(Icons.clear, color: Colors.white54),
-                          onPressed: () {
-                            _searchController.clear();
-                            setState(() {}); // X 버튼 누르면 화면 갱신해서 아이콘 숨기기
-                          },
-                        )
+                    icon: const Icon(Icons.clear, color: Colors.white54),
+                    onPressed: () {
+                      _searchController.clear();
+                      setState(() {}); // X 버튼 누르면 화면 갱신해서 아이콘 숨기기
+                    },
+                  )
                       : null,
                   contentPadding: const EdgeInsets.symmetric(
                     horizontal: 16,
@@ -168,20 +168,20 @@ class _SearchScreenState extends State<SearchScreen> {
                 ),
                 child: _isLoading
                     ? const SizedBox(
-                        width: 24,
-                        height: 24,
-                        child: CircularProgressIndicator(
-                          color: Colors.white,
-                          strokeWidth: 2,
-                        ),
-                      )
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(
+                    color: Colors.white,
+                    strokeWidth: 2,
+                  ),
+                )
                     : const Text(
-                        '검색',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+                  '검색',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
             ),
           ],

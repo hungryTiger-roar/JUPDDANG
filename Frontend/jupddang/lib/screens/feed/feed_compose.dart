@@ -29,7 +29,6 @@ class _PloggingRecord {
   final String date;
   final String distance;
   final String duration;
-  final int score;
 
   const _PloggingRecord({
     required this.id,
@@ -37,7 +36,6 @@ class _PloggingRecord {
     required this.date,
     required this.distance,
     required this.duration,
-    required this.score
   });
 }
 
@@ -62,7 +60,6 @@ class _CommunityComposeScreenState extends State<CommunityComposeScreen> {
       date: '2024-11-02',
       distance: '3.2km',
       duration: '32분',
-      score: 55
     ),
     _PloggingRecord(
       id: '2',
@@ -70,7 +67,6 @@ class _CommunityComposeScreenState extends State<CommunityComposeScreen> {
       date: '2024-10-29',
       distance: '2.1km',
       duration: '24분',
-      score: 20
     ),
     _PloggingRecord(
       id: '3',
@@ -78,7 +74,6 @@ class _CommunityComposeScreenState extends State<CommunityComposeScreen> {
       date: '2024-10-24',
       distance: '1.4km',
       duration: '18분',
-      score: 30
     ),
   ];
 
@@ -87,7 +82,7 @@ class _CommunityComposeScreenState extends State<CommunityComposeScreen> {
     super.initState();
     _selectedAccount =
         widget.initialAccount ??
-        (widget.accounts.isNotEmpty ? widget.accounts.first : null);
+            (widget.accounts.isNotEmpty ? widget.accounts.first : null);
 
     // 이어쓰기 데이터가 있으면 불러오기 실행
     if (widget.initialDraft != null) {
@@ -187,7 +182,7 @@ class _CommunityComposeScreenState extends State<CommunityComposeScreen> {
               return ListTile(
                 title: Text(record.title, style: const TextStyle(color: Colors.white)),
                 subtitle: Text(
-                  '${record.date} · ${record.distance} · ${record.duration}  · ${record.score}',
+                  '${record.date} · ${record.distance} · ${record.duration}',
                   style: const TextStyle(color: Colors.white70),
                 ),
                 trailing: selected
@@ -376,15 +371,15 @@ class _CommunityComposeScreenState extends State<CommunityComposeScreen> {
         ),
         buildCounter:
             (context, {required currentLength, required isFocused, maxLength}) {
-              final limit = maxLength ?? 1000;
-              return Align(
-                alignment: Alignment.centerRight,
-                child: Text(
-                  '$currentLength / 최대 $limit자',
-                  style: const TextStyle(color: Colors.white38, fontSize: 12),
-                ),
-              );
-            },
+          final limit = maxLength ?? 1000;
+          return Align(
+            alignment: Alignment.centerRight,
+            child: Text(
+              '$currentLength / 최대 $limit자',
+              style: const TextStyle(color: Colors.white38, fontSize: 12),
+            ),
+          );
+        },
       ),
     );
   }
@@ -438,9 +433,9 @@ class _CommunityComposeScreenState extends State<CommunityComposeScreen> {
             image: image == null
                 ? null
                 : DecorationImage(
-                    image: FileImage(File(image.path)),
-                    fit: BoxFit.cover,
-                  ),
+              image: FileImage(File(image.path)),
+              fit: BoxFit.cover,
+            ),
           ),
           child: Stack(
             children: [
@@ -548,7 +543,7 @@ class _CommunityComposeScreenState extends State<CommunityComposeScreen> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        '${_selectedRecord!.date} · ${_selectedRecord!.distance} · ${_selectedRecord!.duration} · ${_selectedRecord!.score}',
+                        '${_selectedRecord!.date} · ${_selectedRecord!.distance} · ${_selectedRecord!.duration}',
                         style: const TextStyle(color: Colors.white70),
                       ),
                     ],

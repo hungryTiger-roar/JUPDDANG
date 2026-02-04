@@ -34,34 +34,24 @@ public class SnsService {
     private final AccountRepository accountRepository;
     private final FollowRepository followRepository;
 
-    /**
-     * [수정됨] Plogging 완료 이벤트 처리
-     * 이미 PloggingServiceImpl에서 업로드와 Post 생성을 마쳤으므로
-     * 여기서는 중복 로직을 제거하고 로그만 남기거나, 알림 전송 로직만 남깁니다.
-     */
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handlePloggingCompleted(PloggingCompletedEvent event) {
-        // 중복 로직(업로드, 저장) 삭제함
         log.info("PloggingCompletedEvent 수신 완료 (Post 생성은 앞단에서 처리됨) - ploggingId: {}", event.ploggingId());
-
     }
 
     @Transactional(readOnly = true)
     public List<PostResponseDto> getFollowFeed(Account loginUser) {
-        // 1. 내가 팔로우하는 대상들을 가져옴
         List<Account> followingAccounts = followRepository.findAllByFollower(loginUser).stream()
                 .map(follow -> follow.getFollowing())
                 .collect(Collectors.toList());
 
-        // 2. (선택사항) 내 글도 피드에 포함하고 싶다면 나를 리스트에 추가
         followingAccounts.add(loginUser);
 
-        // 3. 팔로잉 중인 유저들의 글만 조회
         return postRepository.findAllByAccountInOrderByCreatedAtDesc(followingAccounts).stream()
                 .map(PostResponseDto::new)
                 .collect(Collectors.toList());
     }
-    // 전체 포스트 조회
+
     @Transactional(readOnly = true)
     public List<PostResponseDto> getAllPost() {
         return postRepository.findAllByOrderByCreatedAtDesc().stream()
@@ -69,7 +59,6 @@ public class SnsService {
                 .collect(Collectors.toList());
     }
 
-    // 포스트 좋아요
     @Transactional
     public void like(Long postId) {
         Post post = postRepository.findById(postId)
@@ -77,7 +66,6 @@ public class SnsService {
         post.increaseLike();
     }
 
-    // 포스트 삭제
     @Transactional
     public void deletePost(Long postId) {
         Post post = postRepository.findById(postId)
@@ -90,7 +78,6 @@ public class SnsService {
         postRepository.delete(post);
     }
 
-    // 댓글 작성
     @Transactional
     public Long createComment(Long postId, CommentRequestDto requestDto) {
         Post post = postRepository.findById(postId)
@@ -108,7 +95,6 @@ public class SnsService {
         return commentRepository.save(comment).getCommentId();
     }
 
-    // 댓글 삭제
     @Transactional
     public void deleteComment(Long postId, Long commentId) {
         Comment comment = commentRepository.findById(commentId)
@@ -123,36 +109,47 @@ public class SnsService {
 
     /**
      * 일반 게시글 작성 (플로깅 데이터 없음)
+     * plogging/{userId}/{postId}/ 폴더 구조로 저장
      */
     @Transactional
     public Long createPost(Account account, PostCreateRequest request,
                            MultipartFile beforeImage, MultipartFile afterImage, MultipartFile mapImage) {
 
-        String beforeUrl = uploadImageIfPresent(beforeImage);
-        String afterUrl = uploadImageIfPresent(afterImage);
-        String mapUrl = uploadImageIfPresent(mapImage);
-
+        // 1. 먼저 Post 저장 (이미지 URL 없이)
         Post post = Post.builder()
                 .account(account)
                 .content(request.getContent())
-                .beforeImageUrl(beforeUrl)
-                .afterImageUrl(afterUrl)
-                .mapImageUrl(mapUrl)
                 .ploggingId(null)
                 .build();
 
         Post savedPost = postRepository.save(post);
-        return savedPost.getPostId();
+        Long postId = savedPost.getPostId();
+
+        log.info("게시글 생성 완료 - postId: {}, userId: {}", postId, account.getUserId());
+
+        // 2. 폴더 경로 생성: plogging/{userId}/{postId}/
+        String folderPath = String.format("plogging/%s/%d", account.getUserId(), postId);
+
+        // 3. 이미지 업로드
+        String beforeUrl = uploadImageIfPresent(beforeImage, folderPath);
+        String afterUrl = uploadImageIfPresent(afterImage, folderPath);
+        String mapUrl = uploadImageIfPresent(mapImage, folderPath);
+
+        // 4. Post에 이미지 URL 업데이트
+        savedPost.updateImages(beforeUrl, afterUrl, mapUrl);
+
+        log.info("이미지 업로드 완료 - postId: {}", postId);
+
+        return postId;
     }
 
     /**
      * 이미지 null 체크 및 업로드 헬퍼 메서드
-     * GcsImageService를 사용하여 실제 이미지를 업로드합니다.
      */
-    private String uploadImageIfPresent(MultipartFile image) {
+    private String uploadImageIfPresent(MultipartFile image, String folder) {
         if (image != null && !image.isEmpty()) {
             try {
-                return gcsImageService.uploadImage(image, "sns");
+                return gcsImageService.uploadImage(image, folder);
             } catch (Exception e) {
                 log.error("SNS 이미지 업로드 실패: {}", e.getMessage());
                 throw new RuntimeException("이미지 업로드에 실패했습니다.", e);

@@ -102,3 +102,12 @@ firebase_options.dart
 **/*.jks
 **/*.keystore
 key.properties
+
+# 모든 하위 폴더의 빌드 결과물 무시
+**/build/
+# Flutter 플러그인 자동 생성 파일 무시
+**/generated_plugin_registrant.*
+**/generated_plugins.cmake
+# Gradle 빌드 리포트 무시
+**/problems-report.html
+/coverage/

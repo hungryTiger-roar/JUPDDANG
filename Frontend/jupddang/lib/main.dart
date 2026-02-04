@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'screens/account/splash_screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -7,116 +8,190 @@ void main() {
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-  // This widget is the root of your application.
+  static const Color _successColor = Color(0xFF46A140);
+  static const Color _successTint = Color(0x3346A140);
+  static const Color _outerBorder = Color(0xFF532E16);
+  static const Color _parchmentLight = Color(0xFFFAF3E0);
+  static const Color _parchmentDark = Color(0xFF2D241E);
+
+  ThemeData _buildTheme(Brightness brightness) {
+    final bool isDark = brightness == Brightness.dark;
+
+    final ButtonStyle baseButtonStyle = ButtonStyle(
+      minimumSize: MaterialStateProperty.all(const Size(64, 52)),
+      textStyle: MaterialStateProperty.all(
+        const TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w900,
+          letterSpacing: 2.0,
+        ),
+      ),
+      shape: MaterialStateProperty.all(
+        const BeveledRectangleBorder(borderRadius: BorderRadius.zero),
+      ),
+      elevation: MaterialStateProperty.all(0),
+      side: MaterialStateProperty.all(
+        const BorderSide(color: Colors.black, width: 4.0),
+      ),
+      padding: MaterialStateProperty.resolveWith<EdgeInsetsGeometry>((states) {
+        if (states.contains(MaterialState.pressed)) {
+          return const EdgeInsets.fromLTRB(28, 16, 20, 8); // Shifted
+        }
+        return const EdgeInsets.symmetric(horizontal: 24, vertical: 12);
+      }),
+    );
+    return ThemeData(
+      fontFamily: 'Galmuri11',
+      useMaterial3: true,
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: const Color(0xFF6B4EFF),
+        primary: _successColor,
+        brightness: brightness,
+        surface: isDark ? const Color(0xFF141414) : Colors.white,
+      ),
+      scaffoldBackgroundColor: isDark ? _parchmentDark : _parchmentLight,
+      appBarTheme: AppBarTheme(
+        centerTitle: true,
+        elevation: 0,
+        backgroundColor: isDark ? _parchmentDark : _parchmentLight,
+        foregroundColor: isDark ? Colors.white : _outerBorder,
+        titleTextStyle: const TextStyle(
+          fontSize: 18,
+          fontWeight: FontWeight.w900,
+          letterSpacing: 2.0,
+        ),
+        shape: const Border(
+          bottom: BorderSide(color: Colors.black, width: 4.0),
+        ),
+      ),
+      cardTheme: CardThemeData(
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(4),
+          side: const BorderSide(color: Color(0xFF532E16), width: 3.0),
+        ),
+        color: isDark ? const Color(0xFF3D322A) : Colors.white,
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      ),
+      floatingActionButtonTheme: FloatingActionButtonThemeData(
+        backgroundColor: const Color(0xFF1DCE70),
+        foregroundColor: Colors.white,
+        elevation: 0,
+        shape: const BeveledRectangleBorder(
+          borderRadius: BorderRadius.zero,
+          side: BorderSide(color: Colors.black, width: 4.0),
+        ),
+        extendedTextStyle: const TextStyle(
+          fontWeight: FontWeight.w900,
+          letterSpacing: 1.0,
+        ),
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: baseButtonStyle.copyWith(
+          backgroundColor: MaterialStateProperty.resolveWith((states) {
+            if (states.contains(MaterialState.disabled))
+              return const Color(0xFF1DCE70).withOpacity(0.5);
+            return const Color(0xFF1DCE70);
+          }),
+          foregroundColor: MaterialStateProperty.all(Colors.white),
+          overlayColor: MaterialStateProperty.all(Colors.white10),
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: baseButtonStyle.copyWith(
+          backgroundColor: MaterialStateProperty.all(const Color(0xFF1F1F1F)),
+          foregroundColor: MaterialStateProperty.all(Colors.white),
+          side: MaterialStateProperty.all(
+            const BorderSide(color: Colors.black, width: 4.0),
+          ),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: baseButtonStyle.copyWith(
+          minimumSize: MaterialStateProperty.all(
+            const Size(64, 44),
+          ), // Text buttons can be slightly smaller
+          foregroundColor: MaterialStateProperty.all(_successColor),
+          backgroundColor: MaterialStateProperty.all(Colors.transparent),
+          overlayColor: MaterialStateProperty.all(
+            _successColor.withOpacity(0.1),
+          ),
+        ),
+      ),
+      filledButtonTheme: FilledButtonThemeData(
+        style: baseButtonStyle.copyWith(
+          foregroundColor: MaterialStateProperty.all(_successColor),
+          backgroundColor: MaterialStateProperty.all(_successTint),
+          overlayColor: MaterialStateProperty.all(
+            _successColor.withOpacity(0.1),
+          ),
+        ),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: isDark
+            ? Colors.white.withOpacity(0.05)
+            : Colors.black.withOpacity(0.05),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 20,
+          vertical: 18,
+        ),
+        border: const OutlineInputBorder(
+          borderRadius: BorderRadius.zero,
+          borderSide: BorderSide(color: Colors.black, width: 4.0),
+        ),
+        enabledBorder: const OutlineInputBorder(
+          borderRadius: BorderRadius.zero,
+          borderSide: BorderSide(color: Colors.black, width: 4.0),
+        ),
+        focusedBorder: const OutlineInputBorder(
+          borderRadius: BorderRadius.zero,
+          borderSide: BorderSide(color: Color(0xFF1DCE70), width: 4.0),
+        ),
+        labelStyle: TextStyle(
+          color: isDark ? Colors.white70 : Colors.black54,
+          fontSize: 12,
+          fontWeight: FontWeight.w900,
+        ),
+      ),
+      snackBarTheme: SnackBarThemeData(
+        backgroundColor: Colors.black,
+        contentTextStyle: const TextStyle(color: Colors.white, fontSize: 13),
+        shape: Border(
+          top: BorderSide(
+            color: isDark ? const Color(0xFF1DCE70) : Colors.black,
+            width: 4.0,
+          ),
+        ),
+        elevation: 0,
+        behavior: SnackBarBehavior.fixed,
+      ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+        elevation: 0,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.zero,
+          side: BorderSide(color: Colors.black, width: 4.0),
+        ),
+        titleTextStyle: const TextStyle(
+          fontSize: 20,
+          fontWeight: FontWeight.w900,
+          letterSpacing: 1.0,
+        ),
+        contentTextStyle: const TextStyle(fontSize: 14),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a purple toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
-        colorScheme: .fromSeed(seedColor: Colors.deepPurple),
-      ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
-    );
-  }
-}
-
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
-  final String title;
-
-  @override
-  State<MyHomePage> createState() => _MyHomePageState();
-}
-
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
-
-  void _incrementCounter() {
-    setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
-    return Scaffold(
-      appBar: AppBar(
-        // TRY THIS: Try changing the color here to a specific color (to
-        // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-        // change color while the other colors stay the same.
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
-      ),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          //
-          // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
-          // action in the IDE, or press "p" in the console), to see the
-          // wireframe for each widget.
-          mainAxisAlignment: .center,
-          children: [
-            const Text('You have pushed the button this many times:'),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-          ],
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ),
+      title: 'Jupddang',
+      theme: _buildTheme(Brightness.light),
+      darkTheme: _buildTheme(Brightness.dark),
+      themeMode: ThemeMode.system,
+      home: const SplashScreen(),
+      debugShowCheckedModeBanner: false,
     );
   }
 }

@@ -1,20 +1,16 @@
 package com.jupddang.jupddang.common.infrastructure.storage;
 
-import com.google.cloud.storage.BlobId;
-import com.google.cloud.storage.BlobInfo;
-import com.google.cloud.storage.Storage;
-import com.jupddang.jupddang.common.exception.ImageUploadException;
-import com.jupddang.jupddang.sns.entity.Post;
-import jakarta.transaction.Transactional;
+import com.google.cloud.storage.*;
+import com.sksamuel.scrimage.ImmutableImage;
+import com.sksamuel.scrimage.webp.WebpWriter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -24,120 +20,106 @@ public class GcsImageService {
 
     private final Storage storage;
 
-    @Value("${spring.cloud.gcp.storage.bucket}")
+    @Value("${gcs.bucket.name}")
     private String bucketName;
 
-    // 허용 파일 형식
-    private static final List<String> ALLOWED_TYPES = Arrays.asList(
-            "image/jpeg", "image/jpg", "image/png"
-    );
-
-    // 최대 파일 크기 (10MB)
-    private static final long MAX_FILE_SIZE = 10 * 1024 * 1024;
+    // 이미지 최적화 설정
+    private static final int MAX_SIZE = 1920;
+    private static final int WEBP_QUALITY = 90;  // 0-100
+    private static final String IMAGE_FORMAT = "webp";
+    private static final String CONTENT_TYPE = "image/webp";
 
     /**
-     * 이미지를 GCS에 업로드 (유효성 검증 추가)
+     * 이미지 업로드 (WebP 최적화 적용)
      */
     public String uploadImage(MultipartFile file, String folder) {
         try {
-            // 1. 유효성 검증
-            validateImage(file);
+            log.info("이미지 업로드 시작 - 원본 크기: {}KB", file.getSize() / 1024);
+
+            // 1. 이미지 최적화 (WebP 변환)
+            byte[] optimizedImageBytes = optimizeImageToWebP(file);
+
+            log.info("이미지 최적화 완료 - 변환 후 크기: {}KB", optimizedImageBytes.length / 1024);
 
             // 2. 파일명 생성
-            String fileName = generateFileName(file.getOriginalFilename());
-            String objectName = folder + "/" + fileName;
+            String originalFileName = file.getOriginalFilename();
+            String baseFileName = originalFileName != null ?
+                    originalFileName.substring(0, originalFileName.lastIndexOf('.')) :
+                    UUID.randomUUID().toString();
+            String fileName = folder + "/" + UUID.randomUUID() + "_" + baseFileName + "." + IMAGE_FORMAT;
 
-            log.info("GCS 업로드 시작: {}", objectName);
-
-            // 3. BlobId 생성
-            BlobId blobId = BlobId.of(bucketName, objectName);
-
-            // 4. BlobInfo 생성
+            // 3. GCS에 업로드
+            BlobId blobId = BlobId.of(bucketName, fileName);
             BlobInfo blobInfo = BlobInfo.newBuilder(blobId)
-                    .setContentType(file.getContentType())
+                    .setContentType(CONTENT_TYPE)
+                    .setCacheControl("public, max-age=31536000") // 1년 캐싱
                     .build();
 
-            // 5. GCS에 업로드
-            storage.create(blobInfo, file.getBytes());
+            storage.create(blobInfo, optimizedImageBytes);
 
-            // 6. URL 생성
-            String imageUrl = "https://storage.googleapis.com/" +
-                    bucketName + "/" + objectName;
-
-            log.info("GCS 업로드 완료: {}", imageUrl);
+            // 4. 공개 URL 반환
+            String imageUrl = String.format("https://storage.googleapis.com/%s/%s", bucketName, fileName);
+            log.info("이미지 업로드 성공: {}", imageUrl);
 
             return imageUrl;
 
-        } catch (IOException e) {
-            log.error("GCS 업로드 실패", e);
-            throw new ImageUploadException("이미지 업로드에 실패했습니다", e);
+        } catch (Exception e) {
+            log.error("이미지 업로드 실패: {}", e.getMessage(), e);
+            throw new RuntimeException("이미지 업로드에 실패했습니다.", e);
         }
     }
 
     /**
-     * 이미지 유효성 검증
+     * WebP 형식으로 이미지 최적화 (Scrimage 사용)
      */
-    private void validateImage(MultipartFile file) {
-        // 1. 파일 존재 확인
-        if (file == null || file.isEmpty()) {
-            throw new ImageUploadException("파일이 비어있습니다");
+    private byte[] optimizeImageToWebP(MultipartFile file) throws IOException {
+        // 원본 이미지 로드
+        ImmutableImage originalImage = ImmutableImage.loader()
+                .fromBytes(file.getBytes());
+
+        log.info("원본 이미지 크기: {}x{}", originalImage.width, originalImage.height);
+
+        // 이미지 리사이징 (비율 유지하면서 MAX_SIZE 이내로)
+        ImmutableImage resizedImage;
+        if (originalImage.width > MAX_SIZE || originalImage.height > MAX_SIZE) {
+            resizedImage = originalImage.max(MAX_SIZE, MAX_SIZE);
+            log.info("리사이징 완료: {}x{}", resizedImage.width, resizedImage.height);
+        } else {
+            resizedImage = originalImage;
+            log.info("리사이징 불필요");
         }
 
-        // 2. 파일 크기 확인
-        if (file.getSize() > MAX_FILE_SIZE) {
-            throw new ImageUploadException(
-                    String.format("파일 크기는 %dMB 이하여야 합니다",
-                            MAX_FILE_SIZE / 1024 / 1024)
-            );
-        }
+        // WebP로 변환
+        WebpWriter writer = WebpWriter.DEFAULT.withQ(WEBP_QUALITY);
+        byte[] webpBytes = resizedImage.bytes(writer);
 
-        // 3. 파일 형식 확인
-        String contentType = file.getContentType();
-        if (!ALLOWED_TYPES.contains(contentType)) {
-            throw new ImageUploadException(
-                    "jpg, png 이미지만 업로드 가능합니다"
-            );
-        }
+        return webpBytes;
     }
 
     /**
-     * GCS에서 이미지 삭제
+     * 이미지 삭제
      */
     public void deleteImage(String imageUrl) {
-        // [중요] 여기서 null 체크를 하므로, 서비스 코드에서 if문 없이 호출 가능!
         if (imageUrl == null || imageUrl.isEmpty()) {
+            log.warn("삭제할 이미지 URL이 없습니다.");
             return;
         }
 
         try {
-            String objectName = extractObjectName(imageUrl);
-            log.info("GCS 삭제 시작: {}", objectName);
-            BlobId blobId = BlobId.of(bucketName, objectName);
-            storage.delete(blobId);
+            // URL에서 파일명 추출
+            String fileName = imageUrl.substring(imageUrl.indexOf(bucketName) + bucketName.length() + 1);
+            BlobId blobId = BlobId.of(bucketName, fileName);
+
+            boolean deleted = storage.delete(blobId);
+
+            if (deleted) {
+                log.info("이미지 삭제 완료: {}", fileName);
+            } else {
+                log.warn("이미지를 찾을 수 없음: {}", fileName);
+            }
+
         } catch (Exception e) {
-            log.error("GCS 삭제 중 에러", e);
+            log.error("이미지 삭제 실패: {}", e.getMessage(), e);
         }
-    }
-
-    private String generateFileName(String originalFilename) {
-        String extension = getFileExtension(originalFilename);
-        return UUID.randomUUID().toString() +
-                "_" + System.currentTimeMillis() +
-                "." + extension;
-    }
-
-    private String getFileExtension(String filename) {
-        if (filename == null || !filename.contains(".")) {
-            return "jpg";
-        }
-        return filename.substring(filename.lastIndexOf(".") + 1).toLowerCase();
-    }
-
-    private String extractObjectName(String imageUrl) {
-        String prefix = "https://storage.googleapis.com/" + bucketName + "/";
-        if (imageUrl.startsWith(prefix)) {
-            return imageUrl.substring(prefix.length());
-        }
-        throw new IllegalArgumentException("잘못된 이미지 URL: " + imageUrl);
     }
 }

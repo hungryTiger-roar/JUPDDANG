@@ -1,7 +1,7 @@
 package com.jupddang.jupddang.plogging.service.impls;
 
-import com.jupddang.jupddang.account.entity.Account; // [Import]
-import com.jupddang.jupddang.account.repository.AccountRepository; // [Import]
+import com.jupddang.jupddang.account.entity.Account;
+import com.jupddang.jupddang.account.repository.AccountRepository;
 import com.jupddang.jupddang.plogging.domain.Grids;
 import com.jupddang.jupddang.plogging.domain.Plogging;
 import com.jupddang.jupddang.plogging.domain.PloggingStatus;
@@ -51,7 +51,7 @@ public class PloggingServiceImpl implements PloggingService {
     private final PartyRepository partyRepository;
     private final PartyMemberRepository partyMemberRepository;
     private final GridRepository gridRepository;
-    private final AccountRepository accountRepository; // [NEW] Account 조회를 위해 추가
+    private final AccountRepository accountRepository;
     private final ApplicationEventPublisher eventPublisher;
     private final H3Core h3Core;
     private final SimpMessagingTemplate messagingTemplate;
@@ -59,8 +59,10 @@ public class PloggingServiceImpl implements PloggingService {
     private final PostRepository postRepository;
     private final GcsImageService gcsImageService;
 
-    private static final int H3_RESOLUTION = 9;
-    private static final long OCCUPY_THRESHOLD_MS = 60 * 1000L; // 1분
+    // [변경된 로직 1] H3 Resolution 11 (약 25m)
+    private static final int H3_RESOLUTION = 11;
+    // [변경된 로직 2] 점령 기준 거리 100m
+    private static final double OCCUPY_DISTANCE_THRESHOLD = 100.0;
 
     @Override
     @Transactional
@@ -105,56 +107,74 @@ public class PloggingServiceImpl implements PloggingService {
         // 여기서부터는 솔로 플로깅 or 파티장만 실행
         try {
             String currentH3 = h3Core.latLngToCellAddress(request.getLat(), request.getLon(), H3_RESOLUTION);
+            UserPloggingStatus lastStatus = redisRepository.getUserState(userId);
             long currentTime = System.currentTimeMillis();
 
-            UserPloggingStatus lastStatus = redisRepository.getUserState(userId);
-
+            // 1. 첫 진입, Redis 만료, 혹은 다른 구역으로 이동한 경우 -> 초기화
             if (lastStatus == null || !lastStatus.h3Index().equals(currentH3)) {
-                log.info("🔄 H3 Index 변경: {} → {}",
-                        lastStatus != null ? lastStatus.h3Index() : "null", currentH3);
 
-                redisRepository.updateUserState(userId, currentH3, currentTime, false);
-
-                if (partyId != null && isLeader) {
-                    log.info("📡 H3 변경 - 브로드캐스트 호출");
-                    broadcastLeaderData(partyId, userId, request);
-                }
+                // 새로운 구역 진입: 거리 0, 현재 위치 저장
+                redisRepository.updateUserState(userId, new UserPloggingStatus(
+                        currentH3,
+                        request.getLat(),
+                        request.getLon(),
+                        0.0,
+                        currentTime,
+                        false));
                 return;
             }
 
+            // 2. 이미 점령한 구역은 로직 패스 (최적화)
             if (lastStatus.isOccupied()) {
-                log.info("✅ 이미 점령된 그리드: {}", currentH3);
-
-                if (partyId != null && isLeader) {
-                    log.info("📡 점령 완료 - 브로드캐스트 호출");
-                    broadcastLeaderData(partyId, userId, request);
-                }
+                // 필요 시 마지막 좌표만 갱신하거나, 그냥 빠져나감.
+                // 여기서는 좌표 갱신 없이 리턴 (가장 강력한 최적화)
                 return;
             }
 
-            long timeElapsed = currentTime - lastStatus.entryTime();
-            log.info("⏱️ 체류 시간: {}ms / {}ms", timeElapsed, OCCUPY_THRESHOLD_MS);
+            // 3. 같은 구역 내 이동 -> 거리 누적
+            double dist = calculateDistance(lastStatus.lastLat(), lastStatus.lastLon(), request.getLat(),
+                    request.getLon());
+            double newTotalDistance = lastStatus.totalDistance() + dist;
 
-            if (timeElapsed >= OCCUPY_THRESHOLD_MS) {
-                log.info("🎯 점령 시도: {}", currentH3);
-
-                boolean success = handleOccupationAttempt(userId, currentH3, partyId);
+            // 4. 거리 기준 도달 체크
+            if (newTotalDistance >= OCCUPY_DISTANCE_THRESHOLD) {
+                // 점령 시도
+                boolean success = handleOccupationAttempt(userId, currentH3, request.getPartyId());
 
                 if (success) {
-                    redisRepository.updateUserState(userId, currentH3, lastStatus.entryTime(), true);
+                    // 점령 성공 상태 저장
+                    redisRepository.updateUserState(userId, new UserPloggingStatus(
+                            currentH3,
+                            request.getLat(),
+                            request.getLon(),
+                            newTotalDistance,
+                            currentTime,
+                            true));
+                    // 점령 목록에 추가 (정산용)
                     redisRepository.addCapturedGrid(userId, currentH3);
-
-                    if (partyId != null && isLeader) {
-                        log.info("📡 점령 성공 - 브로드캐스트 호출");
-                        broadcastLeaderData(partyId, userId, request);
-                    }
+                } else {
+                    // 점령 실패 (이미 아군 땅 등) -> 상태만 갱신 (계속 시도하지 않도록 Occupied=True 처리 할 수도 있지만,
+                    // 로직상 handleOccupationAttempt가 false면 '점령할 필요 없음'이므로 True로 처리해도 무방하거나,
+                    // 혹은 그냥 거리만 업데이트하고 다음 틱에 다시 체크.
+                    // 여기서는 '이미 우리땅'도 점령 완료로 취급하여 불필요한 연산 방지
+                    redisRepository.updateUserState(userId, new UserPloggingStatus(
+                            currentH3,
+                            request.getLat(),
+                            request.getLon(),
+                            newTotalDistance,
+                            currentTime,
+                            true // 이미 우리 땅이어도 더이상 체크 안 함
+                    ));
                 }
             } else {
-                // 🎯 체류 중 - 파티장이면 브로드캐스트
-                if (partyId != null && isLeader) {
-                    log.info("📡 체류 중 - 브로드캐스트 호출");
-                    broadcastLeaderData(partyId, userId, request);
-                }
+                // 아직 거리 부족 -> 상태 업데이트
+                redisRepository.updateUserState(userId, new UserPloggingStatus(
+                        currentH3,
+                        request.getLat(),
+                        request.getLon(),
+                        newTotalDistance,
+                        currentTime,
+                        false));
             }
 
         } catch (PloggingException e) {
@@ -165,54 +185,17 @@ public class PloggingServiceImpl implements PloggingService {
         }
     }
 
-    // 파티원은 위치만 업데이트 (점령 로직 제거)
-    private void processLocationForMember(String userId, LocationRequest request) {
-        try {
-            String currentH3 = h3Core.latLngToCellAddress(request.getLat(), request.getLon(), H3_RESOLUTION);
-            long currentTime = System.currentTimeMillis();
-            UserPloggingStatus lastStatus = redisRepository.getUserState(userId);
+    // Haversine 공식 (미터 단위)
+    private double calculateDistance(double lat1, double lon1, double lat2, double lon2) {
+        double theta = lon1 - lon2;
+        double dist = Math.sin(Math.toRadians(lat1)) * Math.sin(Math.toRadians(lat2))
+                + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2)) * Math.cos(Math.toRadians(theta));
 
-            // 위치만 업데이트 (점령 시도 안 함)
-            if (lastStatus == null || !lastStatus.h3Index().equals(currentH3)) {
-                redisRepository.updateUserState(userId, currentH3, currentTime, false);
-            }
-
-        } catch (Exception e) {
-            log.error("Member location processing error", e);
-        }
-    }
-
-    // 파티장 데이터 브로드캐스트 (점령 그리드 + 진행도 포함)
-    private void broadcastLeaderData(Long partyId, String userId, LocationRequest request) {
-        Set<String> capturedGrids = redisRepository.getCapturedGrids(userId);
-        int occupiedCount = capturedGrids.size();
-
-        // 🎯 프론트에서 보낸 데이터를 그대로 사용
-        double occupyProgress = request.getOccupyProgress() != null
-                ? request.getOccupyProgress()
-                : 0.0;
-
-        String currentH3Index = request.getCurrentH3Index() != null
-                ? request.getCurrentH3Index()
-                : "";
-
-        log.info("📤 브로드캐스트: partyId={}, userId={}, currentH3Index={}, occupyProgress={}",
-                partyId, userId, currentH3Index, occupyProgress);
-
-        Map<String, Object> message = Map.of(
-                "userId", userId,
-                "lat", request.getLat(),
-                "lon", request.getLon(),
-                "elapsedTime", request.getElapsedTime() != null ? request.getElapsedTime() : 0,
-                "totalDistance", request.getTotalDistance() != null ? request.getTotalDistance() : 0.0,
-                "score", request.getScore() != null ? request.getScore() : 0,
-                "occupiedCount", occupiedCount,
-                "occupyProgress", occupyProgress,
-                "currentH3Index", currentH3Index,
-                "timestamp", System.currentTimeMillis()
-        );
-
-        messagingTemplate.convertAndSend("/sub/party/" + partyId + "/leader", message);
+        dist = Math.acos(dist);
+        dist = Math.toDegrees(dist);
+        dist = dist * 60 * 1.1515;
+        dist = dist * 1.609344; // km 단위
+        return dist * 1000; // 미터 단위 변환
     }
 
     private boolean handleOccupationAttempt(String userId, String h3Index, Long partyId) {
@@ -251,79 +234,33 @@ public class PloggingServiceImpl implements PloggingService {
     public PloggingResultResponse endPlogging(String userId, PloggingEndRequest request,
             MultipartFile before, MultipartFile after, MultipartFile map) {
 
-
-        log.info("request.partyId(): {}", request.partyId());
-
-        // 파티 플로깅인 경우는 체크 건너뛰기
-        boolean isPartyPlogging = request.partyId() != null;
-
-        if (!isPartyPlogging) {
-            // 솔로 플로깅인데 파티 활동 중인지 체크
-            boolean hasActiveParty = partyMemberRepository.existsByUserIdAndParty_Status(
-                    userId, PartyStatus.IN_PROGRESS
-            );
-
-            log.info("hasActiveParty: {}", hasActiveParty);
-
-            if (hasActiveParty) {
-                throw new PloggingException(PloggingErrorCode.PARTY_ACTIVE_BLOCKS_SOLO);
-            }
-        }
-
-        // 1. [수정됨] Account 조회 (getReferenceById는 프록시만 가져오므로 성능상 유리함)
-        // userId는 이미 String이므로 변환 불필요
         Account account = accountRepository.getReferenceById(userId);
 
         log.info("distance : {}", request.distance());
-//        log.info("times : {}", request.endTime());
         log.info("content : {}", request.content());
 
-        // 2. 점령 그리드 조회 (점수 계산에 필요)
         Set<String> capturedGrids = redisRepository.getCapturedGrids(userId);
         int occupiedCount = capturedGrids.size();
 
-        // 3. 플로깅 점수 계산 (레이드 점수 제외)
         int ploggingScore = calculatePloggingScore(request.distance(), request.times(), occupiedCount);
 
-        // 4. Plogging 저장 (계산된 점수 포함)
         Plogging savedPlogging = ploggingRepository.save(Plogging.builder()
                 .account(account)
                 .distance(request.distance())
                 .times(request.times())
-                .recordName(request.recordTitle())
-                .status(PloggingStatus.TEMP)
-                .score(ploggingScore) // 계산된 플로깅 점수 저장
+                .score(ploggingScore)
                 .build());
 
-        // 5. 레이드 점수 계산 (별도 처리)
         int totalRaidScore = 0;
         if (!capturedGrids.isEmpty()) {
             totalRaidScore = raidService.applyRaidScore(userId, capturedGrids);
         }
 
-        // 6. GCS에 이미지 업로드
         String folder = "plogging/" + userId + "/" + savedPlogging.getId();
         String beforeUrl = gcsImageService.uploadImage(before, folder);
         String afterUrl = gcsImageService.uploadImage(after, folder);
         String mapUrl = gcsImageService.uploadImage(map, folder);
 
-        // 7. 기록 정보 생성
-        String recordInfo = buildRecordInfo(request, ploggingScore);
-        log.info("생성된 기록 정보: {}", recordInfo);
-
-        // 8. content에 기록 정보 추가
-        String finalContent = request.content();
-        if (finalContent == null || finalContent.trim().isEmpty()) {
-            // content가 비어있으면 기록 정보만
-            finalContent = recordInfo;
-        } else {
-            // content가 있으면 뒤에 기록 정보 추가
-            finalContent = finalContent + "\n\n" + recordInfo;
-        }
-
-        log.info("최종 content: {}", finalContent);
-
-        // 9. Post 생성 및 저장 (수정된 content 사용!)
         Post savedPost = postRepository.save(Post.builder()
                 .account(account)
                 .ploggingId(savedPlogging.getId())
@@ -334,27 +271,21 @@ public class PloggingServiceImpl implements PloggingService {
                 .likeCount(0)
                 .build());
 
-        // 9-1 게시글 작성 완료 시 기록 상태 변경
-        savedPlogging.markAsUsed();
-
-        // 10. 이벤트 발행 (점수 정산 및 랭킹 업데이트용)
         PloggingCompletedEvent event = PloggingCompletedEvent.builder()
                 .ploggingId(savedPlogging.getId())
                 .userId(userId)
                 .occupiedGridCnt(occupiedCount)
                 .raidScore(totalRaidScore)
-                .ploggingScore(ploggingScore) // 플로깅 점수 추가
+                .ploggingScore(ploggingScore)
                 .build();
 
         eventPublisher.publishEvent(event);
 
-        // 11. Redis 정리
         redisRepository.deleteUserState(userId);
 
         log.info("플로깅 종료: userId={}, captured={}, ploggingScore={}, raidScore={}",
                 userId, occupiedCount, ploggingScore, totalRaidScore);
 
-        // 12. 응답 반환
         return new PloggingResultResponse(
                 savedPlogging.getId(),
                 savedPost.getPostId(),
@@ -367,15 +298,6 @@ public class PloggingServiceImpl implements PloggingService {
         );
     }
 
-    /**
-     * 플로깅 점수 계산
-     * 공식: score = (distance * 10) + (times / 60) + (occupiedCount * 5)
-     * 
-     * @param distance      이동 거리 (km)
-     * @param times         소요 시간 (초)
-     * @param occupiedCount 점령한 그리드 수
-     * @return 계산된 플로깅 점수
-     */
     private int calculatePloggingScore(Double distance, Integer times, int occupiedCount) {
         int distanceScore = (distance != null) ? (int) (distance * 10) : 0;
         int timeScore = (times != null) ? (times / 60) : 0;
@@ -391,7 +313,6 @@ public class PloggingServiceImpl implements PloggingService {
 
     private void validateCoordinate(Double lat, Double lon) {
         if (lat == null || lon == null || lat < -90 || lat > 90 || lon < -180 || lon > 180) {
-            // [중요] 이 예외가 발생해야 엣지 테스트 통과
             throw new PloggingException(PloggingErrorCode.INVALID_COORDINATE);
         }
     }

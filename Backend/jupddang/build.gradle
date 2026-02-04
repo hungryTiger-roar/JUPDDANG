@@ -79,6 +79,10 @@ dependencies {
 
     // CSV 파싱 라이브러리
     implementation 'com.opencsv:opencsv:5.9'
+
+    // 이미지 최적화 라이브러리
+    implementation 'com.sksamuel.scrimage:scrimage-core:4.1.1'
+    implementation 'com.sksamuel.scrimage:scrimage-webp:4.1.1'
 }
 
 // 컴파일 인코딩 설정

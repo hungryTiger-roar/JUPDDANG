@@ -3,19 +3,16 @@ import 'package:h3_common/h3_common.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:dio/dio.dart';
-import '../models/hexagon.dart';
+// 아래 경로는 프로젝트 실제 경로에 맞춰주세요.
+import '../features/plogging/models/hexagon.dart';
 import 'auth_service.dart';
 
 class LocationH3Service {
   late final H3 _h3;
   final int resolution = 9;
-  final Dio _dio = Dio(
-    BaseOptions(
-      baseUrl: AuthService.apiBase,
-      connectTimeout: const Duration(seconds: 5),
-      receiveTimeout: const Duration(seconds: 5),
-    ),
-  );
+  
+  // [수정 1] final 제거 및 late 선언 (테스트 주입을 위해)
+  late Dio _dio; 
 
   static final LocationH3Service _instance = LocationH3Service._internal();
   factory LocationH3Service() => _instance;
@@ -35,9 +32,21 @@ class LocationH3Service {
   double get occupyProgress => (_accumulatedDistance / 100.0).clamp(0.0, 1.0);
   String? get currentH3Index => _currentTrackingH3;
 
-  Future<void> init() async {
+  // [수정 2] Dio 파라미터 추가 (테스트 시 Mock 주입 가능)
+  Future<void> init({H3? h3, Dio? dio}) async {
     if (_isInitialized) return;
-    _h3 = const H3Factory().load();
+    
+    _h3 = h3 ?? const H3Factory().load();
+    
+    // Dio가 주입되지 않았으면(실제 앱 실행 시) 기본 설정으로 생성
+    _dio = dio ?? Dio(
+      BaseOptions(
+        baseUrl: AuthService.apiBase,
+        connectTimeout: const Duration(seconds: 5),
+        receiveTimeout: const Duration(seconds: 5),
+      ),
+    );
+    
     _isInitialized = true;
   }
 

@@ -1,558 +1,75 @@
-import 'dart:convert';
 import 'package:dio/dio.dart';
-import 'package:http_parser/http_parser.dart';
-import 'package:flutter/material.dart'; // Colors 사용을 위해
-import '../models/plogging_models.dart';
+import '../core/network/api_client.dart';
+import '../features/auth/data/auth_service.dart' as AuthFeature;
+import '../features/account/data/account_service.dart';
+import '../features/social/data/social_service.dart';
+import '../features/plogging/data/plogging_service.dart';
+import '../features/plogging/models/plogging_models.dart';
 
+// [Deprecation Notice] 이 클래스는 곧 삭제될 예정이며, 각 Feature별 Service를 직접 사용해야 합니다.
 class AuthService {
-  // Android Emulator: 10.0.2.2
-  // Real Device: Use your PC's IP address (e.g., 192.168.x.x) or deploy to server
-  // For now, let's assume we are testing on emulator or web.
-  // Note: Web deals with localhost differently.
-  // static const String apiBase = 'http://192.168.213.132:8080/api';
   static const String apiBase = 'https://i14d208.p.ssafy.io/dev-api/api';
-
-  static const String accountBase = '$apiBase/account';
-  static const String postsBase = '$apiBase/posts';
-  static const String ploggingBase = '$apiBase/v1/plogging';
-
-  static String? accessToken;
-  static String? userId;
+  final AuthFeature.AuthService _authService = AuthFeature.AuthService();
+  final AccountService _accountService = AccountService();
+  final SocialService _socialService = SocialService();
+  final PloggingService _ploggingService = PloggingService();
+  
+  // ApiClient 싱글톤 접근용 (기존 코드 호환성)
+  static String? get accessToken => ApiClient().accessToken;
+  static set accessToken(String? token) => ApiClient().setAccessToken(token);
+  
+  static String? userId; // [Warning] 상태 관리(Provider 등)로 이관 필요
   static String? nickname;
-  static int? userColor; // ARGB int 값
+  static int? userColor = 0xFF46A140; // Default Green
 
-  final Dio _dio =
-      Dio(
-          BaseOptions(
-            connectTimeout: const Duration(seconds: 60),
-            receiveTimeout: const Duration(seconds: 60),
-            sendTimeout: const Duration(seconds: 60),
-          ),
-        )
-        ..interceptors.add(
-          LogInterceptor(
-            requestBody: true,
-            responseBody: true,
-            requestHeader: false,
-            responseHeader: false,
-          ),
-        );
-
-  //회원 탈퇴
-  Future<bool> deleteAccount() async {
-    try {
-      final response = await _dio.delete(
-        '$accountBase/delete',
-        options: Options(headers: {'Authorization': 'Bearer $accessToken'}),
-      );
-
-      if (response.statusCode == 200) {
-        accessToken = null;
-        userId = null;
-        nickname = null;
-        return true;
-      }
-
-      return false;
-    } catch (e) {
-      print('회원 탈퇴 실패: $e');
-      return false;
-    }
-  }
-
+  // --- Auth ---
   Future<dynamic> login(String id, String pw) async {
-    try {
-      final response = await _dio.post(
-        '$accountBase/login',
-        data: {'id': id, 'pw': pw},
-      );
-      final data = response.data;
-      if (data is Map) {
-        final token = data['accessToken'];
-        if (token is String && token.isNotEmpty) {
-          accessToken = token;
-        }
-        final account = data['account'];
-        if (account is Map) {
-          if (account['userId'] != null) userId = account['userId'].toString();
-          if (account['nickname'] != null)
-            nickname = account['nickname'].toString();
-
-          if (account['color'] != null) {
-            String c = account['color'].toString();
-            // #RRGGBB 형식 파싱
-            if (c.startsWith('#')) c = c.substring(1);
-            if (c.length == 6) {
-              userColor = int.parse('FF$c', radix: 16);
-            }
-          }
-        }
-      }
-      return response.data;
-    } catch (e) {
-      print('Login Error: $e');
-      throw e;
+    final data = await _authService.login(id, pw);
+    // [Legacy Support] 정적 변수에 값 할당
+    if (data is Map) {
+         final account = data['account'];
+         if (account is Map) {
+            userId = account['userId']?.toString();
+            nickname = account['nickname']?.toString();
+         }
     }
+    return data;
   }
 
-  Future<dynamic> signup({
-    required String id,
-    required String pw,
-    required String email,
-    required String nickname,
-    String? profileImage,
-    String? intro,
-  }) async {
-    try {
-      final response = await _dio.post(
-        '$accountBase/signup',
-        data: {
-          'id': id,
-          'pw': pw,
-          'email': email,
-          'nickname': nickname,
-          'profileImage': profileImage ?? '',
-          'intro': intro ?? '',
-        },
-      );
-      return response.data;
-    } catch (e) {
-      print('Signup Error: $e');
-      throw e;
-    }
+  Future<dynamic> signup({required String id, required String pw, required String email, required String nickname, required String color}) {
+    return _authService.signup(id: id, pw: pw, email: email, nickname: nickname, color: color);
   }
 
-  Future<List<dynamic>> getAccounts() async {
-    try {
-      final response = await _dio.get(
-        accountBase,
-        options: Options(headers: _authHeaders()),
-      );
-      if (response.data is List) {
-        return response.data as List<dynamic>;
-      }
-      return [];
-    } catch (e) {
-      print('Get Accounts Error: $e');
-      rethrow;
-    }
+  Future<bool> deleteAccount() {
+    return _authService.deleteAccount();
   }
 
-  Future<List<dynamic>> getPosts() async {
-    try {
-      final response = await _dio.get(
-        postsBase,
-        options: Options(headers: _authHeaders()),
-      );
-      if (response.data is List) {
-        return response.data as List<dynamic>;
-      }
-      return [];
-    } catch (e) {
-      print('Get Posts Error: $e');
-      rethrow;
-    }
-  }
+  // --- Account ---
+  Future<Map<String, dynamic>> getMyProfile() => _accountService.getMyProfile();
+  Future<Map<String, dynamic>> getProfileById(String targetId) => _accountService.getProfileById(targetId);
+  Future<Map<String, dynamic>> updateMyProfile(Map<String, dynamic> updates, dynamic imageFile) => _accountService.updateMyProfile(updates, imageFile);
+  
+  // --- Social ---
+  Future<List<dynamic>> getPosts() => _socialService.getPosts();
+  Future<List<dynamic>> getMyPosts() => _socialService.getMyPosts();
+  Future<List<dynamic>> getFollowings(String userId) => _socialService.getFollowings(userId);
+  Future<List<dynamic>> getFollowers(String userId) => _socialService.getFollowers(userId);
+  Future<bool> toggleFollow(String targetId) => _socialService.toggleFollow(targetId);
+  Future<dynamic> createPost({required String userId, required String content, List<String> imagePaths = const []}) 
+      => _socialService.createPost(userId: userId, content: content, imagePaths: imagePaths);
+  Future<void> likePost(String postId) => _socialService.likePost(postId);
+  Future<dynamic> addComment(String postId, String userId, String content) => _socialService.addComment(postId, userId, content);
+  Future<void> deleteComment(String postId, String commentId) => _socialService.deleteComment(postId, commentId);
+  Future<void> deletePost(String postId) => _socialService.deletePost(postId);
 
-  Future<void> likePost(String postId) async {
-    try {
-      await _dio.post(
-        '$postsBase/$postId/like',
-        options: Options(headers: _authHeaders()),
-      );
-    } catch (e) {
-      print('Like Post Error: $e');
-      rethrow;
-    }
-  }
+  // --- Plogging ---
+  Future<void> endPlogging({required PloggingEndRequest requestData, required String beforeImagePath, required String afterImagePath, required String mapImagePath}) 
+      => _ploggingService.endPlogging(requestData: requestData, beforeImagePath: beforeImagePath, afterImagePath: afterImagePath, mapImagePath: mapImagePath);
+      
+  Future<dynamic> savePloggingTemp({required TempPloggingRequest requestData, String? beforeImagePath, String? afterImagePath, String? mapImagePath})
+      => _ploggingService.savePloggingTemp(requestData: requestData, beforeImagePath: beforeImagePath, afterImagePath: afterImagePath, mapImagePath: mapImagePath);
 
-  Future<dynamic> addComment(
-      String postId,
-      String userId,
-      String content,
-      ) async {
-    try {
-      final response = await _dio.post(
-        '$postsBase/$postId/comment',
-        data: {'userId': userId, 'content': content},
-        options: Options(headers: _authHeaders()),
-      );
-      return response.data;
-    } catch (e) {
-      print('Add Comment Error: $e');
-      rethrow;
-    }
-  }
-
-  // 댓글 삭제
-  Future<void> deleteComment(String postId, String commentId) async {
-    try {
-      await _dio.delete(
-        '$postsBase/$postId/$commentId',
-        options: Options(headers: _authHeaders()),
-      );
-    } catch (e) {
-      print('Delete Comment Error: $e');
-      rethrow;
-    }
-  }
-
-  Future<dynamic> createPost({
-    required String userId,
-    required String content,
-    List<String> imagePaths = const [],
-  }) async {
-    try {
-      final headers = _authHeaders();
-      if (imagePaths.isNotEmpty) {
-        final payload = {
-          'userId': userId,
-          'content': content,
-          'beforeImageUrl': '',
-          'afterImageUrl': '',
-          'mapImageUrl': '',
-        };
-        final formData = FormData.fromMap({
-          'data': MultipartFile.fromString(
-            jsonEncode(payload),
-            contentType: MediaType('application', 'json'),
-          ),
-          'images': [
-            for (final path in imagePaths.take(5))
-              await MultipartFile.fromFile(path),
-          ],
-        });
-        final response = await _dio.post(
-          postsBase,
-          data: formData,
-          options: Options(headers: headers),
-        );
-        return response.data;
-      }
-
-      final response = await _dio.post(
-        postsBase,
-        data: {
-          'userId': userId,
-          'content': content,
-          'beforeImageUrl': '',
-          'afterImageUrl': '',
-          'mapImageUrl': '',
-        },
-        options: Options(headers: headers),
-      );
-      return response.data;
-    } catch (e) {
-      print('Create Post Error: $e');
-      rethrow;
-    }
-  }
-
-  Future<void> deletePost(String postId) async {
-    try {
-      await _dio.delete(
-        '$postsBase/$postId',
-        options: Options(headers: _authHeaders()),
-      );
-    } catch (e) {
-      print('Delete Post Error: $e');
-      rethrow;
-    }
-  }
-
-  // 계정 정보 조회
-  Future<Map<String, dynamic>> getAccount(String userId) async {
-    try {
-      final response = await _dio.get(
-        '$accountBase/$userId',
-        options: Options(headers: _authHeaders()),
-      );
-      if (response.data is Map) {
-        return response.data as Map<String, dynamic>;
-      }
-      throw Exception('Invalid response format');
-    } catch (e) {
-      print('Get Account Error: $e');
-      rethrow;
-    }
-  }
-
-  //화현이: 프로필 정보 조회 (score, isFollowing, followerCount, followingCount 포함)
-  Future<Map<String, dynamic>> getProfileById(String targetId) async {
-    try {
-      final response = await _dio.get(
-        '$accountBase/profile/$targetId',
-        options: Options(headers: _authHeaders()),
-      );
-      if (response.data is Map) {
-        return response.data as Map<String, dynamic>;
-      }
-      throw Exception('Invalid response format');
-    } catch (e) {
-      print('Get Profile By ID Error: $e');
-      rethrow;
-    }
-  }
-
-  // 계정 정보 업데이트
-  Future<Map<String, dynamic>> updateAccount(
-      String userId,
-      Map<String, dynamic> updates,
-      dynamic imageFile,
-      ) async {
-    try {
-      final headers = _authHeaders();
-
-      if (imageFile != null) {
-        // 이미지가 있는 경우 multipart/form-data로 전송
-        final formData = FormData.fromMap({
-          'data': MultipartFile.fromString(
-            jsonEncode(updates),
-            contentType: MediaType('application', 'json'),
-          ),
-          if (imageFile != null)
-            'image': await MultipartFile.fromFile(imageFile.path),
-        });
-
-        final response = await _dio.put(
-          '$accountBase/$userId',
-          data: formData,
-          options: Options(headers: headers),
-        );
-        return response.data as Map<String, dynamic>;
-      } else {
-        // 이미지가 없는 경우 JSON으로 전송
-        final response = await _dio.put(
-          '$accountBase/$userId',
-          data: updates,
-          options: Options(headers: headers),
-        );
-        return response.data as Map<String, dynamic>;
-      }
-    } catch (e) {
-      print('Update Account Error: $e');
-      rethrow;
-    }
-  }
-
-  // 내 프로필 조회 - GET /api/account/myprofile
-  Future<Map<String, dynamic>> getMyProfile() async {
-    try {
-      final response = await _dio.get(
-        '$accountBase/myprofile',
-        options: Options(headers: _authHeaders()),
-      );
-      if (response.data is Map) {
-        return response.data as Map<String, dynamic>;
-      }
-      throw Exception('Invalid response format');
-    } catch (e) {
-      print('Get My Profile Error: $e');
-      rethrow;
-    }
-  }
-
-  // 내 프로필 업데이트 - PATCH /api/account/myprofile
-  Future<Map<String, dynamic>> updateMyProfile(
-      Map<String, dynamic> updates,
-      dynamic imageFile,
-      ) async {
-    try {
-      final headers = _authHeaders();
-
-      // multipart/form-data로 전송
-      final formData = FormData.fromMap({
-        'data': MultipartFile.fromString(
-          jsonEncode(updates),
-          contentType: MediaType('application', 'json'),
-        ),
-        if (imageFile != null)
-          'image': await MultipartFile.fromFile(imageFile.path),
-      });
-
-      final response = await _dio.patch(
-        '$accountBase/myprofile',
-        data: formData,
-        options: Options(headers: headers),
-      );
-      return response.data as Map<String, dynamic>;
-    } catch (e) {
-      print('Update My Profile Error: $e');
-      rethrow;
-    }
-  }
-
-  //화현: 팔로잉 목록 조회 - GET /api/follow/followings/{userId}
-  Future<List<dynamic>> getFollowings(String userId) async {
-    try {
-      final response = await _dio.get(
-        '$apiBase/follow/followings/$userId',
-        options: Options(headers: _authHeaders()),
-      );
-      if (response.data is List) {
-        return response.data as List<dynamic>;
-      }
-      return [];
-    } catch (e) {
-      print('Get Followings Error: $e');
-      return [];
-    }
-  }
-
-  //화현: 팔로워 목록 조회 - GET /api/follow/followers/{userId}
-  Future<List<dynamic>> getFollowers(String userId) async {
-    try {
-      final response = await _dio.get(
-        '$apiBase/follow/followers/$userId',
-        options: Options(headers: _authHeaders()),
-      );
-      if (response.data is List) {
-        return response.data as List<dynamic>;
-      }
-      return [];
-    } catch (e) {
-      print('Get Followers Error: $e');
-      return [];
-    }
-  }
-
-  //화현: 팔로우/언팔로우 토글 - POST /api/follow/{targetId}
-  Future<bool> toggleFollow(String targetId) async {
-    try {
-      final response = await _dio.post(
-        '$apiBase/follow/$targetId',
-        options: Options(headers: _authHeaders()),
-      );
-      if (response.statusCode == 200) {
-        return true;
-      }
-      return false;
-    } catch (e) {
-      print('Toggle Follow Error: $e');
-      return false;
-    }
-  }
-
-  Future<void> endPlogging({
-    required PloggingEndRequest requestData,
-    required String beforeImagePath,
-    required String afterImagePath,
-    required String mapImagePath,
-  }) async {
-    try {
-      final headers = _authHeaders();
-      if (userId != null && userId!.isNotEmpty) {
-        headers['userId'] = userId!;
-      }
-
-      final dataJson = jsonEncode(requestData.toJson());
-      final formData = FormData.fromMap({
-        'data': MultipartFile.fromString(
-          dataJson,
-          contentType: MediaType('application', 'json'),
-        ),
-        'beforeImage': await MultipartFile.fromFile(beforeImagePath),
-        'afterImage': await MultipartFile.fromFile(afterImagePath),
-        'mapImage': await MultipartFile.fromFile(mapImagePath),
-      });
-
-
-      final response = await _dio.post(
-        '$ploggingBase/end',
-        data: formData,
-        options: Options(headers: headers),
-      );
-    } catch (e) {
-      print('End Plogging Error: $e');
-      rethrow;
-    }
-  }
-
-  Future<dynamic> savePloggingTemp({
-    required TempPloggingRequest requestData,
-    String? beforeImagePath,
-    String? afterImagePath,
-    String? mapImagePath,
-  }) async {
-    final headers = _authHeaders();
-    if (userId != null && userId!.isNotEmpty) {
-      headers['userId'] = userId!;
-    }
-
-    final dataJson = jsonEncode(requestData.toJson());
-    final formData = FormData.fromMap({
-      'data': MultipartFile.fromString(
-        dataJson,
-        contentType: MediaType('application', 'json'),
-      ),
-
-      // 이미지들 (optional)
-      if (beforeImagePath != null)
-        'beforeImage': await MultipartFile.fromFile(
-          beforeImagePath,
-        ),
-
-      if (afterImagePath != null)
-        'afterImage': await MultipartFile.fromFile(afterImagePath),
-      if (mapImagePath != null)
-        'mapImage': await MultipartFile.fromFile(mapImagePath),
-    });
-
-    try {
-      final response = await _dio.post(
-        '$ploggingBase/temp',
-        data: formData,
-        options: Options(headers: headers),
-      );
-
-      return response.data;
-    } catch (e) {
-      print('Save Plogging Temp Error: $e');
-      rethrow;
-    }
-  }
-
-  Map<String, String> _authHeaders() {
-    if (accessToken == null || accessToken!.isEmpty) {
-      return {};
-    }
-    return {'Authorization': 'Bearer $accessToken'};
-  }
-
-  //화현이: 본인 작성 게시글 조회
-  Future<List<dynamic>> getMyPosts() async {
-    try {
-      final response = await _dio.get(
-        '$postsBase/myposts',
-        options: Options(headers: _authHeaders()),
-      );
-      if (response.data is List) {
-        return response.data as List<dynamic>;
-      }
-      throw Exception('Invalid response format');
-    } catch (e) {
-      print('Get My Posts Error: $e');
-      rethrow;
-    }
-  }
-
-  // 상대방 프로필 정보 조회(검색용)
-  Future<Map<String, dynamic>> searchUser(String targetId) async {
-    try {
-      final response = await _dio.get(
-        '$accountBase/profile/$targetId', // 기존 accountBase 변수 사용
-        options: Options(headers: _authHeaders()), // 기존 헤더 함수 사용
-      );
-      // Dio는 자동으로 JSON을 디코딩해주므로 바로 리턴 가능
-      return response.data as Map<String, dynamic>;
-
-    } on DioException catch (e) {
-      // Dio 에러 처리
-      if (e.response?.statusCode == 404) {
-        throw Exception('User not found');
-      }
-      print('Search User Error: $e');
-      rethrow;
-    }
-  }
+  // --- Legacy Support ---
+  Future<List<dynamic>> getAccounts() async => []; // 사용처 거의 없음
+  Future<Map<String, dynamic>> searchUser(String targetId) => getProfileById(targetId);
 }

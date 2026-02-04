@@ -45,6 +45,8 @@ dependencies:
   geocoding: ^4.0.0
   rive: ^0.13.10
   stomp_dart_client: ^3.0.1
+  nes_ui: ^0.27.0
+  google_fonts: ^6.1.0
 
 dev_dependencies:
   flutter_test:

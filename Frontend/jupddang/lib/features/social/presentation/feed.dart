@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:nes_ui/nes_ui.dart';
 import 'package:jupddang/features/social/models/community_models.dart';
 import '../../../services/auth_service.dart';
 import '../../account/presentation/search_screen.dart';
@@ -77,7 +78,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
           .whereType<Map>()
           .map(
             (item) => CommunityPost.fromPostJson(item.cast<String, dynamic>()),
-      )
+          )
           .toList();
       setState(() {
         _remotePosts = posts;
@@ -178,7 +179,6 @@ class _CommunityScreenState extends State<CommunityScreen> {
             _localPosts.removeWhere((p) => p.id == postId);
           } else {
             _remotePosts.removeWhere((p) => p.id == postId);
-
           }
         });
         if (mounted) {
@@ -200,7 +200,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
   Future<void> _continueWriting(CommunityPost post) async {
     // 현재 로그인된 작성자 계정 정보 찾기
     final initialAccount = _accounts.firstWhere(
-          (account) => account.userId == AuthService.userId,
+      (account) => account.userId == AuthService.userId,
       orElse: () => _accounts.isNotEmpty
           ? _accounts.first
           : AccountSummary(userId: 'guest', nickname: 'Guest'),
@@ -262,7 +262,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
       return;
     }
     final initialAccount = _accounts.firstWhere(
-          (account) => account.userId == AuthService.userId,
+      (account) => account.userId == AuthService.userId,
       orElse: () => _accounts.isNotEmpty
           ? _accounts.first
           : AccountSummary(userId: 'guest', nickname: 'Guest'),
@@ -381,11 +381,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
                     ),
                   );
                 },
-                icon: const Icon(
-                  Icons.search,
-                  color: Colors.white,
-                  size: 28,
-                ),
+                icon: const Icon(Icons.search, color: Colors.white, size: 28),
                 padding: EdgeInsets.zero, // 패딩 제거해서 정렬 맞추기
                 constraints: const BoxConstraints(), // 불필요한 여백 제거
               ),
@@ -502,25 +498,12 @@ class _CommunityScreenState extends State<CommunityScreen> {
   }
 
   Widget _filterChip(String label, bool isSelected, VoidCallback onTap) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF17C964) : const Color(0xFF1F1F1F),
-          border: Border.all(color: Colors.black, width: 3.0),
-          boxShadow: isSelected
-              ? []
-              : const [BoxShadow(color: Colors.black, offset: Offset(3, 3))],
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: isSelected ? Colors.black : Colors.white,
-            fontWeight: FontWeight.w900,
-            fontSize: 12,
-          ),
-        ),
+    return SizedBox(
+      height: 40,
+      child: NesButton(
+        type: isSelected ? NesButtonType.success : NesButtonType.normal,
+        onPressed: onTap,
+        child: Text(label),
       ),
     );
   }
@@ -551,7 +534,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
 
     return SliverList(
       delegate: SliverChildBuilderDelegate(
-            (context, index) => _buildPostCard(_allPosts[index]),
+        (context, index) => _buildPostCard(_allPosts[index]),
         childCount: _allPosts.length,
       ),
     );
@@ -564,186 +547,203 @@ class _CommunityScreenState extends State<CommunityScreen> {
     final String postUserId = post.userId?.toString() ?? '';
     final isMine = postUserId.isNotEmpty && postUserId == currentUserId;
 
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1F1F1F),
-        border: Border.all(color: Colors.black, width: 3.0),
-        boxShadow: const [BoxShadow(color: Colors.black, offset: Offset(6, 6))],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                GestureDetector(
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) =>
-                            ProfileScreen(userId: post.nickname),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      child: NesContainer(
+        padding: EdgeInsets.zero, // 내부 패딩을 직접 제어하므로 0으로 설정
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              ProfileScreen(userId: post.nickname),
+                        ),
+                      );
+                    },
+                    child: Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF1F1F1F),
+                        border: Border.all(color: Colors.black, width: 2.0),
                       ),
-                    );
-                  },
-                  child: Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF1F1F1F),
-                      border: Border.all(color: Colors.black, width: 2.0),
-                    ),
-                    child: Center(
-                      child: PixelCharacter(
-                        size: 24,
-                        color: _getColorForNickname(post.nickname),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Flexible( // 닉네임이 길어질 경우를 대비해 Flexible 사용
-                            child: Text(
-                              post.nickname.toUpperCase(),
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w900,
-                                fontSize: 14,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          // 팔로우 버튼 (내 글 아닐 때만)
-                          if (!isMine) _followButton(post.nickname),
-
-                          // 임시 저장 글 태그 (내 글이고 임시글일 때)
-                          if (isMine && isLocalDraft)
-                            Padding(
-                              padding: const EdgeInsets.only(left: 8),
-                              child: _myPostTag(),
-                            ),
-                        ],
-                      ),
-                      const SizedBox(height: 2), // 간격 미세 조정
-                      Text(
-                        _formatTime(post.createdAt).toUpperCase(),
-                        style: const TextStyle(
-                          color: Colors.white38,
-                          fontSize: 10,
+                      child: Center(
+                        child: PixelCharacter(
+                          size: 24,
+                          color: _getColorForNickname(post.nickname),
                         ),
                       ),
-                    ],
+                    ),
                   ),
-                ),
-                // ★ 삼선 메뉴 (통일 및 정렬 수정) ★
-                if (isMine)
-                  SizedBox(
-                    width: 24, // 아이콘 크기에 맞춰 영역 제한
-                    height: 24,
-                    child: PopupMenuButton<String>(
-                      padding: EdgeInsets.zero, // 패딩 제거 (중요!)
-                      constraints: const BoxConstraints(), // 불필요한 공간 제거
-                      icon: const Icon(Pixel.menu, color: Colors.white38, size: 20),
-                      color: const Color(0xFF2A2A2A),
-                      onSelected: (value) {
-                        if (value == 'delete') {
-                          _deletePost(post.id);
-                        } else if (value == 'continue') {
-                          _continueWriting(post);
-                        }
-                      },
-                      itemBuilder: (BuildContext context) {
-                        final List<PopupMenuEntry<String>> items = [];
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Flexible(
+                              // 닉네임이 길어질 경우를 대비해 Flexible 사용
+                              child: Text(
+                                post.nickname.toUpperCase(),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 14,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            // 팔로우 버튼 (내 글 아닐 때만)
+                            if (!isMine) _followButton(post.nickname),
 
-                        // 1. 임시 저장 글일 경우 '이어쓰기' 메뉴 추가
-                        if (isLocalDraft) {
+                            // 임시 저장 글 태그 (내 글이고 임시글일 때)
+                            if (isMine && isLocalDraft)
+                              Padding(
+                                padding: const EdgeInsets.only(left: 8),
+                                child: _myPostTag(),
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 2), // 간격 미세 조정
+                        Text(
+                          _formatTime(post.createdAt).toUpperCase(),
+                          style: const TextStyle(
+                            color: Colors.white38,
+                            fontSize: 10,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  // ★ 삼선 메뉴 (통일 및 정렬 수정) ★
+                  if (isMine)
+                    SizedBox(
+                      width: 24, // 아이콘 크기에 맞춰 영역 제한
+                      height: 24,
+                      child: PopupMenuButton<String>(
+                        padding: EdgeInsets.zero, // 패딩 제거 (중요!)
+                        constraints: const BoxConstraints(), // 불필요한 공간 제거
+                        icon: const Icon(
+                          Pixel.menu,
+                          color: Colors.white38,
+                          size: 20,
+                        ),
+                        color: const Color(0xFF2A2A2A),
+                        onSelected: (value) {
+                          if (value == 'delete') {
+                            _deletePost(post.id);
+                          } else if (value == 'continue') {
+                            _continueWriting(post);
+                          }
+                        },
+                        itemBuilder: (BuildContext context) {
+                          final List<PopupMenuEntry<String>> items = [];
+
+                          // 1. 임시 저장 글일 경우 '이어쓰기' 메뉴 추가
+                          if (isLocalDraft) {
+                            items.add(
+                              const PopupMenuItem<String>(
+                                value: 'continue',
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      Pixel.edit,
+                                      color: Colors.white,
+                                      size: 18,
+                                    ),
+                                    SizedBox(width: 8),
+                                    Text(
+                                      '이어쓰기',
+                                      style: TextStyle(color: Colors.white),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          }
+
+                          // 2. 공통: '삭제' 메뉴 추가
                           items.add(
                             const PopupMenuItem<String>(
-                              value: 'continue',
+                              value: 'delete',
                               child: Row(
                                 children: [
-                                  Icon(Pixel.edit, color: Colors.white, size: 18),
+                                  Icon(
+                                    Pixel.trash,
+                                    color: Colors.redAccent,
+                                    size: 18,
+                                  ),
                                   SizedBox(width: 8),
-                                  Text('이어쓰기', style: TextStyle(color: Colors.white)),
+                                  Text(
+                                    '삭제',
+                                    style: TextStyle(color: Colors.white),
+                                  ),
                                 ],
                               ),
                             ),
                           );
-                        }
 
-                        // 2. 공통: '삭제' 메뉴 추가
-                        items.add(
-                          const PopupMenuItem<String>(
-                            value: 'delete',
-                            child: Row(
-                              children: [
-                                Icon(Pixel.trash, color: Colors.redAccent, size: 18),
-                                SizedBox(width: 8),
-                                Text('삭제', style: TextStyle(color: Colors.white)),
-                              ],
-                            ),
-                          ),
-                        );
-
-                        return items;
-                      },
+                          return items;
+                        },
+                      ),
                     ),
-                  )
-                // else
-                // // 남의 글인 경우 (단순 아이콘)
-                //   const SizedBox(
-                //     width: 24,
-                //     height: 24,
-                //     child: Icon(Pixel.menu, color: Colors.white38, size: 20),
-                //   ),
-              ],
+                  // else
+                  // // 남의 글인 경우 (단순 아이콘)
+                  //   const SizedBox(
+                  //     width: 24,
+                  //     height: 24,
+                  //     child: Icon(Pixel.menu, color: Colors.white38, size: 20),
+                  //   ),
+                ],
+              ),
             ),
-          ),
 
-          // Images
-          if (post.localImagePaths.isNotEmpty || post.imageUrls.isNotEmpty)
-            _buildPostImages(post),
+            // Images
+            if (post.localImagePaths.isNotEmpty || post.imageUrls.isNotEmpty)
+              _buildPostImages(post),
 
-          // Actions
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-            child: Row(
-              children: [
-                _actionButton(
-                  Pixel.heart,
-                  post.likeCount.toString(),
-                  onTap: () => _toggleLike(post),
-                  isActive: _likedPostIds.contains(post.id),
-                ),
-                const SizedBox(width: 20),
-                _actionButton(
-                  Pixel.message,
-                  post.comments.length.toString(),
-                  onTap: () => _showComments(post),
-                ),
-                const Spacer(),
-                const Icon(Pixel.flag, color: Colors.white38),
-              ],
+            // Actions
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+              child: Row(
+                children: [
+                  _actionButton(
+                    Pixel.heart,
+                    post.likeCount.toString(),
+                    onTap: () => _toggleLike(post),
+                    isActive: _likedPostIds.contains(post.id),
+                  ),
+                  const SizedBox(width: 20),
+                  _actionButton(
+                    Pixel.message,
+                    post.comments.length.toString(),
+                    onTap: () => _showComments(post),
+                  ),
+                  const Spacer(),
+                  const Icon(Pixel.flag, color: Colors.white38),
+                ],
+              ),
             ),
-          ),
 
-          // Content
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
-            child: _buildPostContent(post),
-          ),
-        ],
+            // Content
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
+              child: _buildPostContent(post),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -784,14 +784,14 @@ class _CommunityScreenState extends State<CommunityScreen> {
               children: sections['hashtags']!
                   .map(
                     (tag) => Text(
-                  tag,
-                  style: const TextStyle(
-                    color: Color(0xFF17C964),
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13,
-                  ),
-                ),
-              )
+                      tag,
+                      style: const TextStyle(
+                        color: Color(0xFF17C964),
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                      ),
+                    ),
+                  )
                   .toList(),
             ),
           ),
@@ -817,14 +817,8 @@ class _CommunityScreenState extends State<CommunityScreen> {
     // Expected format: Title · Date · Distance · Duration
     final parts = recordText.split('·').map((e) => e.trim()).toList();
 
-    return Container(
+    return NesContainer(
       padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.05),
-        border: const Border(
-          left: BorderSide(color: Color(0xFF17C964), width: 4),
-        ),
-      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -876,11 +870,11 @@ class _CommunityScreenState extends State<CommunityScreen> {
   }
 
   Widget _actionButton(
-      IconData icon,
-      String label, {
-        VoidCallback? onTap,
-        bool isActive = false,
-      }) {
+    IconData icon,
+    String label, {
+    VoidCallback? onTap,
+    bool isActive = false,
+  }) {
     return GestureDetector(
       onTap: onTap,
       child: Row(
@@ -1189,9 +1183,9 @@ class _CommentBottomSheetState extends State<_CommentBottomSheet> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('댓글 작성에 실패했습니다.')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('댓글 작성에 실패했습니다.')));
       }
     } finally {
       if (mounted) {
@@ -1204,7 +1198,7 @@ class _CommentBottomSheetState extends State<_CommentBottomSheet> {
   Widget build(BuildContext context) {
     return Container(
       height:
-      MediaQuery.of(context).size.height * 0.95, // Increased height to 95%
+          MediaQuery.of(context).size.height * 0.95, // Increased height to 95%
       decoration: const BoxDecoration(
         color: Color(0xFF1A1A1A),
         borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
@@ -1238,108 +1232,109 @@ class _CommentBottomSheetState extends State<_CommentBottomSheet> {
           Expanded(
             child: _comments.isEmpty
                 ? const Center(
-              child: Text(
-                '댓글이 없습니다',
-                style: TextStyle(color: Colors.white38, fontSize: 16),
-              ),
-            )
+                    child: Text(
+                      '댓글이 없습니다',
+                      style: TextStyle(color: Colors.white38, fontSize: 16),
+                    ),
+                  )
                 : ListView.builder(
-              controller: _scrollController,
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              itemCount: _comments.length,
-              itemBuilder: (context, index) {
-                final comment = _comments[index];
-                final isMine = AuthService.nickname == comment.nickname;
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 20),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // 프로필사진
-                      Container(
-                        width: 50,
-                        height: 50,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF1F1F1F),
-                          border: Border.all(
-                            color: Colors.black,
-                            width: 2.0,
-                          ),
-                        ),
-                        child: Center(
-                          child: PixelCharacter(
-                            size: 35,
-                            color: _getColorForNickname(comment.nickname),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
+                    controller: _scrollController,
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    itemCount: _comments.length,
+                    itemBuilder: (context, index) {
+                      final comment = _comments[index];
+                      final isMine = AuthService.nickname == comment.nickname;
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 20),
+                        child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Row(
-                              children: [
-                                Expanded(
-                                  // 닉네임
-                                  child: Text(
-                                    comment.nickname.toUpperCase(),
+                            // 프로필사진
+                            Container(
+                              width: 50,
+                              height: 50,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF1F1F1F),
+                                border: Border.all(
+                                  color: Colors.black,
+                                  width: 2.0,
+                                ),
+                              ),
+                              child: Center(
+                                child: PixelCharacter(
+                                  size: 35,
+                                  color: _getColorForNickname(comment.nickname),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        // 닉네임
+                                        child: Text(
+                                          comment.nickname.toUpperCase(),
+                                          style: const TextStyle(
+                                            color: Colors.white54,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 14,
+                                          ),
+                                        ),
+                                      ),
+                                      if (isMine)
+                                        DropdownButtonHideUnderline(
+                                          child: DropdownButton<String>(
+                                            isDense: true,
+                                            icon: const Icon(
+                                              Icons.more_vert,
+                                              color: Colors.white54,
+                                              size: 18,
+                                            ),
+                                            dropdownColor: const Color(
+                                              0xFF2A2A2A,
+                                            ),
+                                            items: const [
+                                              DropdownMenuItem(
+                                                value: 'delete',
+                                                child: Text(
+                                                  '삭제',
+                                                  style: TextStyle(
+                                                    color: Colors.white,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                            onChanged: (value) {
+                                              if (value == 'delete') {
+                                                _deleteComment(comment);
+                                              }
+                                            },
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 4),
+                                  // 댓글
+                                  Text(
+                                    comment.content,
                                     style: const TextStyle(
-                                      color: Colors.white54,
-                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
                                       fontSize: 14,
                                     ),
                                   ),
-                                ),
-                                if (isMine)
-                                  DropdownButtonHideUnderline(
-                                    child: DropdownButton<String>(
-                                      isDense: true,
-                                      icon: const Icon(
-                                        Icons.more_vert,
-                                        color: Colors.white54,
-                                        size: 18,
-                                      ),
-                                      dropdownColor: const Color(
-                                        0xFF2A2A2A,
-                                      ),
-                                      items: const [
-                                        DropdownMenuItem(
-                                          value: 'delete',
-                                          child: Text(
-                                            '삭제',
-                                            style: TextStyle(
-                                              color: Colors.white,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                      onChanged: (value) {
-                                        if (value == 'delete') {
-                                          _deleteComment(comment);
-                                        }
-                                      },
-                                    ),
-                                  ),
-                              ],
-                            ),
-                            const SizedBox(height: 4),
-                            // 댓글
-                            Text(
-                              comment.content,
-                              style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 14
+                                ],
                               ),
                             ),
                           ],
                         ),
-                      ),
-                    ],
+                      );
+                    },
                   ),
-                );
-              },
-            ),          ),
+          ),
           _commentInput(),
         ],
       ),
@@ -1347,51 +1342,36 @@ class _CommentBottomSheetState extends State<_CommentBottomSheet> {
   }
 
   Widget _commentInput() {
-    return Container(
+    return NesContainer(
       padding: EdgeInsets.fromLTRB(
         20,
         20,
         20,
         60 + MediaQuery.of(context).padding.bottom,
       ),
-      decoration: BoxDecoration(
-        color: const Color(0xFF222222),
-        border: Border(top: BorderSide(color: Colors.white.withOpacity(0.05))),
-      ),
       child: Row(
         children: [
           Expanded(
             child: TextField(
               controller: _controller,
-              style: const TextStyle(color: Colors.white),
-              decoration: InputDecoration(
+              style: Theme.of(context).textTheme.bodyMedium,
+              decoration: const InputDecoration(
                 hintText: '댓글을 입력하세요...',
-                hintStyle: const TextStyle(color: Colors.white24, fontSize: 14),
                 border: InputBorder.none,
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
-                ),
-                fillColor: Colors.white.withOpacity(0.05),
-                filled: true,
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(24),
-                  borderSide: BorderSide.none,
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(24),
-                  borderSide: BorderSide.none,
-                ),
               ),
             ),
           ),
           const SizedBox(width: 12),
-          IconButton(
+          NesButton(
+            type: NesButtonType.primary,
             onPressed: _submitComment,
-            icon: Icon(
-              Icons.send_rounded,
-              color: _isSubmitting ? Colors.white24 : const Color(0xFF17C964),
-            ),
+            child: _isSubmitting
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Pixel.arrowright),
           ),
         ],
       ),

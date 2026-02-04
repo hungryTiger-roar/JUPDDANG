@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:nes_ui/nes_ui.dart';
 import 'package:pixelarticons/pixelarticons.dart';
 import 'create_party_screen.dart';
 import 'join_party_screen.dart';
@@ -71,12 +72,8 @@ class PartyScreen extends StatelessWidget {
               const Spacer(),
 
               // 설명
-              Container(
+              NesContainer(
                 padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF1F1F1F),
-                  border: Border.all(color: Colors.white24, width: 2),
-                ),
                 child: const Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -123,15 +120,8 @@ class PartyScreen extends StatelessWidget {
   }) {
     return GestureDetector(
       onTap: onTap,
-      child: Container(
+      child: NesContainer(
         padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: const Color(0xFF1F1F1F),
-          border: Border.all(color: Colors.black, width: 3),
-          boxShadow: const [
-            BoxShadow(color: Colors.black, offset: Offset(6, 6)),
-          ],
-        ),
         child: Row(
           children: [
             Container(

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:nes_ui/nes_ui.dart';
 import '../../auth/presentation/splash_screen.dart';
 import 'package:pixelarticons/pixelarticons.dart';
 import 'profile_screen.dart';
@@ -42,21 +43,9 @@ class SettingsScreen extends StatelessWidget {
                         //화현: 로그아웃 버튼
                         GestureDetector(
                           onTap: () => _showLogoutDialog(context),
-                          child: Container(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 6,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              border: Border.all(color: Colors.black, width: 3),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black,
-                                  offset: Offset(3, 3),
-                                ),
-                              ],
-                            ),
+                          child: NesButton(
+                            type: NesButtonType.normal,
+                            onPressed: () => _showLogoutDialog(context),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
@@ -97,19 +86,8 @@ class SettingsScreen extends StatelessWidget {
                     ),
                   );
                 },
-                child: Container(
-                  margin: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 12,
-                  ),
+                child: NesContainer(
                   padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF1F1F1F),
-                    border: Border.all(color: Colors.black, width: 3),
-                    boxShadow: const [
-                      BoxShadow(color: Colors.black, offset: Offset(6, 6)),
-                    ],
-                  ),
                   child: Row(
                     children: [
                       // Avatar
@@ -199,7 +177,7 @@ class SettingsScreen extends StatelessWidget {
                                 context,
                                 MaterialPageRoute(
                                   builder: (context) =>
-                                  const EditProfileScreen(),
+                                      const EditProfileScreen(),
                                 ),
                               );
                             },
@@ -254,7 +232,8 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 
-  Widget _settingTile(BuildContext context, {
+  Widget _settingTile(
+    BuildContext context, {
     required IconData icon,
     required String label,
     required Color color,
@@ -262,15 +241,8 @@ class SettingsScreen extends StatelessWidget {
   }) {
     return GestureDetector(
       onTap: onTap,
-      child: Container(
+      child: NesContainer(
         height: 140,
-        decoration: BoxDecoration(
-          color: const Color(0xFF1F1F1F),
-          border: Border.all(color: Colors.black, width: 3),
-          boxShadow: const [
-            BoxShadow(color: Colors.black, offset: Offset(6, 6)),
-          ],
-        ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -295,227 +267,221 @@ class SettingsScreen extends StatelessWidget {
   void _showComingSoon(BuildContext context, String feature) {
     showDialog(
       context: context,
-      builder: (context) =>
-          AlertDialog(
-            backgroundColor: const Color(0xFF1F1F1F),
-            shape: RoundedRectangleBorder(
-              side: const BorderSide(color: Colors.black, width: 3),
-            ),
-            title: const Text(
+      builder: (context) => NesDialog(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
               'Coming Soon',
               style: TextStyle(
-                  color: Colors.white, fontWeight: FontWeight.w900),
-            ),
-            content: Text(
-              '$feature 기능은 곧 추가될 예정입니다!',
-              style: const TextStyle(color: Colors.white70),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text(
-                  'OK',
-                  style: TextStyle(
-                    color: Color(0xFF17C964),
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+                color: Colors.black,
+                fontWeight: FontWeight.w900,
               ),
-            ],
-          ),
+            ),
+            SizedBox(height: 16),
+            Text(
+              '$feature 기능은 곧 추가될 예정입니다!',
+              style: const TextStyle(color: Colors.black),
+            ),
+            SizedBox(height: 16),
+            NesButton(
+              type: NesButtonType.primary,
+              onPressed: () => Navigator.pop(context),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
   void _showAppInfo(BuildContext context) {
     showDialog(
       context: context,
-      builder: (context) =>
-          AlertDialog(
-            backgroundColor: const Color(0xFF1F1F1F),
-            shape: RoundedRectangleBorder(
-              side: const BorderSide(color: Colors.black, width: 3),
-            ),
-            title: const Text(
+      builder: (context) => NesDialog(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
               'App Info',
               style: TextStyle(
-                  color: Colors.white, fontWeight: FontWeight.w900),
-            ),
-            content: const Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'JupDDang',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                SizedBox(height: 8),
-                Text('Version 1.0.0', style: TextStyle(color: Colors.white70)),
-                SizedBox(height: 16),
-                Text(
-                  '© 2026 JupDDang Team',
-                  style: TextStyle(color: Colors.white54, fontSize: 12),
-                ),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text(
-                  'Close',
-                  style: TextStyle(
-                    color: Color(0xFF17C964),
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+                color: Colors.black,
+                fontWeight: FontWeight.w900,
               ),
-            ],
-          ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'JupDDang',
+              style: TextStyle(
+                color: Colors.black,
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Version 1.0.0',
+              style: TextStyle(color: Colors.black87),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              '© 2026 JupDDang Team',
+              style: TextStyle(color: Colors.black54, fontSize: 12),
+            ),
+            const SizedBox(height: 16),
+            NesButton(
+              type: NesButtonType.primary,
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Close'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
   void _showDeleteDialog(BuildContext context) {
     showDialog(
       context: context,
-      builder: (context) =>
-          AlertDialog(
-            backgroundColor: const Color(0xFF1F1F1F),
-            shape: RoundedRectangleBorder(
-              side: const BorderSide(color: Colors.black, width: 3),
-            ),
-            title: const Text(
+      builder: (context) => NesDialog(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
               'Account Deletion',
               style: TextStyle(
                 color: Color(0xFFEF4444),
                 fontWeight: FontWeight.w900,
               ),
             ),
-            content: const Text(
+            const SizedBox(height: 16),
+            const Text(
               '정말로 회원 탈퇴를 진행하시겠습니까?\n\n모든 데이터가 삭제되며 복구할 수 없습니다.',
-              style: TextStyle(color: Colors.white70),
+              style: TextStyle(color: Colors.black87),
+              textAlign: TextAlign.center,
             ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text(
-                  'Cancel',
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontWeight: FontWeight.bold,
-                  ),
+            const SizedBox(height: 24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                NesButton(
+                  type: NesButtonType.normal,
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancel'),
                 ),
-              ),
-              TextButton(
-                onPressed: () async {
-                  final originalContext = context;
-                  Navigator.pop(context);
+                const SizedBox(width: 16),
+                NesButton(
+                  type: NesButtonType.error,
+                  onPressed: () async {
+                    // ... implementation retained but needs context copy ...
+                    // Since the original code had complex logic inside onPressed,
+                    // I will simplify this chunk replacement to just the UI part
+                    // and keep logic if possible.
+                    // But replacement chunk must contain the Logic.
 
-                  showDialog(
-                    context: originalContext,
-                    barrierDismissible: false,
-                    builder: (dialogContext) =>
-                    const Center(
-                      child: CircularProgressIndicator(
-                          color: Color(0xFF17C964)),
-                    ),
-                  );
+                    // RE-INSERTING LOGIC CAREFULLY
+                    final originalContext = context;
+                    Navigator.pop(context);
 
-                  final authService = AuthService();
-                  final success = await authService.deleteAccount();
-
-                  if (originalContext.mounted) {
-                    Navigator.of(originalContext).pop();
-                  }
-
-                  if (success) {
-                    if (originalContext.mounted) {
-                      Navigator.of(originalContext).pushAndRemoveUntil(
-                        MaterialPageRoute(
-                          builder: (context) => const SplashScreen(),
+                    showDialog(
+                      context: originalContext,
+                      barrierDismissible: false,
+                      builder: (dialogContext) => const Center(
+                        child: CircularProgressIndicator(
+                          color: Color(0xFF17C964),
                         ),
-                            (route) => false,
-                      );
-                    }
-                  } else {
+                      ),
+                    );
+
+                    final authService = AuthService();
+                    final success = await authService.deleteAccount();
+
                     if (originalContext.mounted) {
-                      ScaffoldMessenger.of(originalContext).showSnackBar(
-                        const SnackBar(
-                          content: Text('회원 탈퇴에 실패했습니다. 다시 시도해주세요'),
-                          backgroundColor: Colors.red,
-                        ),
-                      );
+                      Navigator.of(originalContext).pop();
                     }
-                  }
-                },
-                child: const Text(
-                  'Delete',
-                  style: TextStyle(
-                    color: Color(0xFFEF4444),
-                    fontWeight: FontWeight.bold,
-                  ),
+
+                    if (success) {
+                      if (originalContext.mounted) {
+                        Navigator.of(originalContext).pushAndRemoveUntil(
+                          MaterialPageRoute(
+                            builder: (context) => const SplashScreen(),
+                          ),
+                          (route) => false,
+                        );
+                      }
+                    } else {
+                      if (originalContext.mounted) {
+                        NesSnackbar.show(
+                          originalContext,
+                          text: '회원 탈퇴에 실패했습니다. 다시 시도해주세요',
+                          type: NesSnackbarType.error,
+                        );
+                      }
+                    }
+                  },
+                  child: const Text('Delete'),
                 ),
-              ),
-            ],
-          ),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 
   //화현: 로그아웃 다이얼로그
+  //화현: 로그아웃 다이얼로그
   void _showLogoutDialog(BuildContext context) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1F1F1F),
-        shape: RoundedRectangleBorder(
-          side: const BorderSide(color: Colors.black, width: 3),
-        ),
-        title: const Text(
-          'Logout',
-          style: TextStyle(
-            color: Color(0xFFEF4444),
-            fontWeight: FontWeight.w900,
-          ),
-        ),
-        content: const Text(
-          '정말 로그아웃 하시겠습니까?',
-          style: TextStyle(color: Colors.white70),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text(
-              'Cancel',
-              style: TextStyle(
-                color: Colors.white70,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              // JWT 토큰 삭제
-              AuthService.accessToken = null;
-              AuthService.userId = null;
-              AuthService.nickname = null;
-              // 스플래시 화면으로 이동 (뒤로가기 방지)
-              Navigator.of(context).pushAndRemoveUntil(
-                MaterialPageRoute(builder: (context) => const SplashScreen()),
-                (route) => false,
-              );
-            },
-            child: const Text(
+      builder: (context) => NesDialog(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
               'Logout',
               style: TextStyle(
                 color: Color(0xFFEF4444),
-                fontWeight: FontWeight.bold,
+                fontWeight: FontWeight.w900,
               ),
             ),
-          ),
-        ],
+            const SizedBox(height: 16),
+            const Text(
+              '정말 로그아웃 하시겠습니까?',
+              style: TextStyle(color: Colors.black87),
+            ),
+            const SizedBox(height: 24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                NesButton(
+                  type: NesButtonType.normal,
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancel'),
+                ),
+                const SizedBox(width: 16),
+                NesButton(
+                  type: NesButtonType.warning,
+                  onPressed: () {
+                    Navigator.pop(context);
+                    // JWT 토큰 삭제
+                    AuthService.accessToken = null;
+                    AuthService.userId = null;
+                    AuthService.nickname = null;
+                    // 스플래시 화면으로 이동 (뒤로가기 방지)
+                    Navigator.of(context).pushAndRemoveUntil(
+                      MaterialPageRoute(
+                        builder: (context) => const SplashScreen(),
+                      ),
+                      (route) => false,
+                    );
+                  },
+                  child: const Text('Logout'),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

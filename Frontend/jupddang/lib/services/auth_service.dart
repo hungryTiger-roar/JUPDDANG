@@ -9,9 +9,10 @@ class AuthService {
   // For now, let's assume we are testing on emulator or web.
   // Note: Web deals with localhost differently.
   static const String apiBase = 'https://i14d208.p.ssafy.io/dev-api/api';
+
   static const String accountBase = '$apiBase/account';
   static const String postsBase = '$apiBase/posts';
-  static const String ploggingBase = '$apiBase/v1/plogging/end';
+  static const String ploggingBase = '$apiBase/v1/plogging';
 
   static String? accessToken;
   static String? userId;
@@ -447,13 +448,58 @@ class AuthService {
         'mapImage': await MultipartFile.fromFile(mapImagePath),
       });
 
-      await _dio.post(
-        ploggingBase,
+
+      final response = await _dio.post(
+        '$ploggingBase/end',
         data: formData,
         options: Options(headers: headers),
       );
     } catch (e) {
       print('End Plogging Error: $e');
+      rethrow;
+    }
+  }
+
+  Future<dynamic> savePloggingTemp({
+    required TempPloggingRequest requestData,
+    String? beforeImagePath,
+    String? afterImagePath,
+    String? mapImagePath,
+  }) async {
+    final headers = _authHeaders();
+    if (userId != null && userId!.isNotEmpty) {
+      headers['userId'] = userId!;
+    }
+
+    final dataJson = jsonEncode(requestData.toJson());
+    final formData = FormData.fromMap({
+      'data': MultipartFile.fromString(
+        dataJson,
+        contentType: MediaType('application', 'json'),
+      ),
+
+      // 이미지들 (optional)
+      if (beforeImagePath != null)
+        'beforeImage': await MultipartFile.fromFile(
+          beforeImagePath,
+        ),
+
+      if (afterImagePath != null)
+        'afterImage': await MultipartFile.fromFile(afterImagePath),
+      if (mapImagePath != null)
+        'mapImage': await MultipartFile.fromFile(mapImagePath),
+    });
+
+    try {
+      final response = await _dio.post(
+        '$ploggingBase/temp',
+        data: formData,
+        options: Options(headers: headers),
+      );
+
+      return response.data;
+    } catch (e) {
+      print('Save Plogging Temp Error: $e');
       rethrow;
     }
   }

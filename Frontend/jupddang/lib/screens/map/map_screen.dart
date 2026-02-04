@@ -91,6 +91,36 @@ class _MapScreenState extends State<MapScreen> {
 
   static const double _minZoomLevel = 15.0;
 
+  PartyMemberLocation? _leaderLocation;
+  int get _displayElapsedSeconds {
+    if (widget.partyId != null &&
+        (_party?.isCurrentUserLeader ?? false) == false &&
+        _leaderLocation != null) {
+      return _leaderLocation!.elapsedTime;
+    }
+    return _sessionStopwatch.elapsed.inSeconds;
+  }
+
+  double get _displayTotalDistanceMeters {
+    if (widget.partyId != null &&
+        (_party?.isCurrentUserLeader ?? false) == false &&
+        _leaderLocation != null) {
+      return _leaderLocation!.totalDistance;
+    }
+    return _totalDistance;
+  }
+
+  int get _displayScore {
+
+    if (widget.partyId != null &&
+        (_party?.isCurrentUserLeader ?? false) == false &&
+        _leaderLocation != null) {
+      return _leaderLocation!.score;
+    }
+
+    return _coinsGained;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -111,6 +141,26 @@ class _MapScreenState extends State<MapScreen> {
         } else if (status == 'IN_PROGRESS' && _phase == PloggingPhase.idle) {
           _startPlogging();
         }
+      };
+
+      _socketService.onLeaderLocationUpdated = (leaderLocation) {
+        if (!mounted) return;
+
+        print('🗺️ 맵 화면에서 파티장 위치 수신!');
+        print('파티장 H3: ${leaderLocation.currentH3Index}');
+        print('점령 진행도: ${(leaderLocation.occupyProgress * 100).toInt()}%');
+
+        setState(() {
+          _leaderLocation = leaderLocation;
+
+          if (!(_party?.isCurrentUserLeader ?? false)) {
+            _occupyProgress = leaderLocation.occupyProgress;
+            _currentH3Index = leaderLocation.currentH3Index;
+
+            // 🎯 파티원도 hexagon 업데이트 (점령된 그리드 반영)
+            _updateHexagons(_mapController.camera.visibleBounds);
+          }
+        });
       };
 
       _socketService.connect(widget.partyId!);
@@ -292,21 +342,6 @@ class _MapScreenState extends State<MapScreen> {
       final distance = const Distance().distance(_currentPosition!, newPos);
       _totalDistance += distance;
       _pathPoints.add(newPos);
-
-      // 파티장인 경우 데이터 실시간 전송 (웹소켓으로만)
-      if (widget.partyId != null && (_party?.isCurrentUserLeader ?? false)) {
-        final locationRequest = LocationRequest(
-          lat: newPos.latitude,
-          lon: newPos.longitude,
-          partyId: widget.partyId!,
-          elapsedTime: _sessionStopwatch.elapsed.inSeconds,
-          totalDistance: _totalDistance,
-          score: _coinsGained,
-          occupyProgress: _occupyProgress,
-          currentH3Index: _currentH3Index,
-        );
-        _socketService.sendLocation(widget.partyId!, locationRequest);
-      }
     }
 
     _currentPosition = newPos;
@@ -318,22 +353,41 @@ class _MapScreenState extends State<MapScreen> {
       _isInitialCenterSet = true;
     }
 
-    final h3Index = _h3Service.latLngToH3(newPos);
-    if (h3Index != null) {
-      if (_currentH3Index != h3Index) {
-        _currentH3Index = h3Index;
-        // 보스 지역이면 점령 타이머 시작 안함
-        if (_bossH3Indices.contains(h3Index)) {
-          _stopOccupationTimer();
-          // (선택사항) 토스트 메시지 등?
-        } else if (_phase == PloggingPhase.plogging) {
-          _startOccupationTimer();
+    // 🎯 H3 Index 업데이트 로직 (파티장 또는 솔로만)
+    if (widget.partyId == null || (_party?.isCurrentUserLeader ?? false)) {
+      final h3Index = _h3Service.latLngToH3(newPos);
+      if (h3Index != null) {
+        if (_currentH3Index != h3Index) {
+          // 🎯 H3 Index가 변경되면 진행도 초기화
+          _currentH3Index = h3Index;
+          _occupyProgress = 0.0;  // ✅ 진행도 초기화
+
+          if (_phase == PloggingPhase.plogging) {
+            _startOccupationTimer();
+          }
         }
+      } else {
+        _stopOccupationTimer();
+        _currentH3Index = null;
+        _occupyProgress = 0.0;  // ✅ 진행도 초기화
       }
-    } else {
-      _stopOccupationTimer();
-      _currentH3Index = null;
     }
+
+    // 🎯 파티장인 경우 위치 전송
+    if (widget.partyId != null && (_party?.isCurrentUserLeader ?? false)) {
+      final locationRequest = LocationRequest(
+        lat: newPos.latitude,
+        lon: newPos.longitude,
+        partyId: widget.partyId!,
+        elapsedTime: _sessionStopwatch.elapsed.inSeconds,
+        totalDistance: _totalDistance,
+        score: _coinsGained,
+        currentH3Index: _currentH3Index,
+        occupyProgress: _occupyProgress,
+      );
+      _socketService.sendLocation(widget.partyId!, locationRequest);
+    }
+
     setState(() {});
   }
 
@@ -353,7 +407,10 @@ class _MapScreenState extends State<MapScreen> {
       _startAddress = "Fetching address...";
       _statsTimer = Timer.periodic(
         const Duration(seconds: 1),
-        (t) => setState(() {}),
+            (t) {
+          _sendLeaderLocationIfNeeded();
+          setState(() {});
+        },
       );
       if (_currentH3Index != null) _startOccupationTimer();
     });
@@ -392,7 +449,12 @@ class _MapScreenState extends State<MapScreen> {
     setState(() {
       _phase = PloggingPhase.plogging;
       _sessionStopwatch.start();
-      if (_currentH3Index != null) _startOccupationTimer();
+
+      // 🎯 파티장 또는 솔로이고, H3 Index가 있으면 타이머 재시작
+      if ((widget.partyId == null || (_party?.isCurrentUserLeader ?? false)) &&
+          _currentH3Index != null) {
+        _startOccupationTimer();
+      }
     });
   }
 
@@ -473,11 +535,45 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   void _startOccupationTimer() {
+    // 🎯 파티원인 경우 타이머 실행 안 함
+    if (widget.partyId != null && !(_party?.isCurrentUserLeader ?? false)) {
+      return;  // 파티원은 파티장 데이터만 사용
+    }
+
+    // 🎯 기존 타이머가 있으면 취소
     _stopOccupationTimer();
-    _occupyProgress = 0.0;
+
     _stayTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (!mounted) return;
-      _occupyProgress += (1.0 / 60.0);
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+
+      // 🎯 플로깅 중이 아니면 증가 안 함
+      if (_phase != PloggingPhase.plogging) {
+        return;
+      }
+
+      // 🎯 현재 H3 Index가 없으면 증가 안 함
+      if (_currentH3Index == null) {
+        return;
+      }
+
+      // 🎯 이미 점령된 그리드면 증가 안 함
+      final currentModel = _visibleHexagonModels.firstWhere(
+            (m) => m.h3Index == _currentH3Index,
+        orElse: () => HexagonModel(h3Index: _currentH3Index!, color: 0),
+      );
+
+      if (currentModel.ownerId != null) {
+        // 이미 점령된 그리드 - 진행도 초기화
+        _occupyProgress = 0.0;
+        _generatePolygons();
+        return;
+      }
+
+      // 🎯 여기서만 진행도 증가
+      _occupyProgress += (1.0 / 60.0);  // 1분 = 60초
 
       // 파티장인 경우 진행도 실시간 공유 (웹소켓으로만)
       if (widget.partyId != null && (_party?.isCurrentUserLeader ?? false)) {
@@ -488,8 +584,8 @@ class _MapScreenState extends State<MapScreen> {
           elapsedTime: _sessionStopwatch.elapsed.inSeconds,
           totalDistance: _totalDistance,
           score: _coinsGained,
-          occupyProgress: _occupyProgress,
           currentH3Index: _currentH3Index,
+          occupyProgress: _occupyProgress,
         );
         _socketService.sendLocation(widget.partyId!, locationRequest);
       }
@@ -499,14 +595,33 @@ class _MapScreenState extends State<MapScreen> {
         _stopOccupationTimer();
         if (_currentH3Index != null) _conquerHexagon(_currentH3Index!);
       }
+
       _generatePolygons();
     });
+  }
+
+  // 파티원은 파티장 데이터, 파티장은 자신 데이터
+  double get _displayOccupyProgress {
+    if (widget.partyId != null &&
+        !(_party?.isCurrentUserLeader ?? false) &&
+        _leaderLocation != null) {
+      return _leaderLocation!.occupyProgress; // 파티원
+    }
+    return _occupyProgress; // 파티장
+  }
+
+  String? get _displayCurrentH3Index {
+    if (widget.partyId != null &&
+        !(_party?.isCurrentUserLeader ?? false) &&
+        _leaderLocation != null) {
+      return _leaderLocation!.currentH3Index; // 파티원
+    }
+    return _currentH3Index; // 파티장
   }
 
   void _stopOccupationTimer() {
     _stayTimer?.cancel();
     _stayTimer = null;
-    _occupyProgress = 0.0;
     if (mounted) {
       setState(() {
         _generatePolygons();
@@ -514,9 +629,33 @@ class _MapScreenState extends State<MapScreen> {
     }
   }
 
+  void _sendLeaderLocationIfNeeded() {
+    if (widget.partyId == null) return;
+    if (!(_party?.isCurrentUserLeader ?? false)) return;
+    if (_currentPosition == null) return;
+
+    final locationRequest = LocationRequest(
+      lat: _currentPosition!.latitude,
+      lon: _currentPosition!.longitude,
+      partyId: widget.partyId!,
+      elapsedTime: _sessionStopwatch.elapsed.inSeconds,
+      totalDistance: _totalDistance,
+      score: _coinsGained,
+      currentH3Index: _currentH3Index,
+      occupyProgress: _occupyProgress,
+    );
+    _socketService.sendLocation(widget.partyId!, locationRequest);
+  }
+
   void _conquerHexagon(String h3Index) {
     _h3Service.occupyHexagon(h3Index, "my_user_id", 0x990000FF);
+
+    // 🎯 점령 완료 후 진행도 초기화
+    _occupyProgress = 0.0;
+    _coinsGained += 5;  // 점수 추가
+
     _updateHexagons(_mapController.camera.visibleBounds);
+
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(const SnackBar(content: Text("땅을 점령했습니다! (1분 체류 달성)")));
@@ -560,7 +699,10 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   void _generatePolygons() {
-    int bossHexCount = 0;
+
+    String? targetH3Index = _displayCurrentH3Index;
+    double targetProgress = _displayOccupyProgress;
+
     final newPolygons = _visibleHexagonModels
         .map((model) {
           final boundary = _h3Service.getHexagonBoundary(model.h3Index);
@@ -582,51 +724,23 @@ class _MapScreenState extends State<MapScreen> {
           Color borderColor;
           double borderWidth;
 
-          if (isBossHex) {
-            // Boss hexagons: Transparent fill with Red border
-            baseColor = Colors.transparent;
-            borderColor = Colors.red.withOpacity(0.8);
-            borderWidth = 3.0;
-          } else if (model.ownerId == null) {
-            // Unowned lands: Fixed subtle gray (the "default" look)
-            baseColor = Colors.black.withOpacity(0.05 * _gridOpacity);
-            borderColor = Colors.black.withOpacity(0.4 * _gridOpacity);
-            borderWidth = 2.0;
-          } else {
-            // Owned lands: Use the color selected from the palette
-            baseColor = _selectedGridColor.withOpacity(_gridOpacity);
-            borderColor = Colors.black.withOpacity(0.4 * _gridOpacity);
-            borderWidth = 2.0;
-          }
-
-          Color fillColor = baseColor;
-
-          // 점령 중인 칸 강조 (자기 데이터 사용) - only if not a boss hex
-          String? targetH3Index = _currentH3Index;
-          double targetProgress = _occupyProgress;
-
-          if (!isBossHex &&
-              model.h3Index == targetH3Index &&
-              targetProgress > 0) {
-            // While occupying, fade from the unowned color to the SELECTED palette color
-            final targetColor = _selectedGridColor
-                .withOpacity(_gridOpacity * 1.5)
-                .withAlpha((_gridOpacity * 1.5 * 255).toInt().clamp(0, 255));
-            fillColor =
-                Color.lerp(fillColor, targetColor, targetProgress) ?? fillColor;
-          }
-
-          return Polygon(
-            points: points,
-            color: fillColor,
-            borderColor: model.h3Index == targetH3Index && !isBossHex
-                ? Colors.white.withOpacity(0.8)
-                : borderColor,
-            borderStrokeWidth: model.h3Index == targetH3Index && !isBossHex
-                ? 3.0
-                : borderWidth,
-          );
-        })
+      if (model.h3Index == targetH3Index && targetProgress > 0) {
+        final targetColor = _selectedGridColor
+            .withOpacity(_gridOpacity * 1.5)
+            .withAlpha((_gridOpacity * 1.5 * 255).toInt().clamp(0, 255));
+        fillColor =
+            Color.lerp(fillColor, targetColor, targetProgress) ??
+                fillColor;
+      }
+      return Polygon(
+        points: points,
+        color: fillColor,
+        borderColor: model.h3Index == targetH3Index
+            ? Colors.white.withOpacity(0.8)
+            : Colors.black.withOpacity(0.4 * _gridOpacity),
+        borderStrokeWidth: model.h3Index == targetH3Index ? 3.0 : 2.0,
+      );
+    })
         .whereType<Polygon>()
         .toList();
 
@@ -793,8 +907,82 @@ class _MapScreenState extends State<MapScreen> {
                       ),
                     ),
                   ),
-                ),
-            ],
+                  if (_currentPosition != null)
+                    MarkerLayer(
+                      markers: [
+                        // 1. 내 캐릭터
+                        Marker(
+                          point: _currentPosition!,
+                          width: 48,
+                          height: 48,
+                          child: PixelCharacter(
+                            size: 48,
+                            color: _selectedGridColor,
+                            isMoving: _phase == PloggingPhase.plogging,
+                          ),
+                        ),
+
+                        // 2. 파티장 캐릭터 (파티원인 경우만)
+                        if (_leaderLocation != null && !(_party?.isCurrentUserLeader ?? false))
+                          Marker(
+                            point: LatLng(_leaderLocation!.lat, _leaderLocation!.lon),
+                            width: 48,
+                            height: 48,
+                            child: Column(
+                              children: [
+                                const Icon(Icons.stars, color: Colors.amber, size: 20),
+                                PixelCharacter(
+                                  size: 32,
+                                  color: Colors.amber,
+                                  isMoving: true,
+                                ),
+                              ],
+                            ),
+                          ),
+
+                        // 3. 상태 라벨 (조건부)
+                        if (!_isCapturingMap && _shouldShowStatusLabel())
+                          Marker(
+                            point: _getStatusLabelPosition(),
+                            width: 120,
+                            height: 50,
+                            child: Transform.translate(
+                              offset: const Offset(0, -65),
+                              child: Container(
+                                alignment: Alignment.center,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.black,
+                                  border: Border.all(
+                                    color: _getStatusColor(),
+                                    width: 3,
+                                  ),
+                                  boxShadow: const [
+                                    BoxShadow(
+                                      color: Colors.black,
+                                      offset: Offset(4, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: Text(
+                                  _getStatusLabel(),
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 10,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                ],
+              ),
+            ),
           ),
           // Stats Overlay (Top)
           if (_isPlogging)
@@ -827,7 +1015,11 @@ class _MapScreenState extends State<MapScreen> {
                       "${(_totalDistance / 1000).toStringAsFixed(2)}km",
                       "DIST",
                     ),
-                    _buildStatColumn(Pixel.coin, "$_coinsGained", "POINT"),
+                    _buildStatColumn(
+                      Pixel.coin,
+                      "$_displayScore",
+                      "SCORE",
+                    ),
                   ],
                 ),
               ),
@@ -857,7 +1049,7 @@ class _MapScreenState extends State<MapScreen> {
                     SizedBox(
                       height: 8,
                       child: LinearProgressIndicator(
-                        value: _occupyProgress,
+                        value: _displayOccupyProgress,
                         backgroundColor: Colors.white12,
                         valueColor: AlwaysStoppedAnimation(_selectedGridColor),
                       ),
@@ -1117,7 +1309,32 @@ class _MapScreenState extends State<MapScreen> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 40),
+                  const SizedBox(height: 24),
+                  const Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      "RECORD NAME",
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: _recordTitleController,
+                    style: const TextStyle(fontSize: 12),
+                    decoration: InputDecoration(
+                      hintText: "ex) 한강 플로깅",
+                      hintStyle: const TextStyle(fontSize: 10, color: Colors.grey),
+                      fillColor: Colors.black.withOpacity(0.05),
+                      border: const OutlineInputBorder(
+                        borderRadius: BorderRadius.zero,
+                        borderSide: BorderSide(color: Colors.black, width: 2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
                   PixelButton(
                     text: "PUBLISH RECORD",
                     isGreen: false,
@@ -1132,18 +1349,159 @@ class _MapScreenState extends State<MapScreen> {
                         );
                         return;
                       }
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text("기록이 업로드되었습니다!")),
+
+                      // ✅ _mapImage가 없으면 에러 (이미 _finishPlogging에서 캡처했어야 함)
+                      if (_mapImage == null) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text("맵 이미지 생성 중입니다. 잠시 후 다시 시도해주세요.")),
+                        );
+                        return;
+                      }
+
+                      if (_beforeImage == null || _afterImage == null) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text("Before/After 사진을 선택해주세요.")),
+                        );
+                        return;
+                      }
+
+                      if (_recordTitleController.text.trim().isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text("기록 제목을 입력해주세요.")),
+                        );
+                        return;
+                      }
+
+                      // 🎯 로딩 표시
+                      showDialog(
+                        context: context,
+                        barrierDismissible: false,
+                        builder: (context) => const Center(
+                          child: CircularProgressIndicator(
+                            color: Color(0xFF17C964),
+                          ),
+                        ),
                       );
                       _resetPlogging();
                     },
                   ),
                   const SizedBox(height: 12),
                   TextButton(
-                    onPressed: _resetPlogging,
+                    onPressed: () async {
+                      if (AuthService.accessToken == null) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text("로그인 후에 임시 저장할 수 있습니다."),
+                            backgroundColor: Colors.redAccent,
+                          ),
+                        );
+                        return;
+                      }
+
+                      // 🎯 이미지 유효성 검사 (PUBLISH RECORD와 동일)
+                      if (_mapImage == null) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text("맵 이미지 생성 중입니다. 잠시 후 다시 시도해주세요.")),
+                        );
+                        return;
+                      }
+
+                      // if (_beforeImage == null || _afterImage == null) {
+                      //   ScaffoldMessenger.of(context).showSnackBar(
+                      //     const SnackBar(content: Text("Before/After 사진을 선택해주세요.")),
+                      //   );
+                      //   return;
+                      // }
+
+                      if (_recordTitleController.text.trim().isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text("기록 제목을 입력해주세요.")),
+                        );
+                        return;
+                      }
+
+                      // 🎯 로딩 표시
+                      showDialog(
+                        context: context,
+                        barrierDismissible: false,
+                        builder: (context) => const Center(
+                          child: CircularProgressIndicator(
+                            color: Color(0xFFF59E0B),  // 주황색 (임시 저장 색상)
+                          ),
+                        ),
+                      );
+
+                      final trimmedContent = _descriptionController.text.trim();
+                      final trimmedTitle = _recordTitleController.text.trim();
+                      final distanceKm = _totalDistance / 1000.0;
+                      final elapsedSeconds = _sessionStopwatch.elapsed.inSeconds;
+
+                      final hasAnyData = distanceKm > 0 ||
+                          elapsedSeconds > 0 ||
+                          trimmedContent.isNotEmpty ||
+                          trimmedTitle.isNotEmpty;
+
+                      final request = TempPloggingRequest(
+                        distance: distanceKm > 0 ? distanceKm : null,
+                        content: trimmedContent.isNotEmpty ? trimmedContent : null,
+                        times: elapsedSeconds > 0 ? elapsedSeconds : null,
+                        endTime: hasAnyData ? _formatEndTime(DateTime.now()) : null,
+                        partyId: widget.partyId,
+                        recordTitle: trimmedTitle.isNotEmpty ? trimmedTitle : null,
+                      );
+
+                      dynamic response;
+
+                      try {
+                        // 🎯 임시 저장 API 호출
+                        response = await AuthService().savePloggingTemp(
+                          requestData: request,
+                          beforeImagePath: _beforeImage?.path,
+                          afterImagePath: _afterImage?.path,
+                          mapImagePath: _mapImage?.path,
+                        );
+
+                        // 🎯 로딩 닫기
+                        if (mounted) Navigator.of(context).pop();
+
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text("플로깅 기록이 임시 저장되었습니다."),
+                              backgroundColor: Color(0xFFF59E0B),  // 주황색
+                            ),
+                          );
+                        }
+
+                        // 🎯 솔로 플로깅인 경우 콜백으로 결과 전달 (PUBLISH RECORD와 동일)
+                        // if (widget.partyId == null && response != null && widget.onPloggingComplete != null) {
+                        //   _resetPlogging();
+                        //   widget.onPloggingComplete!(response);
+                        //   return;
+                        // }
+
+                        // 🎯 파티 플로깅인 경우 첫 화면으로 이동 (PUBLISH RECORD와 동일)
+                        _resetPlogging();
+
+                        if (widget.partyId != null && mounted) {
+                          Navigator.of(context).popUntil((route) => route.isFirst);
+                        }
+
+                      } catch (e) {
+                        // 🎯 로딩 닫기
+                        if (mounted) Navigator.of(context).pop();
+
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text("임시 저장 실패: $e")),
+                          );
+                        }
+                        return;
+                      }
+                    },
                     child: const Text(
-                      "CLOSE WITHOUT SAVING",
-                      style: TextStyle(color: Colors.grey, fontSize: 10),
+                      "SAVE TEMPORARILY",
+                      style: TextStyle(color: Colors.orange, fontSize: 10),
                     ),
                   ),
                 ],
@@ -1329,34 +1687,162 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   String _getStatusLabel() {
-    if (_currentH3Index == null) return "위치 확인 중";
+    // 파티 플로깅인 경우
+    if (widget.partyId != null) {
+      if (_party == null) return "로딩 중...";
 
-    final currentModel = _visibleHexagonModels.firstWhere(
-      (m) => m.h3Index == _currentH3Index,
-      orElse: () => HexagonModel(h3Index: _currentH3Index!, color: 0),
-    );
+      if (_party!.isCurrentUserLeader) {
+        // 파티장: 자신의 데이터 사용
+        if (_currentH3Index == null) return "위치 확인 중";
 
-    if (currentModel.ownerId != null) {
-      return "플로깅 중!";
+        final currentModel = _visibleHexagonModels.firstWhere(
+              (m) => m.h3Index == _currentH3Index,
+          orElse: () => HexagonModel(h3Index: _currentH3Index!, color: 0),
+        );
+
+        if (currentModel.ownerId != null) {
+          return "플로깅 중!";
+        }
+
+        if (_occupyProgress > 0) {
+          return "점령 중 ${(_occupyProgress * 100).toInt()}%";
+        }
+
+        return "준비";
+      } else {
+        // 🎯 파티원: 파티장 데이터 사용
+        if (_leaderLocation == null || _leaderLocation!.currentH3Index == null) {
+          return "파티장 위치 대기 중";
+        }
+
+        final targetH3Index = _leaderLocation!.currentH3Index;
+        final targetProgress = _leaderLocation!.occupyProgress;
+
+        // 점령 완료 판단: progress가 0이고 이전에 점령 중이었던 경우
+        if (targetProgress == 0.0 && targetH3Index != null) {
+          // 서버에서 업데이트된 hexagon 정보 확인
+          final currentModel = _visibleHexagonModels.firstWhere(
+                (m) => m.h3Index == targetH3Index,
+            orElse: () => HexagonModel(h3Index: targetH3Index, color: 0),
+          );
+
+          // 🎯 이미 점령된 그리드면 "플로깅 중!"
+          if (currentModel.ownerId != null) {
+            return "플로깅 중!";
+          }
+        }
+
+        // 점령 진행 중
+        if (targetProgress > 0) {
+          return "점령 중 ${(targetProgress * 100).toInt()}%";
+        }
+
+        return "준비";
+      }
+    } else {
+      // 솔로 플로깅: 자신의 데이터 사용
+      if (_currentH3Index == null) return "위치 확인 중";
+
+      final currentModel = _visibleHexagonModels.firstWhere(
+            (m) => m.h3Index == _currentH3Index,
+        orElse: () => HexagonModel(h3Index: _currentH3Index!, color: 0),
+      );
+
+      if (currentModel.ownerId != null) {
+        return "플로깅 중!";
+      }
+
+      if (_occupyProgress > 0) {
+        return "점령 중 ${(_occupyProgress * 100).toInt()}%";
+      }
+
+      return "준비";
+    }
+  }
+
+  bool _shouldShowStatusLabel() {
+    // 플로깅 중이 아니면 표시 안 함
+    if (_phase != PloggingPhase.plogging) {
+      return false;
     }
 
-    if (_occupyProgress > 0) {
-      return "점령 중 ${(_occupyProgress * 100).toInt()}%";
+    if (widget.partyId != null) {
+      // 파티 플로깅인 경우
+      if (_party?.isCurrentUserLeader ?? false) {
+        // 파티장: 자신의 H3 Index가 있어야 함
+        return _currentH3Index != null;
+      } else {
+        // 파티원: 파티장의 H3 Index가 있어야 함
+        return _leaderLocation?.currentH3Index != null;
+      }
+    } else {
+      // 솔로 플로깅: 자신의 H3 Index가 있어야 함
+      return _currentH3Index != null;
     }
+  }
 
-    return "준비";
+// 🎯 상태 라벨이 표시될 위치
+  LatLng _getStatusLabelPosition() {
+    if (widget.partyId != null &&
+        !(_party?.isCurrentUserLeader ?? false) &&
+        _leaderLocation != null) {
+      // 파티원: 파티장 위치
+      return LatLng(_leaderLocation!.lat, _leaderLocation!.lon);
+    } else {
+      // 파티장 또는 솔로: 자신의 위치
+      return _currentPosition!;
+    }
   }
 
   Color _getStatusColor() {
-    if (_currentH3Index == null) return Colors.grey;
+    // 파티 플로깅인 경우
+    if (widget.partyId != null) {
+      if (_party == null) return Colors.grey;
 
-    final currentModel = _visibleHexagonModels.firstWhere(
-      (m) => m.h3Index == _currentH3Index,
-      orElse: () => HexagonModel(h3Index: _currentH3Index!, color: 0),
-    );
+      if (_party!.isCurrentUserLeader) {
 
-    if (currentModel.ownerId != null || _occupyProgress > 0) {
-      return _selectedGridColor;
+        // 파티장: 자신의 데이터 사용
+        if (_currentH3Index == null) return Colors.grey;
+
+        final currentModel = _visibleHexagonModels.firstWhere(
+              (m) => m.h3Index == _currentH3Index,
+          orElse: () => HexagonModel(h3Index: _currentH3Index!, color: 0),
+        );
+
+        if (currentModel.ownerId != null || _occupyProgress > 0) {
+          return _selectedGridColor;
+        }
+      } else {
+        // 파티원: 파티장 데이터 사용
+        if (_leaderLocation == null || _leaderLocation!.currentH3Index == null) {
+          return Colors.grey;
+        }
+
+        final targetH3Index = _leaderLocation!.currentH3Index;
+        final targetProgress = _leaderLocation!.occupyProgress;
+
+        final currentModel = _visibleHexagonModels.firstWhere(
+              (m) => m.h3Index == targetH3Index,
+          orElse: () => HexagonModel(h3Index: targetH3Index!, color: 0),
+        );
+
+        if (currentModel.ownerId != null || targetProgress > 0) {
+          return _selectedGridColor;
+        }
+
+      }
+    } else {
+      // 솔로 플로깅: 자신의 데이터 사용
+      if (_currentH3Index == null) return Colors.grey;
+
+      final currentModel = _visibleHexagonModels.firstWhere(
+            (m) => m.h3Index == _currentH3Index,
+        orElse: () => HexagonModel(h3Index: _currentH3Index!, color: 0),
+      );
+
+      if (currentModel.ownerId != null || _occupyProgress > 0) {
+        return _selectedGridColor;
+      }
     }
 
     return Colors.grey;

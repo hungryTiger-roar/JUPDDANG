@@ -7,8 +7,7 @@ import '../models/plogging_models.dart';
 import 'auth_service.dart';
 
 class PartyService {
-
-  // static const String apiBase = 'https://i14d208.p.ssafy.io/dev-api/api';
+  static const String apiBase = 'https://i14d208.p.ssafy.io/dev-api/api';
   static const String partyBase = '$apiBase/party';
 
   final Dio _dio = Dio(
@@ -120,13 +119,14 @@ class PartyService {
     }
   }
 
-  Future<dynamic> completeActivity( // 🎯 Future<void> → Future<dynamic>
-      int partyId,
-      PloggingEndRequest request,
-      XFile beforeImage,
-      XFile afterImage,
-      XFile mapImage,
-      ) async {
+  Future<dynamic> completeActivity(
+    // 🎯 Future<void> → Future<dynamic>
+    int partyId,
+    PloggingEndRequest request,
+    XFile beforeImage,
+    XFile afterImage,
+    XFile mapImage,
+  ) async {
     try {
       final formData = FormData.fromMap({
         'request': jsonEncode(request.toJson()),
@@ -144,7 +144,8 @@ class PartyService {
         ),
       });
 
-      final response = await _dio.post( // 🎯 응답 저장
+      final response = await _dio.post(
+        // 🎯 응답 저장
         '$partyBase/$partyId/activities/complete',
         data: formData,
         options: Options(

@@ -83,6 +83,8 @@ class LocationRequest {
   final int? elapsedTime; // 초 단위 경과 시간
   final double? totalDistance; // 총 이동 거리 (미터)
   final int? score; // 점수
+  final String? currentH3Index;
+  final double? occupyProgress;
 
   LocationRequest({
     required this.lat,
@@ -91,6 +93,8 @@ class LocationRequest {
     this.elapsedTime,
     this.totalDistance,
     this.score,
+    this.currentH3Index,
+    this.occupyProgress,
   });
 
   Map<String, dynamic> toJson() {
@@ -101,6 +105,8 @@ class LocationRequest {
       if (elapsedTime != null) 'elapsedTime': elapsedTime,
       if (totalDistance != null) 'totalDistance': totalDistance,
       if (score != null) 'score': score,
+      if (currentH3Index != null) 'currentH3Index': currentH3Index,
+      if (occupyProgress != null) 'occupyProgress': occupyProgress,
     };
   }
 
@@ -112,6 +118,8 @@ class LocationRequest {
       elapsedTime: json['elapsedTime'],
       totalDistance: json['totalDistance']?.toDouble(),
       score: json['score'],
+      currentH3Index: json['currentH3Index'],
+      occupyProgress: json['occupyProgress']?.toDouble(),
     );
   }
 }

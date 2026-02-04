@@ -8,7 +8,7 @@ import 'auth_service.dart';
 
 class PartyService {
 
-  // static const String apiBase = 'https://i14d208.p.ssafy.io/dev-api/api';
+  static const String apiBase = 'https://i14d208.p.ssafy.io/dev-api/api';
   static const String partyBase = '$apiBase/party';
 
   final Dio _dio = Dio(
@@ -120,7 +120,7 @@ class PartyService {
     }
   }
 
-  Future<dynamic> completeActivity( // 🎯 Future<void> → Future<dynamic>
+  Future<dynamic> completeActivity(
       int partyId,
       PloggingEndRequest request,
       XFile beforeImage,

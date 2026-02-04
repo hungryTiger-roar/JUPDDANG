@@ -73,7 +73,9 @@ class _CommunityScreenState extends State<CommunityScreen> {
     });
 
     try {
-      final data = await _authService.getPosts();
+      // _showFollowingOnly가 false면 전체 게시글 조회 (/posts/all)
+      // true면 팔로우한 사람들의 게시글만 조회 (/posts)
+      final data = await _authService.getPosts(allPosts: !_showFollowingOnly);
       final posts = data
           .whereType<Map>()
           .map(
@@ -93,13 +95,9 @@ class _CommunityScreenState extends State<CommunityScreen> {
   }
 
   List<CommunityPost> get _allPosts {
-    final posts = [..._localPosts, ..._remotePosts];
-    if (_showFollowingOnly) {
-      return posts
-          .where((p) => _followingNicknames.contains(p.nickname))
-          .toList();
-    }
-    return posts;
+    // 로컬 임시 게시글과 서버에서 받은 게시글을 합침
+    // API에서 이미 필터링된 데이터를 받아오므로 추가 필터링 불필요
+    return [..._localPosts, ..._remotePosts];
   }
 
   Future<void> _toggleLike(CommunityPost post) async {
@@ -487,10 +485,12 @@ class _CommunityScreenState extends State<CommunityScreen> {
         children: [
           _filterChip('LATEST', !_showFollowingOnly, () {
             setState(() => _showFollowingOnly = false);
+            _loadPosts(); // LATEST 탭을 누를 때 전체 게시글 다시 로드
           }),
           const SizedBox(width: 12),
           _filterChip('FOLLOWING', _showFollowingOnly, () {
             setState(() => _showFollowingOnly = true);
+            _loadPosts(); // FOLLOWING 탭을 누를 때 팔로우 게시글 다시 로드
           }),
         ],
       ),
@@ -597,7 +597,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
                               child: Text(
                                 post.nickname.toUpperCase(),
                                 style: const TextStyle(
-                                  color: Colors.white,
+                                  color: Colors.black,
                                   fontWeight: FontWeight.w900,
                                   fontSize: 14,
                                 ),
@@ -620,7 +620,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
                         Text(
                           _formatTime(post.createdAt).toUpperCase(),
                           style: const TextStyle(
-                            color: Colors.white38,
+                            color: Colors.black,
                             fontSize: 10,
                           ),
                         ),
@@ -637,7 +637,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
                         constraints: const BoxConstraints(), // 불필요한 공간 제거
                         icon: const Icon(
                           Pixel.menu,
-                          color: Colors.white38,
+                          color: Colors.black,
                           size: 20,
                         ),
                         color: const Color(0xFF2A2A2A),
@@ -699,13 +699,6 @@ class _CommunityScreenState extends State<CommunityScreen> {
                         },
                       ),
                     ),
-                  // else
-                  // // 남의 글인 경우 (단순 아이콘)
-                  //   const SizedBox(
-                  //     width: 24,
-                  //     height: 24,
-                  //     child: Icon(Pixel.menu, color: Colors.white38, size: 20),
-                  //   ),
                 ],
               ),
             ),
@@ -801,7 +794,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
             child: Text(
               sections['body']!.join('\n'),
               style: const TextStyle(
-                color: Colors.white,
+                color: Colors.black,
                 height: 1.5,
                 fontSize: 14,
               ),
@@ -900,7 +893,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
           Text(
             label,
             style: const TextStyle(
-              color: Colors.white70,
+              color: Colors.black,
               fontSize: 12,
               fontWeight: FontWeight.w900,
             ),

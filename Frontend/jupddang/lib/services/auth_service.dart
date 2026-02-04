@@ -50,7 +50,7 @@ class AuthService {
   Future<Map<String, dynamic>> updateMyProfile(Map<String, dynamic> updates, dynamic imageFile) => _accountService.updateMyProfile(updates, imageFile);
   
   // --- Social ---
-  Future<List<dynamic>> getPosts() => _socialService.getPosts();
+  Future<List<dynamic>> getPosts({bool allPosts = false}) => _socialService.getPosts(allPosts: allPosts);
   Future<List<dynamic>> getMyPosts() => _socialService.getMyPosts();
   Future<List<dynamic>> getFollowings(String userId) => _socialService.getFollowings(userId);
   Future<List<dynamic>> getFollowers(String userId) => _socialService.getFollowers(userId);

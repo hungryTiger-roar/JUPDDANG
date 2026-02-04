@@ -1,12 +1,12 @@
 package com.jupddang.jupddang.plogging.dto.response;
 
-public record PloggingResultResponse(
+public record PloggingTempSaveResponse(
         Long ploggingId,
-        Long postId,
         String message,
-        int times,
+        Integer times,
         Double distance,
         String recordTitle,
-        int occupiedGridCnt,
-        int raidScore
-) {}
+        Integer occupiedCount,
+        Integer raidScore
+) {
+}

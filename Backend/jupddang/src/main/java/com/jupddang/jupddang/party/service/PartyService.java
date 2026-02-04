@@ -25,6 +25,7 @@ import com.jupddang.jupddang.plogging.repository.PloggingRepository;
 import com.jupddang.jupddang.plogging.service.PloggingService;
 import com.jupddang.jupddang.sns.entity.Post;
 import com.jupddang.jupddang.sns.repository.PostRepository;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -32,6 +33,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.security.SecureRandom;
 import java.util.List;
 
+@Slf4j
 @Service
 public class PartyService {
 
@@ -196,6 +198,10 @@ public class PartyService {
 
                 party.start(userId);
 
+                log.info("partyId : {}", partyId);
+                log.info("status : {}", party.getStatus());
+                log.info("startedAt : {}", party.getStartedAt());
+
                 List<PartyMember> members = partyMemberRepository.findByPartyId(partyId);
 
                 List<String> startedMemberIds = members.stream()
@@ -212,6 +218,7 @@ public class PartyService {
                                 party.getStartedAt(),
                                 startedMemberIds,
                                 members.size());
+
         }
 
         // 실시간 활동 상태 조회

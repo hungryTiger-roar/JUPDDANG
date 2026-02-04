@@ -144,7 +144,8 @@ class PartyService {
         ),
       });
 
-      final response = await _dio.post( // 🎯 응답 저장
+      final response = await _dio.post(
+        // 🎯 응답 저장
         '$partyBase/$partyId/activities/complete',
         data: formData,
         options: Options(

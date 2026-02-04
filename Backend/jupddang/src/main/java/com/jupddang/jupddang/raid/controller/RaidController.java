@@ -26,9 +26,8 @@ public class RaidController {
     @GetMapping("/{bossId}/detail")
     @Operation(summary = "특정 구역 누적 현황 및 랭킹 조회")
     public ResponseEntity<RaidGroupInfoResponse> getBossDetail(
-            // [수정] ("bossId") 이름 명시 필수!
-            @PathVariable("bossId") Long bossId
-    ) {
-        return ResponseEntity.ok(raidService.getBossDetail(bossId));
+            @PathVariable("bossId") Long bossId,
+            @RequestParam(value = "userId", required = false) String userId) {
+        return ResponseEntity.ok(raidService.getBossDetail(bossId, userId));
     }
 }

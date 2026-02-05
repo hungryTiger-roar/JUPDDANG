@@ -408,6 +408,9 @@ class PartyIntegrationTest {
                                 "플로깅 완료!", // content
                                 5.5, // distance
                                 3600, // times
+                                "테스트 기록", // recordTitle
+                                null, // partyId
+                                null, // score
                                 java.time.LocalDateTime.now() // endTime
                 );
 

@@ -12,7 +12,6 @@ import 'package:image_picker/image_picker.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:gal/gal.dart';
 
-
 // --- Project Imports (경로는 프로젝트에 맞게 유지해주세요) ---
 import '../../../services/location_h3_service.dart';
 import '../../../services/gps_signal_filter.dart';
@@ -500,7 +499,7 @@ class _MapScreenState extends State<MapScreen> {
     });
     _fetchStartAddress();
 
-// 5초 후 튜토리얼 자동 닫기 제거 (사용자 수동 닫기 유도)
+    // 5초 후 튜토리얼 자동 닫기 제거 (사용자 수동 닫기 유도)
   }
 
   Future<void> _fetchStartAddress() async {
@@ -572,7 +571,7 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   // ==========================================
-  // Occupation Logic
+  // Occupation Logicwlrma rmf
   // ==========================================
 
   void _startOccupationTimer() {
@@ -873,17 +872,21 @@ class _MapScreenState extends State<MapScreen> {
           if (_phase == PloggingPhase.summary) _buildSummaryOverlay(),
 
           // 6. Quest Modals
-          if (_showQuestTutorial) QuestTutorialModal(onClose: () => setState(() => _showQuestTutorial = false)),
-          if (_showQuestModal) QuestModal(
-            beforeImage: _questBeforeImage,
-            afterImage: _questAfterImage,
-            beforeTrashCount: _beforeTrashCount,
-            afterTrashCount: _afterTrashCount,
-            onClose: () => setState(() => _showQuestModal = false),
-            onTakeBeforePhoto: () => _takeQuestPhoto(true),
-            onTakeAfterPhoto: () => _takeQuestPhoto(false),
-            onValidate: _validateQuest,
-          ),
+          if (_showQuestTutorial)
+            QuestTutorialModal(
+              onClose: () => setState(() => _showQuestTutorial = false),
+            ),
+          if (_showQuestModal)
+            QuestModal(
+              beforeImage: _questBeforeImage,
+              afterImage: _questAfterImage,
+              beforeTrashCount: _beforeTrashCount ?? 0,
+              afterTrashCount: _afterTrashCount ?? 0,
+              onClose: () => setState(() => _showQuestModal = false),
+              onTakeBeforePhoto: () => _takeQuestPhoto(true),
+              onTakeAfterPhoto: () => _takeQuestPhoto(false),
+              onValidate: _validateQuest,
+            ),
         ],
       ),
     );
@@ -1332,7 +1335,10 @@ class _MapScreenState extends State<MapScreen> {
                 child: PixelButton(
                   text: "FINISH",
                   isGreen: false,
-                  color: _questCompleted ? _selectedGridColor : Colors.grey[600]!,
+                  color: _questCompleted
+                      ? _selectedGridColor
+                      : Colors.grey[600]!,
+
                   onPressed: _questCompleted ? _finishPlogging : _showQuestHint,
                 ),
               ),
@@ -1360,7 +1366,10 @@ class _MapScreenState extends State<MapScreen> {
                 child: PixelButton(
                   text: "FINISH",
                   isGreen: false,
-                  color: _questCompleted ? _selectedGridColor : Colors.grey[600]!,
+                  color: _questCompleted
+                      ? _selectedGridColor
+                      : Colors.grey[600]!,
+
                   onPressed: _questCompleted ? _finishPlogging : _showQuestHint,
                 ),
               ),
@@ -1546,8 +1555,16 @@ class _MapScreenState extends State<MapScreen> {
 
       if (mounted) Navigator.pop(context);
       _snack("기록이 업로드되었습니다!");
-      widget.onPloggingComplete?.call(_extractPostId(response));
+      if (widget.onPloggingComplete != null) {
+        widget.onPloggingComplete!(_extractPostId(response));
+      }
+
       _resetPlogging();
+
+      // 파티 모드일 때는 메인 화면으로 바로 이동
+      if (widget.partyId != null && mounted) {
+        Navigator.of(context).popUntil((route) => route.isFirst);
+      }
     } catch (e) {
       if (mounted) Navigator.pop(context);
       _snack("업로드 실패: $e", isError: true);
@@ -1680,8 +1697,8 @@ class _MapScreenState extends State<MapScreen> {
       if (direct != null) return direct.toString();
       final data = response['data'];
       if (data is Map) {
-        final nested =
-            data['postId'] ?? data['post_id'] ?? data['id'];
+        final nested = data['postId'] ?? data['post_id'] ?? data['id'];
+
         if (nested != null) return nested.toString();
       }
     }
@@ -1715,10 +1732,10 @@ class _MapScreenState extends State<MapScreen> {
   String _formatDuration(Duration d) =>
       "${d.inMinutes.remainder(60).toString().padLeft(2, '0')}:${d.inSeconds.remainder(60).toString().padLeft(2, '0')}";
 
-  String _formatEndTime(DateTime time) => time.toIso8601String().split('.').first;
+  String _formatEndTime(DateTime time) =>
+      time.toIso8601String().split('.').first;
 
   Color _getTrashcanColor(TrashcanStatus status) {
-
     switch (status) {
       case TrashcanStatus.VERIFIED:
         return Colors.blueAccent;
@@ -1794,7 +1811,11 @@ class _MapScreenState extends State<MapScreen> {
     FocusScope.of(context).unfocus();
 
     try {
-      final XFile? photo = await _picker.pickImage(source: ImageSource.camera, imageQuality: 85);
+      final XFile? photo = await _picker.pickImage(
+        source: ImageSource.camera,
+        imageQuality: 85,
+      );
+
       if (photo == null) return;
       final currentLocation = _currentPosition;
       if (currentLocation == null) {
@@ -1828,7 +1849,11 @@ class _MapScreenState extends State<MapScreen> {
     }
     _showLoading(const Color(0xFF3B82F6));
     try {
-      final response = _questService.validateLocally(beforeLocation: _questBeforeLocation!, afterLocation: _questAfterLocation!);
+      final response = _questService.validateLocally(
+        beforeLocation: _questBeforeLocation!,
+        afterLocation: _questAfterLocation!,
+      );
+
       if (mounted) Navigator.pop(context);
       if (response.isValid) {
         setState(() {

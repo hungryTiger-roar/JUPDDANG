@@ -40,19 +40,34 @@ public class TrashcanService {
             Double minLongitude,
             Double maxLongitude) {
 
-        validateCoordinates(minLatitude, maxLatitude, minLongitude, maxLongitude);
+        log.info("getTrashcansInArea called with params - minLat: {}, maxLat: {}, minLng: {}, maxLng: {}",
+                minLatitude, maxLatitude, minLongitude, maxLongitude);
 
-        List<Trashcan> trashcans = trashcanRepository.findByLocationRange(
-                minLatitude, maxLatitude, minLongitude, maxLongitude
-        );
+        try {
+            validateCoordinates(minLatitude, maxLatitude, minLongitude, maxLongitude);
 
-        log.info("조회된 쓰레기통 개수: {}", trashcans.size());
+            List<Trashcan> trashcans = trashcanRepository.findByLocationRange(
+                    minLatitude, maxLatitude, minLongitude, maxLongitude);
 
-        List<TrashcanDto> dtos = trashcans.stream()
-                .map(TrashcanDto::from)
-                .toList();
+            log.info("조회된 쓰레기통 개수: {}", trashcans.size());
 
-        return TrashcanListResponse.of(dtos);
+            List<TrashcanDto> dtos = trashcans.stream()
+                    .map(t -> {
+                        try {
+                            return TrashcanDto.from(t);
+                        } catch (Exception e) {
+                            log.error("Failed to convert Trashcan to DTO: id={}, error={}", t.getId(), e.getMessage(),
+                                    e);
+                            throw e;
+                        }
+                    })
+                    .toList();
+
+            return TrashcanListResponse.of(dtos);
+        } catch (Exception e) {
+            log.error("Error in getTrashcansInArea: {}", e.getMessage(), e);
+            throw e;
+        }
     }
 
     private void validateCoordinates(Double minLat, Double maxLat, Double minLng, Double maxLng) {
@@ -65,6 +80,7 @@ public class TrashcanService {
         if (minLng >= maxLng) {
             throw new IllegalArgumentException("최소 경도는 최대 경도보다 작아야 합니다");
         }
+        // 한국 좌표 범위 검증
         if (minLat < 33.0 || maxLat > 43.0) {
             throw new IllegalArgumentException("위도는 33.0 ~ 43.0 범위여야 합니다");
         }
@@ -151,8 +167,7 @@ public class TrashcanService {
 
         List<TrashcanDto> trashcanDtos = trashcans.stream()
                 .map(t -> new TrashcanDto(
-                        t.getId(), t.getLatitude(), t.getLongitude(), t.getAddress(), t.getStatus()
-                ))
+                        t.getId(), t.getLatitude(), t.getLongitude(), t.getAddress(), t.getStatus()))
                 .toList();
 
         return new TrashcanListResponse(trashcanDtos);

@@ -6,8 +6,7 @@ package com.jupddang.jupddang.trashcan.dto;
 public record TrashcanCreateRequest(
         Double latitude,
         Double longitude,
-        String address
-) {
+        String address) {
     /**
      * 유효성 검증
      */

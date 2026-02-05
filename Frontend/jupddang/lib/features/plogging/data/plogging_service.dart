@@ -11,7 +11,7 @@ class PloggingService {
     : _apiClient = apiClient ?? ApiClient();
 
   // 플로깅 종료 및 결과 저장
-  Future<void> endPlogging({
+  Future<dynamic> endPlogging({
     required PloggingEndRequest requestData,
     required String beforeImagePath,
     required String afterImagePath,

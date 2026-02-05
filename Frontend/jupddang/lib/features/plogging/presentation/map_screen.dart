@@ -1,5 +1,6 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:io';
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:nes_ui/nes_ui.dart';
@@ -29,6 +30,9 @@ import '../../../widgets/animated_boss_widget.dart';
 import '../../trashcan/data/trashcan_service.dart';
 import '../../trashcan/models/trashcan_model.dart';
 import 'package:jupddang/features/plogging/models/plogging_models.dart';
+import '../../quest/data/quest_service.dart';
+import '../../quest/models/quest_models.dart';
+import '../../quest/presentation/quest_widgets.dart';
 
 // ==========================================
 // 2. Map Screen Widget
@@ -58,6 +62,7 @@ class _MapScreenState extends State<MapScreen> {
   final RaidService _raidService = RaidService();
   final TrashcanService _trashcanService = TrashcanService();
   final ImagePicker _picker = ImagePicker();
+  final QuestService _questService = QuestService();
 
   // --- Map State ---
   List<Polygon> _hexagons = [];
@@ -108,6 +113,17 @@ class _MapScreenState extends State<MapScreen> {
   List<LatLng> _pathPoints = [];
   int _coinsGained = 0;
   Timer? _statsTimer;
+
+  // --- Quest State ---
+  bool _questCompleted = false;
+  bool _showQuestModal = false;
+  bool _showQuestTutorial = false;
+  XFile? _questBeforeImage;
+  XFile? _questAfterImage;
+  LatLng? _questBeforeLocation;
+  LatLng? _questAfterLocation;
+  int? _beforeTrashCount;
+  int? _afterTrashCount;
 
   // --- Getters for Display Logic (Party vs Solo) ---
   bool get _isPlogging =>
@@ -465,6 +481,16 @@ class _MapScreenState extends State<MapScreen> {
       _descriptionController.clear();
       _startAddress = "Fetching address...";
 
+      // Quest 초기화
+      _questCompleted = false;
+      _questBeforeImage = null;
+      _questAfterImage = null;
+      _questBeforeLocation = null;
+      _questAfterLocation = null;
+      _beforeTrashCount = null;
+      _afterTrashCount = null;
+      _showQuestTutorial = true;
+
       _statsTimer = Timer.periodic(const Duration(seconds: 1), (t) {
         if (_isLeader && widget.partyId != null) _sendLeaderLocation();
         setState(() {});
@@ -473,6 +499,8 @@ class _MapScreenState extends State<MapScreen> {
       if (_currentH3Index != null) _startOccupationTimer();
     });
     _fetchStartAddress();
+
+// 5초 후 튜토리얼 자동 닫기 제거 (사용자 수동 닫기 유도)
   }
 
   Future<void> _fetchStartAddress() async {
@@ -823,6 +851,7 @@ class _MapScreenState extends State<MapScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      resizeToAvoidBottomInset: false, // 키보드로 인한 화면 리사이즈 방지
       body: Stack(
         children: [
           // 1. Base Map
@@ -842,6 +871,19 @@ class _MapScreenState extends State<MapScreen> {
 
           // 5. Summary Modal
           if (_phase == PloggingPhase.summary) _buildSummaryOverlay(),
+
+          // 6. Quest Modals
+          if (_showQuestTutorial) QuestTutorialModal(onClose: () => setState(() => _showQuestTutorial = false)),
+          if (_showQuestModal) QuestModal(
+            beforeImage: _questBeforeImage,
+            afterImage: _questAfterImage,
+            beforeTrashCount: _beforeTrashCount,
+            afterTrashCount: _afterTrashCount,
+            onClose: () => setState(() => _showQuestModal = false),
+            onTakeBeforePhoto: () => _takeQuestPhoto(true),
+            onTakeAfterPhoto: () => _takeQuestPhoto(false),
+            onValidate: _validateQuest,
+          ),
         ],
       ),
     );
@@ -889,6 +931,29 @@ class _MapScreenState extends State<MapScreen> {
           MarkerLayer(markers: _buildMarkers()),
         ],
       ),
+      children: [
+        TileLayer(
+          urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+          userAgentPackageName: 'com.ssafy.jupddang',
+        ),
+        if (_pathPoints.isNotEmpty)
+          PolylineLayer(
+            polylines: [
+              Polyline(
+                points: _pathPoints,
+                color: _selectedGridColor.withOpacity(0.6),
+                strokeWidth: 5.0,
+                borderColor: Colors.white,
+                borderStrokeWidth: 2.0,
+              ),
+            ],
+          ),
+        PolygonLayer(
+          key: ValueKey('grid_${_selectedGridColor.value}_$_gridOpacity'),
+          polygons: _hexagons,
+        ),
+        MarkerLayer(markers: _buildMarkers()),
+      ],
     );
   }
 
@@ -1214,9 +1279,21 @@ class _MapScreenState extends State<MapScreen> {
   Widget _buildControlButtonsRight() {
     return Positioned(
       right: 20,
-      top: MediaQuery.of(context).size.height * 0.35,
+      // 플로깅 중일 때 더 위로 올려서 쓰레기통 버튼과 겹치지 않도록
+      top: _isPlogging 
+          ? MediaQuery.of(context).size.height * 0.15 
+          : MediaQuery.of(context).size.height * 0.35,
       child: Column(
         children: [
+          // Q 버튼은 플로깅 중일 때 최상단에 표시
+          if (_isPlogging) ...[
+            QuestButton(
+              isCompleted: _questCompleted, 
+              onTap: _openQuestModal,
+              isHighlighted: _showQuestTutorial,
+            ),
+            const SizedBox(height: 12),
+          ],
           _manualMoveButton(Pixel.plus, "zoom_in", _zoomIn),
           const SizedBox(height: 12),
           _manualMoveButton(Pixel.minus, "zoom_out", _zoomOut),
@@ -1271,13 +1348,16 @@ class _MapScreenState extends State<MapScreen> {
               ),
             ),
             const SizedBox(width: 16),
-            SizedBox(
-              width: 140,
-              child: PixelButton(
-                text: "FINISH",
-                isGreen: false,
-                color: _selectedGridColor,
-                onPressed: _finishPlogging,
+            Opacity(
+              opacity: _questCompleted ? 1.0 : 0.5,
+              child: SizedBox(
+                width: 140,
+                child: PixelButton(
+                  text: "FINISH",
+                  isGreen: false,
+                  color: _questCompleted ? _selectedGridColor : Colors.grey[600]!,
+                  onPressed: _questCompleted ? _finishPlogging : _showQuestHint,
+                ),
               ),
             ),
           ],
@@ -1296,13 +1376,16 @@ class _MapScreenState extends State<MapScreen> {
               ),
             ),
             const SizedBox(width: 16),
-            SizedBox(
-              width: 140,
-              child: PixelButton(
-                text: "FINISH",
-                isGreen: false,
-                color: _selectedGridColor,
-                onPressed: _finishPlogging,
+            Opacity(
+              opacity: _questCompleted ? 1.0 : 0.5,
+              child: SizedBox(
+                width: 140,
+                child: PixelButton(
+                  text: "FINISH",
+                  isGreen: false,
+                  color: _questCompleted ? _selectedGridColor : Colors.grey[600]!,
+                  onPressed: _questCompleted ? _finishPlogging : _showQuestHint,
+                ),
               ),
             ),
           ],
@@ -1477,7 +1560,7 @@ class _MapScreenState extends State<MapScreen> {
         score: _coinsGained,
       );
 
-      await _authService.endPlogging(
+      final response = await _authService.endPlogging(
         requestData: request,
         beforeImagePath: _beforeImage!.path,
         afterImagePath: _afterImage!.path,
@@ -1486,6 +1569,7 @@ class _MapScreenState extends State<MapScreen> {
 
       if (mounted) Navigator.pop(context);
       _snack("기록이 업로드되었습니다!");
+      widget.onPloggingComplete?.call(_extractPostId(response));
       _resetPlogging();
     } catch (e) {
       if (mounted) Navigator.pop(context);
@@ -1612,6 +1696,21 @@ class _MapScreenState extends State<MapScreen> {
     );
   }
 
+  String? _extractPostId(dynamic response) {
+    if (response is Map) {
+      final direct =
+          response['postId'] ?? response['post_id'] ?? response['id'];
+      if (direct != null) return direct.toString();
+      final data = response['data'];
+      if (data is Map) {
+        final nested =
+            data['postId'] ?? data['post_id'] ?? data['id'];
+        if (nested != null) return nested.toString();
+      }
+    }
+    return null;
+  }
+
   Widget _manualMoveButton(IconData icon, String tag, VoidCallback onPressed) {
     return FloatingActionButton.small(
       heroTag: tag,
@@ -1640,6 +1739,7 @@ class _MapScreenState extends State<MapScreen> {
       "${d.inMinutes.remainder(60).toString().padLeft(2, '0')}:${d.inSeconds.remainder(60).toString().padLeft(2, '0')}";
 
   Color _getTrashcanColor(TrashcanStatus status) {
+
     switch (status) {
       case TrashcanStatus.VERIFIED:
         return Colors.blueAccent;
@@ -1703,5 +1803,70 @@ class _MapScreenState extends State<MapScreen> {
       barrierDismissible: false,
       builder: (_) => Center(child: CircularProgressIndicator(color: color)),
     );
+  }
+
+  // Quest UI Components and Methods
+  // Note: UI 컴포넌트들은 quest_widgets.dart로 분리됨
+  void _openQuestModal() => setState(() => _showQuestModal = true);
+  void _showQuestHint() => setState(() => _showQuestTutorial = true);
+  
+  Future<void> _takeQuestPhoto(bool isBefore) async {
+    // 포커스 해제하여 키보드 관련 이슈 방지
+    FocusScope.of(context).unfocus();
+    
+    try {
+      final XFile? photo = await _picker.pickImage(source: ImageSource.camera, imageQuality: 85);
+      if (photo == null) return;
+      final currentLocation = _currentPosition;
+      if (currentLocation == null) {
+        _snack("현재 위치를 확인할 수 없습니다", isError: true);
+        return;
+      }
+      setState(() {
+        if (isBefore) {
+          _questBeforeImage = photo;
+          _questBeforeLocation = currentLocation;
+        } else {
+          _questAfterImage = photo;
+          _questAfterLocation = currentLocation;
+        }
+      });
+      await Gal.putImage(photo.path);
+      _snack("사진이 저장되었습니다");
+    } catch (e) {
+      _snack("사진 촬영 실패: $e", isError: true);
+    }
+  }
+
+  Future<void> _validateQuest() async {
+    if (_questBeforeImage == null || _questAfterImage == null) {
+      _snack("두 사진을 모두 촬영해주세요", isError: true);
+      return;
+    }
+    if (_questBeforeLocation == null || _questAfterLocation == null) {
+      _snack("위치 정보를 확인할 수 없습니다", isError: true);
+      return;
+    }
+    _showLoading(const Color(0xFF3B82F6));
+    try {
+      final response = _questService.validateLocally(beforeLocation: _questBeforeLocation!, afterLocation: _questAfterLocation!);
+      if (mounted) Navigator.pop(context);
+      if (response.isValid) {
+        setState(() {
+          _questCompleted = true;
+          _beforeTrashCount = response.beforeTrashCount;
+          _afterTrashCount = response.afterTrashCount;
+          _beforeImage = _questBeforeImage;
+          _afterImage = _questAfterImage;
+          _showQuestModal = false;
+        });
+        _snack("퀘스트 완료! 이제 플로깅을 종료할 수 있습니다");
+      } else {
+        _snack(response.message ?? "검증 실패", isError: true);
+      }
+    } catch (e) {
+      if (mounted) Navigator.pop(context);
+      _snack("검증 중 오류 발생: $e", isError: true);
+    }
   }
 }

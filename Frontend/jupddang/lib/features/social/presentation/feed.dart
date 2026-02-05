@@ -14,7 +14,10 @@ import '../../account/presentation/profile_screen.dart';
 import '../../../main.dart';
 
 class CommunityScreen extends StatefulWidget {
-  const CommunityScreen({super.key});
+  final String? focusPostId;
+  final VoidCallback? onFocusHandled;
+
+  const CommunityScreen({super.key, this.focusPostId, this.onFocusHandled});
 
   @override
   State<CommunityScreen> createState() => _CommunityScreenState();
@@ -22,21 +25,28 @@ class CommunityScreen extends StatefulWidget {
 
 class _CommunityScreenState extends State<CommunityScreen> with RouteAware {
   final AuthService _authService = AuthService();
+  final ScrollController _scrollController = ScrollController();
   final List<CommunityPost> _localPosts = [];
   List<CommunityPost> _remotePosts = [];
   List<AccountSummary> _accounts = [];
   bool _loadingAccounts = true;
   bool _loadingPosts = true;
   String? _errorMessage;
+  String? _pendingFocusPostId;
+  final Map<String, GlobalKey> _postKeys = {};
+  final GlobalKey cardKey = GlobalKey();
 
   // Follow & Like state
   bool _showFollowingOnly = false;
-  final Set<String> _followingNicknames = {'admin'}; // Initial followed users
   final Set<String> _likedPostIds = {}; // Track liked posts locally
 
   @override
   void initState() {
     super.initState();
+    _pendingFocusPostId = widget.focusPostId;
+    if (_pendingFocusPostId != null) {
+      _showFollowingOnly = false;
+    }
     _refreshAll();
   }
 
@@ -52,8 +62,20 @@ class _CommunityScreenState extends State<CommunityScreen> with RouteAware {
 
   @override
   void dispose() {
+    _scrollController.dispose();
     routeObserver.unsubscribe(this);
     super.dispose();
+  }
+
+  // Scroll to top method (called from parent)
+  void scrollToTop() {
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(
+        0,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+    }
   }
 
   // 다른 화면에서 돌아올 때 호출됨 (댓글 삭제 후 돌아올 때)
@@ -119,12 +141,44 @@ class _CommunityScreenState extends State<CommunityScreen> with RouteAware {
         _remotePosts = posts;
         _loadingPosts = false;
       });
+      final targetId = _pendingFocusPostId;
+      if (targetId != null &&
+          !_allPosts.any((post) => post.id == targetId)) {
+        _pendingFocusPostId = null;
+        widget.onFocusHandled?.call();
+        return;
+      }
+      _focusPostIfNeeded();
     } catch (e) {
       setState(() {
         _loadingPosts = false;
         _errorMessage = '게시글 조회에 실패했습니다.';
       });
     }
+  }
+
+  void _focusPostIfNeeded() {
+    final targetId = _pendingFocusPostId;
+    if (targetId == null) return;
+    final key = _postKeys[targetId];
+    final targetContext = key?.currentContext;
+    if (targetContext == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final ctx = key?.currentContext;
+      if (ctx == null) return;
+      Scrollable.ensureVisible(
+        ctx,
+        duration: const Duration(milliseconds: 350),
+        curve: Curves.easeOut,
+        alignment: 0.1,
+      );
+      _pendingFocusPostId = null;
+      widget.onFocusHandled?.call();
+    });
+  }
+
+  GlobalKey _ensurePostKey(String postId) {
+    return _postKeys.putIfAbsent(postId, () => GlobalKey());
   }
 
   List<CommunityPost> get _allPosts {
@@ -158,16 +212,6 @@ class _CommunityScreenState extends State<CommunityScreen> with RouteAware {
               .likePost(post.id)
               .catchError((e) => print('Like error: $e'));
         }
-      }
-    });
-  }
-
-  void _toggleFollow(String nickname) {
-    setState(() {
-      if (_followingNicknames.contains(nickname)) {
-        _followingNicknames.remove(nickname);
-      } else {
-        _followingNicknames.add(nickname);
       }
     });
   }
@@ -271,7 +315,7 @@ class _CommunityScreenState extends State<CommunityScreen> with RouteAware {
   }
 
   Future<void> _openComposer() async {
-    if (AuthService.accessToken == null) {
+    if (AuthService.userId == null || AuthService.userId!.isEmpty) {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
@@ -358,6 +402,7 @@ class _CommunityScreenState extends State<CommunityScreen> with RouteAware {
           onRefresh: _refreshAll,
           color: const Color(0xFF17C964),
           child: CustomScrollView(
+            controller: _scrollController,
             physics: const AlwaysScrollableScrollPhysics(),
             slivers: [
               SliverToBoxAdapter(child: _buildHeader()),
@@ -374,6 +419,7 @@ class _CommunityScreenState extends State<CommunityScreen> with RouteAware {
 
   Widget _buildHeader() {
     return Padding(
+      key: cardKey,
       padding: const EdgeInsets.fromLTRB(20, 10, 20, 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -406,17 +452,6 @@ class _CommunityScreenState extends State<CommunityScreen> with RouteAware {
               ),
             ],
           ),
-          const SizedBox(height: 6),
-          Text(
-            _loadingAccounts
-                ? 'LOADING USERS...'
-                : 'USERS ${_accounts.length} • LATEST FEED',
-            style: const TextStyle(
-              color: Colors.black54,
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
           if (_errorMessage != null) ...[
             const SizedBox(height: 6),
             Text(
@@ -438,22 +473,27 @@ class _CommunityScreenState extends State<CommunityScreen> with RouteAware {
     }
 
     if (_accounts.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(horizontal: 20),
-        child: SizedBox(
-          height: 80,
-          child: Center(
-            child: Text(
-              '로그인 후 유저 목록을 확인할 수 있어요.',
-              style: TextStyle(
-                color: Colors.black54,
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
+      // 로그인하지 않았을 때만 메시지 표시
+      if (AuthService.userId == null || AuthService.userId!.isEmpty) {
+        return const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 20),
+          child: SizedBox(
+            height: 80,
+            child: Center(
+              child: Text(
+                '로그인 후 유저 목록을 확인할 수 있어요.',
+                style: TextStyle(
+                  color: Colors.black54,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
           ),
-        ),
-      );
+        );
+      }
+      // 로그인했는데 계정 목록이 비어있으면 빈 상태 표시
+      return const SizedBox.shrink();
     }
 
     return SizedBox(
@@ -582,8 +622,14 @@ class _CommunityScreenState extends State<CommunityScreen> with RouteAware {
     final String currentUserId = AuthService.userId?.toString() ?? '';
     final String postUserId = post.userId?.toString() ?? '';
     final isMine = postUserId.isNotEmpty && postUserId == currentUserId;
+    final cardKey = _ensurePostKey(post.id);
+
+    if (_pendingFocusPostId == post.id) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _focusPostIfNeeded());
+    }
 
     return Padding(
+      key: cardKey,
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       child: NesContainer(
         padding: EdgeInsets.zero, // 내부 패딩을 직접 제어하므로 0으로 설정
@@ -733,6 +779,13 @@ class _CommunityScreenState extends State<CommunityScreen> with RouteAware {
                         },
                       ),
                     ),
+                  // else
+                  // // 남의 글인 경우 (단순 아이콘)
+                  //   const SizedBox(
+                  //     width: 24,
+                  //     height: 24,
+                  //     child: Icon(Pixel.menu, color: Colors.white38, size: 20),
+                  //   ),
                 ],
               ),
             ),
@@ -741,9 +794,15 @@ class _CommunityScreenState extends State<CommunityScreen> with RouteAware {
             if (post.localImagePaths.isNotEmpty || post.imageUrls.isNotEmpty)
               _buildPostImages(post),
 
-            // Actions
+            // Content
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+              child: _buildPostContent(post),
+            ),
+
+            // Actions (좋아요, 댓글)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
               child: Row(
                 children: [
                   _actionButton(
@@ -758,16 +817,8 @@ class _CommunityScreenState extends State<CommunityScreen> with RouteAware {
                     post.comments.length.toString(),
                     onTap: () => _showComments(post),
                   ),
-                  const Spacer(),
-                  const Icon(Pixel.flag, color: Colors.black38),
                 ],
               ),
-            ),
-
-            // Content
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
-              child: _buildPostContent(post),
             ),
           ],
         ),
@@ -1064,7 +1115,10 @@ class _CommunityScreenState extends State<CommunityScreen> with RouteAware {
     if (diff.inHours < 24) {
       return '${diff.inHours}시간 전';
     }
-    return '${time.month}/${time.day}';
+    if (diff.inDays < 7) {
+      return '${diff.inDays}일 전';
+    }
+    return '${time.year}년 ${time.month}월 ${time.day}일';
   }
 
   Widget _myPostTag() {

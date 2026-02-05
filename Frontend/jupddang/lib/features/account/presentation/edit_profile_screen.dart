@@ -1,9 +1,9 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:nes_ui/nes_ui.dart';
 import 'package:pixelarticons/pixelarticons.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../services/auth_service.dart';
-import '../../../widgets/pixel_button.dart';
 import '../../../widgets/pixel_character.dart';
 
 class EditProfileScreen extends StatefulWidget {
@@ -101,10 +101,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       // 1. 모든 필드를 현재 값으로 채운 updates 맵 생성
       // 서버의 AccountUpdateRequest 필드명과 정확히 일치해야 합니다.
       final updates = <String, dynamic>{
-        'nickname': _userId,             // 현재 닉네임 (또는 별도 저장된 변수)
-        'email': _emailController.text,  // 현재 입력된 이메일
-        'intro': '플로깅 좋아합니다!',     // 기존 소개글 (변수로 관리 권장)
-        'color': '#FFFFFF',              // 기본값 또는 기존 색상
+        'nickname': _userId, // 현재 닉네임 (또는 별도 저장된 변수)
+        'email': _emailController.text, // 현재 입력된 이메일
+        'intro': '플로깅 좋아합니다!', // 기존 소개글 (변수로 관리 권장)
+        'color': '#FFFFFF', // 기본값 또는 기존 색상
       };
 
       // 2. 비밀번호는 입력했을 때만 추가
@@ -118,9 +118,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       await _authService.updateMyProfile(updates, _selectedImage);
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('정보가 성공적으로 업데이트되었습니다.')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('정보가 성공적으로 업데이트되었습니다.')));
         Navigator.pop(context);
       }
     } catch (e) {
@@ -133,7 +133,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF141414),
+      backgroundColor: Colors.white,
       body: _loading
           ? const Center(
               child: CircularProgressIndicator(color: Color(0xFF17C964)),
@@ -149,24 +149,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         children: [
                           GestureDetector(
                             onTap: () => Navigator.pop(context),
-                            child: Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF1F1F1F),
-                                border: Border.all(
-                                  color: Colors.black,
-                                  width: 3,
-                                ),
-                                boxShadow: const [
-                                  BoxShadow(
-                                    color: Colors.black,
-                                    offset: Offset(4, 4),
-                                  ),
-                                ],
-                              ),
+                            child: NesButton(
+                              type: NesButtonType.normal,
+                              onPressed: () => Navigator.pop(context),
                               child: const Icon(
                                 Pixel.arrowleft,
-                                color: Colors.white,
+                                color: Colors.black,
                                 size: 24,
                               ),
                             ),
@@ -175,7 +163,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           const Text(
                             'EDIT PROFILE',
                             style: TextStyle(
-                              color: Colors.white,
+                              color: Colors.black,
                               fontSize: 20,
                               fontWeight: FontWeight.w900,
                               letterSpacing: 1.5,
@@ -203,22 +191,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                             Center(
                               child: GestureDetector(
                                 onTap: _pickImage,
-                                child: Container(
+                                child: NesContainer(
                                   width: 120,
                                   height: 120,
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFF1F1F1F),
-                                    border: Border.all(
-                                      color: Colors.black,
-                                      width: 3,
-                                    ),
-                                    boxShadow: const [
-                                      BoxShadow(
-                                        color: Colors.black,
-                                        offset: Offset(6, 6),
-                                      ),
-                                    ],
-                                  ),
+                                  padding: EdgeInsets.zero,
                                   child: _selectedImage != null
                                       ? Image.file(
                                           _selectedImage!,
@@ -319,10 +295,16 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                             // 저장 버튼
                             SizedBox(
                               width: double.infinity,
-                              child: PixelButton(
-                                text: _saving ? 'SAVING...' : 'SAVE CHANGES',
+                              child: NesButton(
+                                type: NesButtonType.success,
                                 onPressed: _saving ? null : _saveChanges,
-                                height: 56,
+                                child: Text(
+                                  _saving ? 'SAVING...' : 'SAVE CHANGES',
+                                  style: const TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
                               ),
                             ),
                           ],
@@ -342,7 +324,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     return Text(
       title.toUpperCase(),
       style: const TextStyle(
-        color: Colors.white70,
+        color: Colors.black54,
         fontSize: 12,
         fontWeight: FontWeight.w900,
         letterSpacing: 1.2,
@@ -351,21 +333,18 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   }
 
   Widget _buildReadOnlyField(String value) {
-    return Container(
+    return NesContainer(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-      decoration: BoxDecoration(
-        color: const Color(0xFF2A2A2A),
-        border: Border.all(color: Colors.white24, width: 2),
-      ),
+      backgroundColor: const Color(0xFFF0F0F0),
       child: Row(
         children: [
           Expanded(
             child: Text(
               value,
-              style: const TextStyle(color: Colors.white54, fontSize: 16),
+              style: const TextStyle(color: Colors.black54, fontSize: 16),
             ),
           ),
-          const Icon(Pixel.lock, color: Colors.white38, size: 20),
+          const Icon(Pixel.lock, color: Colors.black38, size: 20),
         ],
       ),
     );
@@ -376,18 +355,17 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     required String hint,
     String? Function(String?)? validator,
   }) {
-    return Container(
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.white24, width: 2),
-      ),
+    return NesContainer(
+      padding: EdgeInsets.zero,
       child: TextFormField(
         controller: controller,
-        style: const TextStyle(color: Colors.white, fontSize: 16),
+        cursorColor: const Color(0xFF17C964),
+        style: const TextStyle(color: Color(0xFF17C964), fontSize: 16),
         decoration: InputDecoration(
           hintText: hint,
-          hintStyle: const TextStyle(color: Colors.white38),
+          hintStyle: const TextStyle(color: Colors.black38),
           filled: true,
-          fillColor: const Color(0xFF1F1F1F),
+          fillColor: const Color(0xFFF0F0F0),
           border: InputBorder.none,
           contentPadding: const EdgeInsets.all(16),
         ),
@@ -403,25 +381,24 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     required VoidCallback onToggle,
     String? Function(String?)? validator,
   }) {
-    return Container(
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.white24, width: 2),
-      ),
+    return NesContainer(
+      padding: EdgeInsets.zero,
       child: TextFormField(
         controller: controller,
+        cursorColor: Colors.black,
         obscureText: obscure,
-        style: const TextStyle(color: Colors.white, fontSize: 16),
+        style: const TextStyle(color: Colors.black, fontSize: 16),
         decoration: InputDecoration(
           hintText: hint,
-          hintStyle: const TextStyle(color: Colors.white38),
+          hintStyle: const TextStyle(color: Colors.black38),
           filled: true,
-          fillColor: const Color(0xFF1F1F1F),
+          fillColor: const Color(0xFFF0F0F0),
           border: InputBorder.none,
           contentPadding: const EdgeInsets.all(16),
           suffixIcon: IconButton(
             icon: Icon(
               obscure ? Pixel.eye : Pixel.eyeclosed,
-              color: Colors.white38,
+              color: Colors.black38,
               size: 20,
             ),
             onPressed: onToggle,

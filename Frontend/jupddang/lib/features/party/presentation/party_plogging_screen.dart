@@ -8,7 +8,6 @@ import '../data/party_service.dart';
 import '../data/party_socket_service.dart';
 import 'package:jupddang/features/party/models/party_models.dart';
 
-
 class PartyPloggingScreen extends StatefulWidget {
   final int partyId;
 
@@ -119,7 +118,7 @@ class _PartyPloggingScreenState extends State<PartyPloggingScreen> {
     final leaderActivity = _leaderActivity;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF141414),
+      backgroundColor: Colors.white,
       body: _loading
           ? const Center(
               child: CircularProgressIndicator(color: Color(0xFF17C964)),
@@ -137,7 +136,7 @@ class _PartyPloggingScreenState extends State<PartyPloggingScreen> {
                           child: Container(
                             padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF1F1F1F),
+                              color: Colors.white,
                               border: Border.all(color: Colors.black, width: 3),
                               boxShadow: const [
                                 BoxShadow(
@@ -148,7 +147,7 @@ class _PartyPloggingScreenState extends State<PartyPloggingScreen> {
                             ),
                             child: const Icon(
                               Pixel.arrowleft,
-                              color: Colors.white,
+                              color: Colors.black,
                               size: 24,
                             ),
                           ),
@@ -196,7 +195,7 @@ class _PartyPloggingScreenState extends State<PartyPloggingScreen> {
                     Container(
                       padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF1F1F1F),
+                        color: Colors.white,
                         border: Border.all(
                           color: const Color(0xFFFBBF24),
                           width: 3,
@@ -232,7 +231,7 @@ class _PartyPloggingScreenState extends State<PartyPloggingScreen> {
                           Text(
                             _party?.leaderId ?? 'Leader',
                             style: const TextStyle(
-                              color: Colors.white,
+                              color: Colors.black,
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
                             ),
@@ -266,7 +265,7 @@ class _PartyPloggingScreenState extends State<PartyPloggingScreen> {
                             value: _formatTime(
                               leaderActivity?.elapsedTime ?? 0,
                             ),
-                            color: const Color(0xFF3B82F6),
+                            color: const Color(0xFF17C964),
                           ),
                         ),
                       ],
@@ -280,7 +279,7 @@ class _PartyPloggingScreenState extends State<PartyPloggingScreen> {
                       child: Text(
                         'TEAM STATUS',
                         style: TextStyle(
-                          color: Colors.white,
+                          color: Colors.black,
                           fontSize: 16,
                           fontWeight: FontWeight.w900,
                           letterSpacing: 1.5,
@@ -305,7 +304,7 @@ class _PartyPloggingScreenState extends State<PartyPloggingScreen> {
                             margin: const EdgeInsets.only(bottom: 12),
                             padding: const EdgeInsets.all(16),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF1F1F1F),
+                              color: Colors.white,
                               border: Border.all(
                                 color: isCurrentUser
                                     ? const Color(0xFF17C964)
@@ -326,7 +325,7 @@ class _PartyPloggingScreenState extends State<PartyPloggingScreen> {
                                   width: 40,
                                   height: 40,
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFF141414),
+                                    color: Colors.white,
                                     border: Border.all(
                                       color: Colors.black,
                                       width: 2,
@@ -351,7 +350,7 @@ class _PartyPloggingScreenState extends State<PartyPloggingScreen> {
                                           Text(
                                             activity.userId,
                                             style: const TextStyle(
-                                              color: Colors.white,
+                                              color: Colors.black,
                                               fontSize: 14,
                                               fontWeight: FontWeight.bold,
                                             ),
@@ -383,7 +382,7 @@ class _PartyPloggingScreenState extends State<PartyPloggingScreen> {
                                           Text(
                                             _formatTime(activity.elapsedTime),
                                             style: const TextStyle(
-                                              color: Colors.white54,
+                                              color: Colors.black54,
                                               fontSize: 12,
                                             ),
                                           ),
@@ -402,7 +401,7 @@ class _PartyPloggingScreenState extends State<PartyPloggingScreen> {
                                 else
                                   const Icon(
                                     Pixel.reload,
-                                    color: Colors.white38,
+                                    color: Colors.black38,
                                     size: 20,
                                   ),
                               ],
@@ -418,14 +417,14 @@ class _PartyPloggingScreenState extends State<PartyPloggingScreen> {
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF1F1F1F),
-                        border: Border.all(color: Colors.white24, width: 2),
+                        color: Colors.white,
+                        border: Border.all(color: Colors.black12, width: 2),
                       ),
                       child: Row(
                         children: [
                           const Icon(
                             Pixel.infobox,
-                            color: Colors.white54,
+                            color: Colors.black54,
                             size: 16,
                           ),
                           const SizedBox(width: 8),
@@ -435,7 +434,7 @@ class _PartyPloggingScreenState extends State<PartyPloggingScreen> {
                                   ? '실제 플로깅은 지도 화면에서 진행하세요'
                                   : '방장의 플로깅을 실시간으로 확인할 수 있어요',
                               style: const TextStyle(
-                                color: Colors.white54,
+                                color: Colors.black54,
                                 fontSize: 12,
                               ),
                             ),
@@ -459,7 +458,7 @@ class _PartyPloggingScreenState extends State<PartyPloggingScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF1F1F1F),
+        color: Colors.white,
         border: Border.all(color: color, width: 2),
         boxShadow: const [BoxShadow(color: Colors.black, offset: Offset(4, 4))],
       ),
@@ -470,7 +469,7 @@ class _PartyPloggingScreenState extends State<PartyPloggingScreen> {
           Text(
             label,
             style: const TextStyle(
-              color: Colors.white54,
+              color: Colors.black54,
               fontSize: 10,
               fontWeight: FontWeight.w900,
               letterSpacing: 1,

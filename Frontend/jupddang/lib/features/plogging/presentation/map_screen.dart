@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:io';
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:nes_ui/nes_ui.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
@@ -48,6 +48,7 @@ class MapScreen extends StatefulWidget {
 class _MapScreenState extends State<MapScreen> {
   // --- Controllers & Services ---
   final MapController _mapController = MapController();
+  final GlobalKey _mapRepaintKey = GlobalKey();
   final LocationH3Service _h3Service = LocationH3Service();
   final GpsSignalFilter _gpsFilter = GpsSignalFilter();
   final PartySocketService _socketService = PartySocketService();
@@ -69,7 +70,6 @@ class _MapScreenState extends State<MapScreen> {
   Party? _party;
   Timer? _partyPollTimer;
   List<RaidBossModel> _raidBosses = [];
-  Set<String> _bossH3Indices = {};
   List<TrashcanModel> _trashcans = [];
   PartyMemberLocation? _leaderLocation;
 
@@ -201,7 +201,6 @@ class _MapScreenState extends State<MapScreen> {
       if (!mounted) return;
       setState(() {
         _raidBosses = bosses;
-        _bossH3Indices = bosses.map((b) => b.h3Index).toSet();
       });
     } catch (e) {
       debugPrint("❌ Failed to load raid bosses: $e");
@@ -510,13 +509,19 @@ class _MapScreenState extends State<MapScreen> {
     });
   }
 
-  void _finishPlogging() {
+  Future<void> _finishPlogging() async {
     setState(() {
       _phase = PloggingPhase.summary;
       _sessionStopwatch.stop();
       _statsTimer?.cancel();
       _stopOccupationTimer();
     });
+
+    final captured = await _captureMapImage();
+    if (!mounted) return;
+    if (captured != null) {
+      setState(() => _mapImage = captured);
+    }
 
     // 파티원은 자동 종료 후 이동
     if (!_isLeader) {
@@ -532,6 +537,7 @@ class _MapScreenState extends State<MapScreen> {
       _sessionStopwatch.reset();
       _beforeImage = null;
       _afterImage = null;
+      _mapImage = null;
       _pathPoints = [];
     });
   }
@@ -721,6 +727,31 @@ class _MapScreenState extends State<MapScreen> {
     }
   }
 
+  Future<File?> _captureMapImage() async {
+    final renderObject = _mapRepaintKey.currentContext?.findRenderObject();
+    if (renderObject is! RenderRepaintBoundary) return null;
+
+    final prevCenter = _mapController.camera.center;
+    final prevZoom = _mapController.camera.zoom;
+    if (_currentPosition != null) {
+      _mapController.move(_currentPosition!, prevZoom);
+      await Future.delayed(const Duration(milliseconds: 250));
+    }
+
+    final image = await renderObject.toImage(pixelRatio: 2.0);
+    final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+    if (byteData == null) return null;
+
+    final bytes = byteData.buffer.asUint8List();
+    final file = File(
+      '${Directory.systemTemp.path}/map_${DateTime.now().millisecondsSinceEpoch}.png',
+    );
+    await file.writeAsBytes(bytes);
+
+    _mapController.move(prevCenter, prevZoom);
+    return file;
+  }
+
   void _showAlertDialog(String title, String content) {
     showDialog(
       context: context,
@@ -833,25 +864,32 @@ class _MapScreenState extends State<MapScreen> {
       children: [
         TileLayer(
           urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+          userAgentPackageName:
+              'com.ssafy.jupddang', // Updated to avoid OSM block
         ),
-        if (_pathPoints.isNotEmpty)
-          PolylineLayer(
-            polylines: [
-              Polyline(
-                points: _pathPoints,
-                color: _selectedGridColor.withOpacity(0.6),
-                strokeWidth: 5.0,
-                borderColor: Colors.white,
-                borderStrokeWidth: 2.0,
-              ),
-            ],
+        children: [
+          TileLayer(
+            urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
           ),
-        PolygonLayer(
-          key: ValueKey('grid_${_selectedGridColor.value}_$_gridOpacity'),
-          polygons: _hexagons,
-        ),
-        MarkerLayer(markers: _buildMarkers()),
-      ],
+          if (_pathPoints.isNotEmpty)
+            PolylineLayer(
+              polylines: [
+                Polyline(
+                  points: _pathPoints,
+                  color: _selectedGridColor.withOpacity(0.6),
+                  strokeWidth: 5.0,
+                  borderColor: Colors.white,
+                  borderStrokeWidth: 2.0,
+                ),
+              ],
+            ),
+          PolygonLayer(
+            key: ValueKey('grid_${_selectedGridColor.value}_$_gridOpacity'),
+            polygons: _hexagons,
+          ),
+          MarkerLayer(markers: _buildMarkers()),
+        ],
+      ),
     );
   }
 
@@ -1034,7 +1072,7 @@ class _MapScreenState extends State<MapScreen> {
       Text(
         val,
         style: const TextStyle(
-          color: Colors.white,
+          color: Colors.black,
           fontWeight: FontWeight.bold,
           fontSize: 14,
         ),
@@ -1061,7 +1099,7 @@ class _MapScreenState extends State<MapScreen> {
                   const Text(
                     "CUSTOMIZE",
                     style: TextStyle(
-                      color: Colors.white,
+                      color: Colors.black,
                       fontSize: 10,
                       fontWeight: FontWeight.bold,
                     ),
@@ -1070,7 +1108,7 @@ class _MapScreenState extends State<MapScreen> {
                     onTap: () => setState(() => _showCustomizer = false),
                     child: const Icon(
                       Pixel.close,
-                      color: Colors.white,
+                      color: Colors.black,
                       size: 16,
                     ),
                   ),
@@ -1080,7 +1118,7 @@ class _MapScreenState extends State<MapScreen> {
               const Text(
                 "GRID OPACITY",
                 style: TextStyle(
-                  color: Colors.white,
+                  color: Colors.black,
                   fontSize: 8,
                   fontWeight: FontWeight.bold,
                 ),
@@ -1106,7 +1144,7 @@ class _MapScreenState extends State<MapScreen> {
               const Text(
                 "COLOR PALETTE",
                 style: TextStyle(
-                  color: Colors.white,
+                  color: Colors.black,
                   fontSize: 8,
                   fontWeight: FontWeight.bold,
                 ),
@@ -1214,7 +1252,7 @@ class _MapScreenState extends State<MapScreen> {
         return SizedBox(
           width: 200,
           child: PixelButton(
-            text: "START JUPKING",
+            text: "START",
             isGreen: false,
             color: _selectedGridColor,
             onPressed: _startPlogging,
@@ -1334,6 +1372,20 @@ class _MapScreenState extends State<MapScreen> {
                   ),
                   const SizedBox(height: 24),
 
+                  _summaryLabel("MAP PHOTO"),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _mapPhotoSlot(
+                          "MAP",
+                          _mapImage,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+
                   _summaryLabel("BEFORE / AFTER PHOTOS"),
                   const SizedBox(height: 12),
                   Row(
@@ -1395,17 +1447,51 @@ class _MapScreenState extends State<MapScreen> {
   Future<void> _handlePublish() async {
     if (AuthService.accessToken == null)
       return _snack("로그인 회원만 기록을 저장할 수 있습니다.", isError: true);
-    if (_mapImage == null) return _snack("맵 이미지 생성 중입니다. 잠시 후 다시 시도해주세요.");
     if (_beforeImage == null || _afterImage == null)
       return _snack("Before/After 사진을 선택해주세요.");
     if (_recordTitleController.text.trim().isEmpty)
       return _snack("기록 제목을 입력해주세요.");
 
+    if (_mapImage == null) {
+      final captured = await _captureMapImage();
+      if (captured != null) {
+        _mapImage = captured;
+      }
+    }
+    if (_mapImage == null)
+      return _snack("맵 이미지 생성 중입니다. 잠시 후 다시 시도해주세요.");
+
     _showLoading(const Color(0xFF17C964));
-    // Publish Logic here (Assuming call to service)
-    await Future.delayed(const Duration(seconds: 1)); // Mock
-    if (mounted) Navigator.pop(context);
-    _resetPlogging();
+    try {
+      final route = _pathPoints
+          .map((p) => '${p.latitude},${p.longitude}')
+          .toList(growable: false);
+      final request = PloggingEndRequest(
+        userId: AuthService.userId ?? '',
+        totalDistance: _totalDistance / 1000.0,
+        content: _descriptionController.text.trim(),
+        totalTime: _sessionStopwatch.elapsed.inSeconds,
+        endTime: _formatEndTime(DateTime.now()),
+        partyId: widget.partyId,
+        recordTitle: _recordTitleController.text.trim(),
+        score: _coinsGained,
+        route: route,
+      );
+
+      await _authService.endPlogging(
+        requestData: request,
+        beforeImagePath: _beforeImage!.path,
+        afterImagePath: _afterImage!.path,
+        mapImagePath: _mapImage!.path,
+      );
+
+      if (mounted) Navigator.pop(context);
+      _snack("기록이 업로드되었습니다!");
+      _resetPlogging();
+    } catch (e) {
+      if (mounted) Navigator.pop(context);
+      _snack("업로드 실패: $e", isError: true);
+    }
   }
 
   Future<void> _handleTempSave() async {
@@ -1496,6 +1582,27 @@ class _MapScreenState extends State<MapScreen> {
     );
   }
 
+  Widget _mapPhotoSlot(String label, File? file) {
+    return AspectRatio(
+      aspectRatio: 1,
+      child: NesContainer(
+        padding: EdgeInsets.zero,
+        child: file == null
+            ? Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Pixel.map, color: Colors.grey),
+                  Text(
+                    label,
+                    style: const TextStyle(fontSize: 10, color: Colors.grey),
+                  ),
+                ],
+              )
+            : Image.file(file, fit: BoxFit.cover),
+      ),
+    );
+  }
+
   Widget _manualMoveButton(IconData icon, String tag, VoidCallback onPressed) {
     return FloatingActionButton.small(
       heroTag: tag,
@@ -1533,8 +1640,6 @@ class _MapScreenState extends State<MapScreen> {
         return Colors.orangeAccent;
       case TrashcanStatus.OFFICIAL:
         return Colors.green;
-      default:
-        return Colors.grey;
     }
   }
 

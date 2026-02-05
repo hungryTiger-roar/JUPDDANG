@@ -96,3 +96,6 @@ flutter:
     - family: Galmuri11
       fonts:
         - asset: assets/fonts/Galmuri11.ttf
+    - family: NeoDunggeunmo
+      fonts:
+        - asset: assets/fonts/NeoDunggeunmo.ttf

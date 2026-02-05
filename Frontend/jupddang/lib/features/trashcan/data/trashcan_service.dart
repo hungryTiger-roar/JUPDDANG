@@ -1,11 +1,11 @@
-import 'package:dio/dio.dart';
 import '../../../../core/network/api_client.dart';
 import 'package:jupddang/features/trashcan/models/trashcan_model.dart';
 
 class TrashcanService {
   final ApiClient _apiClient;
 
-  TrashcanService({ApiClient? apiClient}) : _apiClient = apiClient ?? ApiClient();
+  TrashcanService({ApiClient? apiClient})
+    : _apiClient = apiClient ?? ApiClient();
 
   /// 영역 내 쓰레기통 조회
   /// GET /api/v1/trashcans

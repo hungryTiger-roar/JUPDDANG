@@ -12,7 +12,7 @@ class SettingsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF141414),
+      backgroundColor: Colors.white,
       body: SafeArea(
         child: CustomScrollView(
           slivers: [
@@ -59,7 +59,7 @@ class SettingsScreen extends StatelessWidget {
                                   'LOGOUT',
                                   style: TextStyle(
                                     color: Colors.black,
-                                    fontSize: 11,
+                                    fontSize: 14,
                                     fontWeight: FontWeight.w900,
                                   ),
                                 ),
@@ -95,7 +95,7 @@ class SettingsScreen extends StatelessWidget {
                         width: 56,
                         height: 56,
                         decoration: BoxDecoration(
-                          color: const Color(0xFF2A2A2A),
+                          color: Colors.white,
                           border: Border.all(color: Colors.black, width: 2),
                         ),
                         child: const Icon(
@@ -113,7 +113,7 @@ class SettingsScreen extends StatelessWidget {
                             Text(
                               (AuthService.userId ?? 'Guest').toUpperCase(),
                               style: const TextStyle(
-                                color: Colors.white,
+                                color: Colors.black,
                                 fontSize: 18,
                                 fontWeight: FontWeight.w900,
                               ),
@@ -132,7 +132,7 @@ class SettingsScreen extends StatelessWidget {
                       ),
                       const Icon(
                         Pixel.chevronright,
-                        color: Colors.white38,
+                        color: Colors.black26,
                         size: 24,
                       ),
                     ],
@@ -148,7 +148,7 @@ class SettingsScreen extends StatelessWidget {
                 child: const Text(
                   'QUICK SETTINGS',
                   style: TextStyle(
-                    color: Colors.white70,
+                    color: Colors.black54,
                     fontSize: 14,
                     fontWeight: FontWeight.w900,
                     letterSpacing: 1.2,
@@ -189,7 +189,7 @@ class SettingsScreen extends StatelessWidget {
                             context,
                             icon: Pixel.notification,
                             label: '알림\n설정',
-                            color: const Color(0xFF3B82F6),
+                            color: const Color(0xFF17C964),
                             onTap: () => _showComingSoon(context, '알림 설정'),
                           ),
                         ),
@@ -252,10 +252,10 @@ class SettingsScreen extends StatelessWidget {
               label,
               textAlign: TextAlign.center,
               style: const TextStyle(
-                color: Colors.white,
-                fontSize: 13,
+                color: Colors.black,
+                fontSize: 11,
                 fontWeight: FontWeight.w900,
-                height: 1.3,
+                height: 1.1,
               ),
             ),
           ],
@@ -285,9 +285,12 @@ class SettingsScreen extends StatelessWidget {
             ),
             SizedBox(height: 16),
             NesButton(
-              type: NesButtonType.primary,
+              type: NesButtonType.success,
               onPressed: () => Navigator.pop(context),
-              child: const Text('OK'),
+              child: const Text(
+                'OK',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
             ),
           ],
         ),
@@ -330,9 +333,12 @@ class SettingsScreen extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             NesButton(
-              type: NesButtonType.primary,
+              type: NesButtonType.success,
               onPressed: () => Navigator.pop(context),
-              child: const Text('Close'),
+              child: const Text(
+                'Close',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
             ),
           ],
         ),
@@ -419,7 +425,10 @@ class SettingsScreen extends StatelessWidget {
                       }
                     }
                   },
-                  child: const Text('Delete'),
+                  child: const Text(
+                    'Delete',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
                 ),
               ],
             ),
@@ -476,7 +485,10 @@ class SettingsScreen extends StatelessWidget {
                       (route) => false,
                     );
                   },
-                  child: const Text('Logout'),
+                  child: const Text(
+                    'Logout',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
                 ),
               ],
             ),

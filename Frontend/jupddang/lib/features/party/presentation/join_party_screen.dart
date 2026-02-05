@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:nes_ui/nes_ui.dart';
 import 'package:pixelarticons/pixelarticons.dart';
 import '../data/party_service.dart';
-import '../../../widgets/pixel_button.dart';
 import 'party_room_screen.dart';
 
 class JoinPartyScreen extends StatefulWidget {
@@ -65,7 +65,7 @@ class _JoinPartyScreenState extends State<JoinPartyScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF141414),
+      backgroundColor: Colors.white,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(20),
@@ -77,18 +77,12 @@ class _JoinPartyScreenState extends State<JoinPartyScreen> {
                 children: [
                   GestureDetector(
                     onTap: () => Navigator.pop(context),
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF1F1F1F),
-                        border: Border.all(color: Colors.black, width: 3),
-                        boxShadow: const [
-                          BoxShadow(color: Colors.black, offset: Offset(4, 4)),
-                        ],
-                      ),
+                    child: NesButton(
+                      type: NesButtonType.normal,
+                      onPressed: () => Navigator.pop(context),
                       child: const Icon(
                         Pixel.arrowleft,
-                        color: Colors.white,
+                        color: Colors.black,
                         size: 24,
                       ),
                     ),
@@ -97,7 +91,7 @@ class _JoinPartyScreenState extends State<JoinPartyScreen> {
                   const Text(
                     'JOIN ROOM',
                     style: TextStyle(
-                      color: Colors.white,
+                      color: Colors.black,
                       fontSize: 20,
                       fontWeight: FontWeight.w900,
                       letterSpacing: 1.5,
@@ -114,18 +108,11 @@ class _JoinPartyScreenState extends State<JoinPartyScreen> {
               Center(
                 child: Column(
                   children: [
-                    Container(
+                    NesContainer(
                       padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF3B82F6).withOpacity(0.1),
-                        border: Border.all(
-                          color: const Color(0xFF3B82F6),
-                          width: 2,
-                        ),
-                      ),
                       child: const Icon(
                         Pixel.lock,
-                        color: Color(0xFF3B82F6),
+                        color: Color(0xFF17C964),
                         size: 64,
                       ),
                     ),
@@ -133,7 +120,7 @@ class _JoinPartyScreenState extends State<JoinPartyScreen> {
                     const Text(
                       'Enter Invite Code',
                       style: TextStyle(
-                        color: Colors.white,
+                        color: Colors.black,
                         fontSize: 24,
                         fontWeight: FontWeight.w900,
                       ),
@@ -141,7 +128,7 @@ class _JoinPartyScreenState extends State<JoinPartyScreen> {
                     const SizedBox(height: 8),
                     const Text(
                       '친구에게 받은 6자리 코드를 입력하세요',
-                      style: TextStyle(color: Colors.white54, fontSize: 14),
+                      style: TextStyle(color: Colors.black54, fontSize: 14),
                     ),
                   ],
                 ),
@@ -153,32 +140,32 @@ class _JoinPartyScreenState extends State<JoinPartyScreen> {
               const Text(
                 'INVITE CODE',
                 style: TextStyle(
-                  color: Colors.white70,
+                  color: Colors.black54,
                   fontSize: 12,
                   fontWeight: FontWeight.w900,
                   letterSpacing: 1.2,
                 ),
               ),
               const SizedBox(height: 8),
-              Container(
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.white24, width: 2),
-                ),
+              const SizedBox(height: 8),
+              NesContainer(
+                padding: EdgeInsets.zero,
                 child: TextFormField(
                   controller: _codeController,
                   style: const TextStyle(
-                    color: Colors.white,
+                    color: Colors.black,
                     fontSize: 24,
                     fontWeight: FontWeight.w900,
-                    letterSpacing: 4,
+                    letterSpacing: 8.0,
+                    fontFamily: 'NeoDunggeunmo',
                   ),
                   textAlign: TextAlign.center,
                   textCapitalization: TextCapitalization.characters,
                   decoration: const InputDecoration(
                     hintText: '000000',
-                    hintStyle: TextStyle(color: Colors.white24),
+                    hintStyle: TextStyle(color: Colors.black26),
                     filled: true,
-                    fillColor: Color(0xFF1F1F1F),
+                    fillColor: Color(0xFFF0F0F0),
                     border: InputBorder.none,
                     contentPadding: EdgeInsets.all(20),
                   ),
@@ -198,10 +185,16 @@ class _JoinPartyScreenState extends State<JoinPartyScreen> {
               // 참가 버튼
               SizedBox(
                 width: double.infinity,
-                child: PixelButton(
-                  text: _joining ? 'JOINING...' : 'JOIN ROOM',
+                child: NesButton(
+                  type: NesButtonType.success,
                   onPressed: _joining ? null : _joinParty,
-                  height: 56,
+                  child: Text(
+                    _joining ? 'JOINING...' : 'JOIN ROOM',
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ),
               ),
 

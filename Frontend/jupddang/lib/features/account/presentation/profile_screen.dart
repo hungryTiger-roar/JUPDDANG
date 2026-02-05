@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:nes_ui/nes_ui.dart';
 import '../../../services/auth_service.dart';
 import '../../../widgets/pixel_character.dart';
 import 'package:pixelarticons/pixelarticons.dart';
@@ -79,10 +80,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
       bool realIsFollowing = false;
       if (AuthService.userId != null) {
         try {
-          final myFollowings = await _authService.getFollowings(AuthService.userId!);
+          final myFollowings = await _authService.getFollowings(
+            AuthService.userId!,
+          );
           // 내 팔로잉 목록에 이 사람(widget.userId)이 있는지 확인!
-          realIsFollowing = myFollowings.any((user) =>
-          user['userId'] == widget.userId || user['followerId'] == widget.userId
+          realIsFollowing = myFollowings.any(
+            (user) =>
+                user['userId'] == widget.userId ||
+                user['followerId'] == widget.userId,
           );
         } catch (e) {
           print('팔로잉 목록 확인 실패: $e');
@@ -96,7 +101,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final followingCount = profileData['followingCount'] ?? 0;
       final fetchedNickname = profileData['nickname'] ?? widget.userId;
 
-      print('서버 isFollowing: ${profileData['isFollowing']} / 내 검증 결과: $realIsFollowing');
+      print(
+        '서버 isFollowing: ${profileData['isFollowing']} / 내 검증 결과: $realIsFollowing',
+      );
 
       setState(() {
         _profileNickname = fetchedNickname;
@@ -182,9 +189,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
           _stats['followers'] = currentFollowers;
         });
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('요청 처리에 실패했습니다.')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('요청 처리에 실패했습니다.')));
         }
       }
     } catch (e) {
@@ -200,7 +207,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF141414),
+      backgroundColor: Colors.white,
       body: _loading
           ? const Center(
               child: CircularProgressIndicator(color: Color(0xFF17C964)),
@@ -216,24 +223,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         children: [
                           GestureDetector(
                             onTap: () => Navigator.pop(context),
-                            child: Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF1F1F1F),
-                                border: Border.all(
-                                  color: Colors.black,
-                                  width: 3,
-                                ),
-                                boxShadow: const [
-                                  BoxShadow(
-                                    color: Colors.black,
-                                    offset: Offset(4, 4),
-                                  ),
-                                ],
-                              ),
+                            child: NesButton(
+                              type: NesButtonType.normal,
+                              onPressed: () => Navigator.pop(context),
                               child: const Icon(
                                 Pixel.arrowleft,
-                                color: Colors.white,
+                                color: Colors.black,
                                 size: 24,
                               ),
                             ),
@@ -242,7 +237,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           Text(
                             widget.userId.toUpperCase(),
                             style: const TextStyle(
-                              color: Colors.white,
+                              color: Colors.black,
                               fontSize: 20,
                               fontWeight: FontWeight.w900,
                               letterSpacing: 1.5,
@@ -268,7 +263,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       child: Text(
                         'MY POSTS',
                         style: TextStyle(
-                          color: Colors.white70,
+                          color: Colors.black54,
                           fontSize: 14,
                           fontWeight: FontWeight.w900,
                           letterSpacing: 1.2,
@@ -299,14 +294,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildProfileHeader() {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+    return NesContainer(
       padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1F1F1F),
-        border: Border.all(color: Colors.black, width: 3),
-        boxShadow: const [BoxShadow(color: Colors.black, offset: Offset(6, 6))],
-      ),
       child: Column(
         children: [
           // Avatar
@@ -314,14 +303,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
             width: 100,
             height: 100,
             decoration: BoxDecoration(
-              color: const Color(0xFF2A2A2A),
+              color: Colors.white,
               border: Border.all(color: Colors.black, width: 3),
               boxShadow: const [
                 BoxShadow(color: Colors.black, offset: Offset(4, 4)),
               ],
             ),
             child: const Center(
-              child: PixelCharacter(size: 64, color: Colors.blueAccent),
+              child: PixelCharacter(size: 64, color: const Color(0xFF17C964)),
             ),
           ),
 
@@ -329,9 +318,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
           // Nickname
           Text(
-              (_profileNickname.isEmpty ? widget.userId : _profileNickname).toUpperCase(),
+            (_profileNickname.isEmpty ? widget.userId : _profileNickname)
+                .toUpperCase(),
             style: const TextStyle(
-              color: Colors.white,
+              color: Colors.black,
               fontSize: 24,
               fontWeight: FontWeight.w900,
               letterSpacing: 1.5,
@@ -356,30 +346,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
           //     ),
           //   ),
           // ),
-
           const SizedBox(height: 16),
 
           if (widget.userId != AuthService.userId)
-            GestureDetector(
-              onTap: _toggleFollow,
-              child: Container(
-                width: 120,
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                decoration: BoxDecoration(
-                  color: _isFollowing ? const Color(0xFF2A2A2A) : const Color(0xFF17C964),
-                  border: Border.all(color: Colors.black, width: 2),
-                  boxShadow: _isFollowing ? [] : const [
-                    BoxShadow(color: Colors.black, offset: Offset(2, 2))
-                  ],
-                ),
+            SizedBox(
+              width: 140,
+              child: NesButton(
+                type: _isFollowing
+                    ? NesButtonType.normal
+                    : NesButtonType.success,
+                onPressed: _toggleFollow,
                 child: Center(
                   child: Text(
                     _isFollowing ? 'UNFOLLOW' : 'FOLLOW',
-                    style: TextStyle(
-                      color: _isFollowing ? Colors.white54 : Colors.black,
+                    style: const TextStyle(
                       fontSize: 14,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 1.0,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
                 ),
@@ -419,7 +401,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 },
                 child: _statBadge('FOLLOWERS', _stats['followers']!),
               ),
-              Container(width: 2, height: 30, color: Colors.white24),
+              Container(width: 2, height: 30, color: Colors.black12),
               GestureDetector(
                 onTap: () {
                   Navigator.push(
@@ -456,7 +438,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         Text(
           label,
           style: const TextStyle(
-            color: Colors.white54,
+            color: Colors.black54,
             fontSize: 10,
             fontWeight: FontWeight.w900,
             letterSpacing: 0.5,
@@ -492,13 +474,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _statCard(IconData icon, String label, int count) {
-    return Container(
+    return NesContainer(
       padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 12),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1F1F1F),
-        border: Border.all(color: Colors.black, width: 3),
-        boxShadow: const [BoxShadow(color: Colors.black, offset: Offset(4, 4))],
-      ),
       child: Column(
         children: [
           Icon(icon, color: const Color(0xFF17C964), size: 28),
@@ -506,7 +483,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           Text(
             count.toString(),
             style: const TextStyle(
-              color: Colors.white,
+              color: Colors.black,
               fontSize: 20,
               fontWeight: FontWeight.w900,
             ),
@@ -515,7 +492,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           Text(
             label,
             style: const TextStyle(
-              color: Colors.white54,
+              color: Colors.black54,
               fontSize: 9,
               fontWeight: FontWeight.bold,
             ),
@@ -528,24 +505,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
   //화현이: 본인 게시글 그리드 빌더
   Widget _buildPostsGrid() {
     if (_myPosts.isEmpty) {
-      return Container(
-        margin: const EdgeInsets.symmetric(horizontal: 20),
+      return NesContainer(
         padding: const EdgeInsets.all(40),
-        decoration: BoxDecoration(
-          color: const Color(0xFF1F1F1F),
-          border: Border.all(color: Colors.black, width: 3),
-          boxShadow: const [
-            BoxShadow(color: Colors.black, offset: Offset(6, 6)),
-          ],
-        ),
         child: Column(
           children: const [
-            Icon(Pixel.file, color: Colors.white24, size: 48),
+            Icon(Pixel.file, color: Colors.black26, size: 48),
             SizedBox(height: 16),
             Text(
               '작성한 게시글이 없습니다',
               style: TextStyle(
-                color: Colors.white38,
+                color: Colors.black38,
                 fontSize: 16,
                 fontWeight: FontWeight.w900,
               ),
@@ -624,7 +593,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       },
       child: Container(
         decoration: BoxDecoration(
-          color: const Color(0xFF1F1F1F),
+          color: const Color(0xFFF0F0F0),
           border: Border.all(color: Colors.black, width: 2),
         ),
         child: Stack(
@@ -637,10 +606,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 fit: BoxFit.cover,
                 errorBuilder: (context, error, stackTrace) {
                   return Container(
-                    color: const Color(0xFF2A2A2A),
+                    color: Colors.white,
                     child: const Icon(
                       Pixel.image,
-                      color: Colors.white24,
+                      color: Colors.black26,
                       size: 32,
                     ),
                   );
@@ -648,8 +617,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
               )
             else
               Container(
-                color: const Color(0xFF2A2A2A),
-                child: const Icon(Pixel.file, color: Colors.white24, size: 32),
+                color: Colors.white,
+                child: const Icon(Pixel.file, color: Colors.black26, size: 32),
               ),
 
             // 좋아요 & 댓글 오버레이 (아이콘 크기 16px로 확대)

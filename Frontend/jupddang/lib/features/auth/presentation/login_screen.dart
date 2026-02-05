@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:nes_ui/nes_ui.dart';
 import '../../../services/auth_service.dart';
 import '../../home/presentation/main_screen.dart';
 import '../../../widgets/pixel_button.dart';
+import '../../../widgets/nes_input_field.dart';
 import 'package:pixelarticons/pixelarticons.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -22,9 +24,11 @@ class _LoginScreenState extends State<LoginScreen> {
     final pw = _pwController.text.trim();
 
     if (id.isEmpty || pw.isEmpty) {
-      ScaffoldMessenger.of(
+      NesSnackbar.show(
         context,
-      ).showSnackBar(const SnackBar(content: Text('아이디와 비밀번호를 입력해주세요.')));
+        text: '아이디와 비밀번호를 입력해주세요.',
+        type: NesSnackbarType.warning,
+      );
       return;
     }
 
@@ -46,8 +50,10 @@ class _LoginScreenState extends State<LoginScreen> {
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('로그인 실패! 아이디나 비밀번호를 확인해주세요.')),
+      NesSnackbar.show(
+        context,
+        text: '로그인 실패! 아이디나 비밀번호를 확인해주세요.',
+        type: NesSnackbarType.error,
       );
     } finally {
       if (mounted) {
@@ -60,29 +66,33 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
     return Scaffold(
+      backgroundColor: Theme.of(context).colorScheme.background,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 28.0, vertical: 40.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              IconButton(
+                icon: const Icon(Pixel.arrowleft, color: Colors.black),
+                onPressed: () => Navigator.pop(context),
+              ),
+              const SizedBox(height: 20),
               const Text(
                 'WELCOME BACK!',
                 style: TextStyle(
                   fontSize: 28,
                   fontWeight: FontWeight.w900,
                   letterSpacing: 2,
+                  color: Colors.black,
                 ),
               ),
               const SizedBox(height: 12),
               Text(
                 'Please sign in to continue.',
                 style: TextStyle(
-                  color: isDark ? Colors.white70 : Colors.black54,
+                  color: Colors.black87,
                   fontSize: 14,
                   letterSpacing: 1.0,
                 ),
@@ -90,25 +100,21 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: 56),
 
               // ID 입력
-              TextField(
+              NesInputField(
                 controller: _idController,
-                decoration: const InputDecoration(
-                  labelText: '아이디',
-                  prefixIcon: Icon(Pixel.user),
-                ),
+                label: '아이디',
+                prefixIcon: Pixel.user,
                 keyboardType: TextInputType.emailAddress,
                 textInputAction: TextInputAction.next,
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 24),
 
               // PW 입력
-              TextField(
+              NesInputField(
                 controller: _pwController,
+                label: '비밀번호',
+                prefixIcon: Pixel.lock,
                 obscureText: true,
-                decoration: const InputDecoration(
-                  labelText: '비밀번호',
-                  prefixIcon: Icon(Pixel.lock),
-                ),
                 textInputAction: TextInputAction.done,
                 onSubmitted: (_) => _login(),
               ),
@@ -120,8 +126,6 @@ class _LoginScreenState extends State<LoginScreen> {
                 isPulse: true,
                 onPressed: _isLoading ? null : _login,
               ),
-
-              // [Removed] Guest Mode Button
             ],
           ),
         ),

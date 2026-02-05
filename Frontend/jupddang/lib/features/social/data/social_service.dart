@@ -52,9 +52,10 @@ class SocialService {
   // --- SNS (Posts) Domain ---
 
   // 전체 게시글 조회
-  Future<List<dynamic>> getPosts() async {
+  Future<List<dynamic>> getPosts({bool allPosts = false}) async {
     try {
-      final response = await _apiClient.dio.get('/posts');
+      final endpoint = allPosts ? '/posts/all' : '/posts';
+      final response = await _apiClient.dio.get(endpoint);
       if (response.data is List) {
         return response.data as List<dynamic>;
       }
@@ -75,6 +76,20 @@ class SocialService {
       return [];
     } catch (e) {
       print('Get My Posts Error: $e');
+      rethrow;
+    }
+  }
+
+  // 내 댓글 조회
+  Future<List<dynamic>> getMyComments() async {
+    try {
+      final response = await _apiClient.dio.get('/posts/mycomments');
+      if (response.data is List) {
+        return response.data as List<dynamic>;
+      }
+      return [];
+    } catch (e) {
+      print('Get My Comments Error: $e');
       rethrow;
     }
   }

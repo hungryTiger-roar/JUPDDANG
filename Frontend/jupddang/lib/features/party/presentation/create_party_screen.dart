@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:nes_ui/nes_ui.dart';
 import 'package:pixelarticons/pixelarticons.dart';
 import '../data/party_service.dart';
-import '../../../widgets/pixel_button.dart';
 import 'party_room_screen.dart';
 
 class CreatePartyScreen extends StatefulWidget {
@@ -59,7 +59,7 @@ class _CreatePartyScreenState extends State<CreatePartyScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF141414),
+      backgroundColor: Colors.white,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(20),
@@ -71,18 +71,12 @@ class _CreatePartyScreenState extends State<CreatePartyScreen> {
                 children: [
                   GestureDetector(
                     onTap: () => Navigator.pop(context),
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF1F1F1F),
-                        border: Border.all(color: Colors.black, width: 3),
-                        boxShadow: const [
-                          BoxShadow(color: Colors.black, offset: Offset(4, 4)),
-                        ],
-                      ),
+                    child: NesButton(
+                      type: NesButtonType.normal,
+                      onPressed: () => Navigator.pop(context),
                       child: const Icon(
                         Pixel.arrowleft,
-                        color: Colors.white,
+                        color: Colors.black,
                         size: 24,
                       ),
                     ),
@@ -91,7 +85,7 @@ class _CreatePartyScreenState extends State<CreatePartyScreen> {
                   const Text(
                     'CREATE ROOM',
                     style: TextStyle(
-                      color: Colors.white,
+                      color: Colors.black,
                       fontSize: 20,
                       fontWeight: FontWeight.w900,
                       letterSpacing: 1.5,
@@ -108,25 +102,29 @@ class _CreatePartyScreenState extends State<CreatePartyScreen> {
               const Text(
                 'ROOM NAME',
                 style: TextStyle(
-                  color: Colors.white70,
+                  color: Colors.black54,
                   fontSize: 12,
                   fontWeight: FontWeight.w900,
                   letterSpacing: 1.2,
                 ),
               ),
               const SizedBox(height: 8),
-              Container(
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.white24, width: 2),
-                ),
+              const SizedBox(height: 8),
+              NesContainer(
+                padding: EdgeInsets.zero,
                 child: TextFormField(
                   controller: _nameController,
-                  style: const TextStyle(color: Colors.white, fontSize: 18),
+                  style: const TextStyle(
+                    color: Colors.black,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    fontFamily: 'NeoDunggeunmo',
+                  ),
                   decoration: const InputDecoration(
                     hintText: '방 이름을 입력하세요',
-                    hintStyle: TextStyle(color: Colors.white38),
+                    hintStyle: TextStyle(color: Colors.black38),
                     filled: true,
-                    fillColor: Color(0xFF1F1F1F),
+                    fillColor: Color(0xFFF0F0F0),
                     border: InputBorder.none,
                     contentPadding: EdgeInsets.all(16),
                   ),
@@ -137,33 +135,30 @@ class _CreatePartyScreenState extends State<CreatePartyScreen> {
               const SizedBox(height: 32),
 
               // 설명
-              Container(
+              // 설명
+              NesContainer(
                 padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF1F1F1F),
-                  border: Border.all(color: Colors.white24, width: 2),
-                ),
                 child: const Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
                       children: [
-                        Icon(Pixel.infobox, color: Colors.white70, size: 16),
+                        Icon(Pixel.infobox, color: Colors.black54, size: 16),
                         SizedBox(width: 8),
                         Text(
                           '방 생성 시 초대 코드가 자동으로 생성됩니다',
-                          style: TextStyle(color: Colors.white70, fontSize: 12),
+                          style: TextStyle(color: Colors.black54, fontSize: 12),
                         ),
                       ],
                     ),
                     SizedBox(height: 8),
                     Row(
                       children: [
-                        Icon(Pixel.users, color: Colors.white70, size: 16),
+                        Icon(Pixel.users, color: Colors.black54, size: 16),
                         SizedBox(width: 8),
                         Text(
-                          '최대 4명까지 함께 플로깅할 수 있어요',
-                          style: TextStyle(color: Colors.white70, fontSize: 12),
+                          '최대 6명까지 함께 플로깅할 수 있어요',
+                          style: TextStyle(color: Colors.black54, fontSize: 12),
                         ),
                       ],
                     ),
@@ -176,10 +171,16 @@ class _CreatePartyScreenState extends State<CreatePartyScreen> {
               // 생성 버튼
               SizedBox(
                 width: double.infinity,
-                child: PixelButton(
-                  text: _creating ? 'CREATING...' : 'CREATE ROOM',
+                child: NesButton(
+                  type: NesButtonType.success,
                   onPressed: _creating ? null : _createParty,
-                  height: 56,
+                  child: Text(
+                    _creating ? 'CREATING...' : 'CREATE ROOM',
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ),
               ),
 

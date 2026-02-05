@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'profile_screen.dart';
+import 'package:nes_ui/nes_ui.dart';
 
 import '../../../services/auth_service.dart';
 
@@ -67,20 +68,21 @@ class _SearchScreenState extends State<SearchScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF141414),
+      backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
           onPressed: () => Navigator.pop(context),
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          icon: const Icon(Icons.arrow_back, color: Colors.black),
         ),
         title: const Text(
-          '유저 검색',
+          '계정 검색',
           style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-            fontSize: 18,
+            color: Colors.black,
+            fontWeight: FontWeight.w900,
+            fontSize: 24,
+            letterSpacing: 2.0,
           ),
         ),
       ),
@@ -91,35 +93,49 @@ class _SearchScreenState extends State<SearchScreen> {
           children: [
             Container(
               decoration: BoxDecoration(
-                color: const Color(0xFF1F1F1F),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.white24),
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(
+                  0,
+                ), // Pixel style usually sharp or slight radius
+                border: Border.all(color: Colors.black, width: 3),
+                boxShadow: const [
+                  BoxShadow(color: Colors.black, offset: Offset(4, 4)),
+                ],
               ),
               child: TextField(
                 controller: _searchController,
-                style: const TextStyle(color: Colors.white),
+                cursorColor: const Color(0xFF17C964),
+                style: const TextStyle(
+                  color: Colors.black,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  fontFamily: 'NeoDunggeunmo',
+                ),
                 decoration: InputDecoration(
-                  hintText: '아이디를 입력하세요',
-                  hintStyle: const TextStyle(color: Colors.white38),
+                  hintText: '아이디를 입력해주세요.',
+                  hintStyle: const TextStyle(color: Colors.black38),
                   border: InputBorder.none,
-                  prefixIcon: const Icon(Icons.search, color: Colors.white54),
+                  prefixIcon: const Icon(
+                    Icons.search,
+                    color: Colors.black54,
+                    size: 32,
+                  ),
                   suffixIcon: _searchController.text.isNotEmpty
                       ? IconButton(
-                    icon: const Icon(Icons.clear, color: Colors.white54),
-                    onPressed: () {
-                      _searchController.clear();
-                      setState(() {}); // X 버튼 누르면 화면 갱신해서 아이콘 숨기기
-                    },
-                  )
+                          icon: const Icon(Icons.clear, color: Colors.black54),
+                          onPressed: () {
+                            _searchController.clear();
+                            setState(() {}); // X 버튼 누르면 화면 갱신해서 아이콘 숨기기
+                          },
+                        )
                       : null,
                   contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
+                    horizontal: 20,
                     vertical: 14,
                   ),
                 ),
                 onChanged: (value) => setState(() {}),
-                // 글자 칠 때마다 상태 갱신 (X버튼 처리용)
-                onSubmitted: (_) => _onSearch(), // 키보드 엔터 누르면 검색
+                onSubmitted: (_) => _onSearch(),
               ),
             ),
 
@@ -142,6 +158,7 @@ class _SearchScreenState extends State<SearchScreen> {
                       style: const TextStyle(
                         color: Colors.redAccent,
                         fontSize: 13,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
                   ],
@@ -150,38 +167,31 @@ class _SearchScreenState extends State<SearchScreen> {
 
             const SizedBox(height: 24),
 
-            // 3. 검색 버튼
+            // 3. 검색 버튼 (NES Button)
             SizedBox(
               width: double.infinity,
               height: 52,
-              child: ElevatedButton(
+              child: NesButton(
+                type: NesButtonType.success,
                 onPressed: (_isLoading || _searchController.text.isEmpty)
-                    ? null // 로딩 중이거나 빈칸이면 버튼 비활성화
+                    ? null
                     : _onSearch,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF17C964), // 줍땅 시그니처 초록색
-                  foregroundColor: Colors.black,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  disabledBackgroundColor: const Color(0xFF2C2C2C),
-                ),
                 child: _isLoading
                     ? const SizedBox(
-                  width: 24,
-                  height: 24,
-                  child: CircularProgressIndicator(
-                    color: Colors.white,
-                    strokeWidth: 2,
-                  ),
-                )
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(
+                          color: Colors.black,
+                          strokeWidth: 2,
+                        ),
+                      )
                     : const Text(
-                  '검색',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+                        'SEARCH',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
               ),
             ),
           ],

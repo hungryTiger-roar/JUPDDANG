@@ -17,6 +17,7 @@ public class AccountResponse {
     private String nickname;
     String profileImage;
     String intro;
+    private String color;
     private long totalScore;
     private String tier;
     private LocalDateTime createdAt;
@@ -25,19 +26,23 @@ public class AccountResponse {
     private long followingCount;
 
     public static AccountResponse from(Account account, boolean isFollowing, long followers, long followings) {
+        String color = account.getColor();
+        if (color == null || color.isBlank()) {
+            color = "#111111";
+        }
         return new AccountResponse(
                 account.getUserId(),
                 account.getEmail(),
                 account.getNickname(),
                 account.getProfileImage(),
                 account.getIntro(),
+                color,
                 account.getTotalScore(),
                 account.getTier(),
                 account.getCreatedAt(),
                 isFollowing,
                 followers,
-                followings
-        );
+                followings);
     }
 
     public static AccountResponse from(Account account) {

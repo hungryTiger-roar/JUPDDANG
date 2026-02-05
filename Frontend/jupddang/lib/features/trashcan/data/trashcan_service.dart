@@ -1,11 +1,11 @@
-import 'package:dio/dio.dart';
 import '../../../../core/network/api_client.dart';
 import 'package:jupddang/features/trashcan/models/trashcan_model.dart';
 
 class TrashcanService {
   final ApiClient _apiClient;
 
-  TrashcanService({ApiClient? apiClient}) : _apiClient = apiClient ?? ApiClient();
+  TrashcanService({ApiClient? apiClient})
+    : _apiClient = apiClient ?? ApiClient();
 
   /// 영역 내 쓰레기통 조회
   /// GET /api/v1/trashcans
@@ -17,7 +17,7 @@ class TrashcanService {
   }) async {
     try {
       final response = await _apiClient.dio.get(
-        '/v1/trashcans',
+        '/api/v1/trashcans',
         queryParameters: {
           'minLatitude': minLat,
           'maxLatitude': maxLat,
@@ -45,14 +45,17 @@ class TrashcanService {
     TrashcanCreateRequest request,
   ) async {
     try {
+      print('Creating trashcan with data: ${request.toJson()}');
       final response = await _apiClient.dio.post(
-        '/v1/trashcans',
+        '/api/v1/trashcans',
         data: request.toJson(),
       );
 
       return TrashcanDetailModel.fromJson(response.data);
-    } catch (e) {
+    } catch (e, stackTrace) {
       print('Create Trashcan Error: $e');
+      print('Request data: ${request.toJson()}');
+      print('Stack trace: $stackTrace');
       rethrow;
     }
   }
@@ -62,7 +65,7 @@ class TrashcanService {
   Future<TrashcanDetailModel> verifyTrashcan(int trashcanId) async {
     try {
       final response = await _apiClient.dio.post(
-        '/v1/trashcans/$trashcanId/verify',
+        '/api/v1/trashcans/$trashcanId/verify',
       );
 
       return TrashcanDetailModel.fromJson(response.data);
@@ -82,7 +85,7 @@ class TrashcanService {
       }
 
       final response = await _apiClient.dio.get(
-        '/v1/trashcans/my',
+        '/api/v1/trashcans/my',
         queryParameters: queryParams,
       );
 

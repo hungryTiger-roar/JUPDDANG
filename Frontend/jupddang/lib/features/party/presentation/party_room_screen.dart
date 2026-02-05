@@ -1,12 +1,12 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:nes_ui/nes_ui.dart';
 import 'package:pixelarticons/pixelarticons.dart';
 import 'package:jupddang/features/party/models/party_models.dart';
 import '../data/party_service.dart';
 import '../../../services/auth_service.dart';
 import '../data/party_socket_service.dart';
-import '../../../widgets/pixel_button.dart';
 import '../../../widgets/pixel_character.dart';
 import '../../plogging/presentation/map_screen.dart';
 
@@ -123,10 +123,74 @@ class _PartyRoomScreenState extends State<PartyRoomScreen> {
     return colors[userId.hashCode % colors.length];
   }
 
+  // 파티 인원수에 따른 보너스 배율 계산
+  double _getBonusMultiplier(int memberCount) {
+    if (memberCount < 2) return 1.0;
+    return 1.0 + (memberCount - 1) * 0.2;
+  }
+
+  // 보너스 카드 위젯 (NES UI 스타일)
+  Widget _buildBonusCard() {
+    final memberCount = _party?.currentMembers ?? 1;
+    final multiplier = _getBonusMultiplier(memberCount);
+    final bonusPercent = ((multiplier - 1.0) * 100).toInt();
+
+    return NesContainer(
+      padding: const EdgeInsets.all(12),
+      backgroundColor: const Color(0xFFFFF9E6),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(
+                Pixel.coin,
+                color: Color(0xFFFBBF24),
+                size: 18,
+              ),
+              const SizedBox(width: 8),
+              const Text(
+                'PARTY BONUS',
+                style: TextStyle(
+                  color: Colors.black,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              color: memberCount >= 2 ? const Color(0xFF17C964) : Colors.grey,
+              border: Border.all(color: Colors.black, width: 2),
+              boxShadow: const [
+                BoxShadow(color: Colors.black, offset: Offset(2, 2)),
+              ],
+            ),
+            child: Text(
+              memberCount >= 2
+                  ? '${memberCount}명 ▶ x${multiplier.toStringAsFixed(1)} (+$bonusPercent%)'
+                  : '2명 이상 참여시 보너스!',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 12,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF141414),
+      backgroundColor: Colors.white,
       body: _loading
           ? const Center(
               child: CircularProgressIndicator(color: Color(0xFF17C964)),
@@ -141,21 +205,12 @@ class _PartyRoomScreenState extends State<PartyRoomScreen> {
                       children: [
                         GestureDetector(
                           onTap: () => Navigator.pop(context),
-                          child: Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF1F1F1F),
-                              border: Border.all(color: Colors.black, width: 3),
-                              boxShadow: const [
-                                BoxShadow(
-                                  color: Colors.black,
-                                  offset: Offset(4, 4),
-                                ),
-                              ],
-                            ),
+                          child: NesButton(
+                            type: NesButtonType.normal,
+                            onPressed: () => Navigator.pop(context),
                             child: const Icon(
                               Pixel.arrowleft,
-                              color: Colors.white,
+                              color: Colors.black,
                               size: 24,
                             ),
                           ),
@@ -164,7 +219,7 @@ class _PartyRoomScreenState extends State<PartyRoomScreen> {
                         Text(
                           _party?.name.toUpperCase() ?? 'PARTY',
                           style: const TextStyle(
-                            color: Colors.white,
+                            color: Colors.black,
                             fontSize: 18,
                             fontWeight: FontWeight.w900,
                             letterSpacing: 1.5,
@@ -178,15 +233,8 @@ class _PartyRoomScreenState extends State<PartyRoomScreen> {
                     const SizedBox(height: 24),
 
                     // 초대 코드 카드
-                    Container(
+                    NesContainer(
                       padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF1F1F1F),
-                        border: Border.all(
-                          color: const Color(0xFF17C964),
-                          width: 2,
-                        ),
-                      ),
                       child: Row(
                         children: [
                           const Icon(
@@ -198,7 +246,7 @@ class _PartyRoomScreenState extends State<PartyRoomScreen> {
                           const Text(
                             'Invite Code:',
                             style: TextStyle(
-                              color: Colors.white70,
+                              color: Colors.black54,
                               fontSize: 14,
                             ),
                           ),
@@ -218,14 +266,13 @@ class _PartyRoomScreenState extends State<PartyRoomScreen> {
                               Clipboard.setData(
                                 ClipboardData(text: _party?.inviteCode ?? ''),
                               );
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('초대 코드가 복사되었습니다'),
-                                  duration: Duration(seconds: 1),
-                                ),
+                              NesSnackbar.show(
+                                context,
+                                text: '초대 코드가 복사되었습니다',
+                                type: NesSnackbarType.success,
                               );
                             },
-                            icon: const Icon(Pixel.copy, color: Colors.white54),
+                            icon: const Icon(Pixel.copy, color: Colors.black45),
                           ),
                         ],
                       ),
@@ -239,7 +286,7 @@ class _PartyRoomScreenState extends State<PartyRoomScreen> {
                         const Text(
                           'MEMBERS',
                           style: TextStyle(
-                            color: Colors.white,
+                            color: Colors.black,
                             fontSize: 16,
                             fontWeight: FontWeight.w900,
                             letterSpacing: 1.5,
@@ -257,6 +304,11 @@ class _PartyRoomScreenState extends State<PartyRoomScreen> {
                       ],
                     ),
 
+                    const SizedBox(height: 12),
+
+                    // 파티 보너스 배율 표시
+                    _buildBonusCard(),
+
                     const SizedBox(height: 16),
 
                     // 참가자 목록
@@ -268,108 +320,92 @@ class _PartyRoomScreenState extends State<PartyRoomScreen> {
                           final isCurrentUser =
                               member.userId == AuthService.userId;
 
-                          return Container(
-                            margin: const EdgeInsets.only(bottom: 12),
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF1F1F1F),
-                              border: Border.all(
-                                color: isCurrentUser
-                                    ? const Color(0xFF17C964)
-                                    : Colors.black,
-                                width: 2,
-                              ),
-                              boxShadow: const [
-                                BoxShadow(
-                                  color: Colors.black,
-                                  offset: Offset(4, 4),
-                                ),
-                              ],
-                            ),
-                            child: Row(
-                              children: [
-                                // 아바타
-                                Container(
-                                  width: 48,
-                                  height: 48,
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFF141414),
-                                    border: Border.all(
-                                      color: Colors.black,
-                                      width: 2,
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: NesContainer(
+                              padding: const EdgeInsets.all(16),
+                              backgroundColor: const Color(0xFFF0F0F0),
+                              child: Row(
+                                children: [
+                                  // 아바타
+                                  Container(
+                                    width: 48,
+                                    height: 48,
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      border: Border.all(
+                                        color: Colors.black,
+                                        width: 2,
+                                      ),
+                                    ),
+                                    child: Center(
+                                      child: PixelCharacter(
+                                        size: 32,
+                                        color: _getColorForUser(member.userId),
+                                      ),
                                     ),
                                   ),
-                                  child: Center(
-                                    child: PixelCharacter(
-                                      size: 32,
-                                      color: _getColorForUser(member.userId),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 16),
-                                // 유저 정보
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Row(
-                                        children: [
-                                          Text(
-                                            member.userId,
-                                            style: const TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.bold,
+                                  const SizedBox(width: 16),
+                                  // 유저 정보
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            Text(
+                                              member.userId,
+                                              style: const TextStyle(
+                                                color: Colors.black,
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.bold,
+                                              ),
                                             ),
-                                          ),
-                                          if (isCurrentUser) ...[
-                                            const SizedBox(width: 8),
-                                            Container(
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                    horizontal: 6,
-                                                    vertical: 2,
+                                            if (isCurrentUser) ...[
+                                              const SizedBox(width: 8),
+                                              NesContainer(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 6,
+                                                      vertical: 2,
+                                                    ),
+                                                backgroundColor: const Color(
+                                                  0xFF17C964,
+                                                ),
+                                                child: const Text(
+                                                  'YOU',
+                                                  style: TextStyle(
+                                                    color: Colors.black,
+                                                    fontSize: 10,
+                                                    fontWeight: FontWeight.w900,
                                                   ),
-                                              decoration: BoxDecoration(
-                                                color: const Color(0xFF17C964),
-                                                border: Border.all(
-                                                  color: Colors.black,
-                                                  width: 1,
                                                 ),
                                               ),
-                                              child: const Text(
-                                                'YOU',
-                                                style: TextStyle(
-                                                  color: Colors.black,
-                                                  fontSize: 10,
-                                                  fontWeight: FontWeight.w900,
-                                                ),
+                                            ],
+                                            if (member.isLeader) ...[
+                                              const SizedBox(width: 8),
+                                              const Icon(
+                                                Pixel.trophy,
+                                                color: Color(0xFFFBBF24),
+                                                size: 16,
                                               ),
-                                            ),
+                                            ],
                                           ],
-                                          if (member.isLeader) ...[
-                                            const SizedBox(width: 8),
-                                            const Icon(
-                                              Pixel.trophy,
-                                              color: Color(0xFFFBBF24),
-                                              size: 16,
-                                            ),
-                                          ],
-                                        ],
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        member.isLeader ? 'Leader' : 'Member',
-                                        style: const TextStyle(
-                                          color: Colors.white54,
-                                          fontSize: 12,
                                         ),
-                                      ),
-                                    ],
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          member.isLeader ? 'Leader' : 'Member',
+                                          style: const TextStyle(
+                                            color: Colors.white54,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
                           );
                         },
@@ -382,19 +418,21 @@ class _PartyRoomScreenState extends State<PartyRoomScreen> {
                     if (_party?.isCurrentUserLeader == true)
                       SizedBox(
                         width: double.infinity,
-                        child: PixelButton(
-                          text: _starting ? 'STARTING...' : 'START PLOGGING',
+                        child: NesButton(
+                          type: NesButtonType.success,
                           onPressed: _starting ? null : _moveToMapScreen,
-                          height: 56,
+                          child: Text(
+                            _starting ? 'STARTING...' : 'START PLOGGING',
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         ),
                       )
                     else
-                      Container(
+                      NesContainer(
                         padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF1F1F1F),
-                          border: Border.all(color: Colors.white24, width: 2),
-                        ),
                         child: const Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
@@ -403,7 +441,7 @@ class _PartyRoomScreenState extends State<PartyRoomScreen> {
                             Text(
                               'Waiting for leader to start...',
                               style: TextStyle(
-                                color: Colors.white54,
+                                color: Colors.black54,
                                 fontSize: 14,
                               ),
                             ),

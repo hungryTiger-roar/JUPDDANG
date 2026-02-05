@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:nes_ui/nes_ui.dart';
 import '../../../services/auth_service.dart';
 import 'package:jupddang/features/ranking/models/ranking_model.dart';
 import '../data/ranking_service.dart';
@@ -35,7 +36,7 @@ class _RankingScreenState extends State<RankingScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF141414), // Dark background for game feel
+      backgroundColor: Colors.white,
       body: SafeArea(
         child: Column(
           children: [
@@ -56,7 +57,7 @@ class _RankingScreenState extends State<RankingScreen> {
                     return Center(
                       child: Text(
                         '에러 발생: ${snapshot.error}',
-                        style: const TextStyle(color: Colors.white70),
+                        style: const TextStyle(color: Colors.black54),
                       ),
                     );
                   } else if (!snapshot.hasData ||
@@ -64,14 +65,14 @@ class _RankingScreenState extends State<RankingScreen> {
                     return const Center(
                       child: Text(
                         '데이터가 없습니다.',
-                        style: const TextStyle(color: Colors.white54),
+                        style: const TextStyle(color: Colors.black54),
                       ),
                     );
                   }
 
                   final topRankers = snapshot.data!.topRankers; // 1,2,3등
                   final myRankWindow = snapshot.data!.myRankWindow; // 내 주변 랭킹
-                  
+
                   return RefreshIndicator(
                     onRefresh: () async => _loadRanking(),
                     color: const Color(0xFF17C964),
@@ -87,15 +88,24 @@ class _RankingScreenState extends State<RankingScreen> {
                                 const SizedBox(height: 10),
                               ],
                               // 1등과 4등 사이가 멀면 점선 표시
-                              if (myRankWindow.isNotEmpty && myRankWindow.first.rank > 4)
+                              if (myRankWindow.isNotEmpty &&
+                                  myRankWindow.first.rank > 4)
                                 const Padding(
                                   padding: EdgeInsets.symmetric(vertical: 8),
-                                  child: Icon(Icons.more_vert, color: Colors.white24),
+                                  child: Icon(
+                                    Icons.more_vert,
+                                    color: Colors.black26,
+                                  ),
                                 ),
 
                               // 내 주변 리스트
-                              ...myRankWindow.map((ranker) => _buildRankItem(ranker)),
-                              
+                              ...myRankWindow.map(
+                                (ranker) => Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+                                  child: _buildRankItem(ranker),
+                                ),
+                              ),
+
                               // 리스트가 너무 짧을 때를 대비한 여백
                               const SizedBox(height: 20),
                             ],
@@ -122,7 +132,7 @@ class _RankingScreenState extends State<RankingScreen> {
           const Text(
             'RANKING',
             style: TextStyle(
-              color: Colors.white,
+              color: Colors.black,
               fontSize: 24,
               fontWeight: FontWeight.w900,
               letterSpacing: 2.0,
@@ -131,7 +141,7 @@ class _RankingScreenState extends State<RankingScreen> {
           const SizedBox(height: 4),
           Text(
             _isTotal ? 'TOTAL BEST PLAYERS' : 'MONTHLY BEST PLAYERS',
-            style: const TextStyle(color: Colors.white70, fontSize: 11),
+            style: const TextStyle(color: Colors.black54, fontSize: 11),
           ),
         ],
       ),
@@ -162,24 +172,14 @@ class _RankingScreenState extends State<RankingScreen> {
   }
 
   Widget _filterChip(String label, bool isSelected, VoidCallback onTap) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF17C964) : const Color(0xFF1F1F1F),
-          border: Border.all(color: Colors.black, width: 2.0),
-          boxShadow: isSelected
-              ? []
-              : const [BoxShadow(color: Colors.black, offset: Offset(2, 2))],
-        ),
+    return SizedBox(
+      height: 48,
+      child: NesButton(
+        type: isSelected ? NesButtonType.success : NesButtonType.normal,
+        onPressed: onTap,
         child: Text(
           label,
-          style: TextStyle(
-            color: isSelected ? Colors.black : Colors.white,
-            fontWeight: FontWeight.w900,
-            fontSize: 11,
-          ),
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
       ),
     );
@@ -222,23 +222,17 @@ class _RankingScreenState extends State<RankingScreen> {
                 Text(
                   ranker.nickname.toUpperCase(),
                   style: const TextStyle(
-                    color: Colors.white,
+                    color: Colors.black,
                     fontWeight: FontWeight.w900,
                     fontSize: 9,
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 4),
-                Container(
+                NesContainer(
                   height: height,
-                  margin: const EdgeInsets.symmetric(horizontal: 4),
-                  decoration: BoxDecoration(
-                    color: pedestalColor,
-                    border: Border.all(color: Colors.black, width: 2.5),
-                    boxShadow: const [
-                      BoxShadow(color: Colors.black, offset: Offset(3, 3)),
-                    ],
-                  ),
+                  padding: const EdgeInsets.all(8),
+                  backgroundColor: pedestalColor,
                   child: Center(
                     child: Text(
                       '${ranker.rank}',
@@ -263,17 +257,10 @@ class _RankingScreenState extends State<RankingScreen> {
 
   Widget _buildRankItem(Ranker ranker) {
     final isMe = ranker.userId == currentUserId;
-    
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+
+    return NesContainer(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: BoxDecoration(
-        color: isMe ? Colors.black : const Color(0xFF1F1F1F),
-        border: Border.all(
-            color: isMe ? const Color(0xFF17C964) : Colors.black,
-            width: 3.0),
-        boxShadow: const [BoxShadow(color: Colors.black, offset: Offset(4, 4))],
-      ),
+      backgroundColor: isMe ? const Color(0xFFF0F0F0) : Colors.white,
       child: Row(
         children: [
           SizedBox(
@@ -281,7 +268,7 @@ class _RankingScreenState extends State<RankingScreen> {
             child: Text(
               '${ranker.rank}',
               style: TextStyle(
-                color: isMe ? const Color(0xFF17C964) : Colors.white,
+                color: isMe ? const Color(0xFF17C964) : Colors.black,
                 fontWeight: FontWeight.w900,
                 fontSize: 16,
                 fontStyle: isMe ? FontStyle.italic : FontStyle.normal,
@@ -291,16 +278,16 @@ class _RankingScreenState extends State<RankingScreen> {
           const SizedBox(width: 8),
           // 내 캐릭터만 핑크색으로 포인트 & 움직임 효과!
           PixelCharacter(
-              size: 30,
-              color: isMe ? Colors.pinkAccent : Colors.blueGrey,
-              isMoving: isMe
+            size: 30,
+            color: isMe ? Colors.pinkAccent : Colors.blueGrey,
+            isMoving: isMe,
           ),
           const SizedBox(width: 16),
           Expanded(
             child: Text(
               ranker.nickname.toUpperCase(),
               style: TextStyle(
-                color: isMe ? const Color(0xFF17C964) : Colors.white,
+                color: isMe ? const Color(0xFF17C964) : Colors.black,
                 fontWeight: FontWeight.w900,
                 fontSize: 14,
               ),
@@ -315,50 +302,6 @@ class _RankingScreenState extends State<RankingScreen> {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildMyRank(Ranker myRanking) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
-      decoration: const BoxDecoration(
-        color: Color(0xFF1F1F1F),
-        border: Border(top: BorderSide(color: Colors.black, width: 4)),
-      ),
-      child: SafeArea(
-        top: false,
-        child: Row(
-          children: [
-            const Text(
-              'MY RANK',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w900,
-                fontSize: 14,
-                letterSpacing: 1.2,
-              ),
-            ),
-            const Spacer(),
-            Text(
-              '#${myRanking.rank}',
-              style: const TextStyle(
-                color: Color(0xFFFFD700),
-                fontWeight: FontWeight.w900,
-                fontSize: 20,
-              ),
-            ),
-            const SizedBox(width: 16),
-            Text(
-              '${myRanking.score} P',
-              style: const TextStyle(
-                color: Color(0xFF17C964),
-                fontWeight: FontWeight.w900,
-                fontSize: 16,
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }

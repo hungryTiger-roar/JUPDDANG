@@ -23,7 +23,7 @@ class CommunityScreen extends StatefulWidget {
   State<CommunityScreen> createState() => _CommunityScreenState();
 }
 
-class _CommunityScreenState extends State<CommunityScreen> {
+class _CommunityScreenState extends State<CommunityScreen> with RouteAware {
   final AuthService _authService = AuthService();
   final ScrollController _scrollController = ScrollController();
   final List<CommunityPost> _localPosts = [];

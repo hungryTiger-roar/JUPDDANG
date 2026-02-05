@@ -13,7 +13,10 @@ import '../../../widgets/pixel_character.dart';
 import '../../account/presentation/profile_screen.dart';
 
 class CommunityScreen extends StatefulWidget {
-  const CommunityScreen({super.key});
+  final String? focusPostId;
+  final VoidCallback? onFocusHandled;
+
+  const CommunityScreen({super.key, this.focusPostId, this.onFocusHandled});
 
   @override
   State<CommunityScreen> createState() => _CommunityScreenState();
@@ -21,12 +24,16 @@ class CommunityScreen extends StatefulWidget {
 
 class _CommunityScreenState extends State<CommunityScreen> {
   final AuthService _authService = AuthService();
+  final ScrollController _scrollController = ScrollController();
   final List<CommunityPost> _localPosts = [];
   List<CommunityPost> _remotePosts = [];
   List<AccountSummary> _accounts = [];
   bool _loadingAccounts = true;
   bool _loadingPosts = true;
   String? _errorMessage;
+  String? _pendingFocusPostId;
+  final Map<String, GlobalKey> _postKeys = {};
+  final GlobalKey cardKey = GlobalKey();
 
   // Follow & Like state
   bool _showFollowingOnly = false;
@@ -36,7 +43,28 @@ class _CommunityScreenState extends State<CommunityScreen> {
   @override
   void initState() {
     super.initState();
+    _pendingFocusPostId = widget.focusPostId;
+    if (_pendingFocusPostId != null) {
+      _showFollowingOnly = false;
+    }
     _refreshAll();
+  }
+
+  @override
+  void didUpdateWidget(covariant CommunityScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.focusPostId != null &&
+        widget.focusPostId != oldWidget.focusPostId) {
+      _pendingFocusPostId = widget.focusPostId;
+      _showFollowingOnly = false;
+      _loadPosts();
+    }
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
   }
 
   Future<void> _refreshAll() async {
@@ -84,12 +112,44 @@ class _CommunityScreenState extends State<CommunityScreen> {
         _remotePosts = posts;
         _loadingPosts = false;
       });
+      final targetId = _pendingFocusPostId;
+      if (targetId != null &&
+          !_allPosts.any((post) => post.id == targetId)) {
+        _pendingFocusPostId = null;
+        widget.onFocusHandled?.call();
+        return;
+      }
+      _focusPostIfNeeded();
     } catch (e) {
       setState(() {
         _loadingPosts = false;
         _errorMessage = '게시글 조회에 실패했습니다.';
       });
     }
+  }
+
+  void _focusPostIfNeeded() {
+    final targetId = _pendingFocusPostId;
+    if (targetId == null) return;
+    final key = _postKeys[targetId];
+    final targetContext = key?.currentContext;
+    if (targetContext == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final ctx = key?.currentContext;
+      if (ctx == null) return;
+      Scrollable.ensureVisible(
+        ctx,
+        duration: const Duration(milliseconds: 350),
+        curve: Curves.easeOut,
+        alignment: 0.1,
+      );
+      _pendingFocusPostId = null;
+      widget.onFocusHandled?.call();
+    });
+  }
+
+  GlobalKey _ensurePostKey(String postId) {
+    return _postKeys.putIfAbsent(postId, () => GlobalKey());
   }
 
   List<CommunityPost> get _allPosts {
@@ -339,6 +399,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
           onRefresh: _refreshAll,
           color: const Color(0xFF17C964),
           child: CustomScrollView(
+            controller: _scrollController,
             physics: const AlwaysScrollableScrollPhysics(),
             slivers: [
               SliverToBoxAdapter(child: _buildHeader()),
@@ -355,6 +416,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
 
   Widget _buildHeader() {
     return Padding(
+      key: cardKey,
       padding: const EdgeInsets.fromLTRB(20, 10, 20, 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -546,8 +608,14 @@ class _CommunityScreenState extends State<CommunityScreen> {
     final String currentUserId = AuthService.userId?.toString() ?? '';
     final String postUserId = post.userId?.toString() ?? '';
     final isMine = postUserId.isNotEmpty && postUserId == currentUserId;
+    final cardKey = _ensurePostKey(post.id);
+
+    if (_pendingFocusPostId == post.id) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _focusPostIfNeeded());
+    }
 
     return Padding(
+      key: cardKey,
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       child: NesContainer(
         padding: EdgeInsets.zero, // 내부 패딩을 직접 제어하므로 0으로 설정

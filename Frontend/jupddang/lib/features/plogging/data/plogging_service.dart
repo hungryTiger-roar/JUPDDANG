@@ -11,7 +11,7 @@ class PloggingService {
   PloggingService({ApiClient? apiClient}) : _apiClient = apiClient ?? ApiClient();
 
   // 플로깅 종료 및 결과 저장
-  Future<void> endPlogging({
+  Future<dynamic> endPlogging({
     required PloggingEndRequest requestData,
     required String beforeImagePath,
     required String afterImagePath,
@@ -36,6 +36,7 @@ class PloggingService {
         data: formData,
         options: Options(headers: {'userId': AuthService.userId ?? ''}),
       );
+      return response.data;
     } catch (e) {
       print('End Plogging Error: $e');
       rethrow;

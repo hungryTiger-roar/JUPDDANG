@@ -48,8 +48,13 @@ class _MainScreenState extends State<MainScreen> {
   @override
   Widget build(BuildContext context) {
     // 🎯 화면 리스트를 build 메서드 내부에서 생성 (상태 업데이트 반영)
+    final String? focusPostId =
+        _ploggingResult is String ? _ploggingResult as String? : null;
     final List<Widget> screens = [
-      CommunityScreen(),
+      CommunityScreen(
+        focusPostId: focusPostId,
+        onFocusHandled: _onPloggingResultProcessed,
+      ),
       const PartyScreen(),
       MapScreen(
         onPloggingComplete: _setPloggingResult, // 🎯 콜백 전달

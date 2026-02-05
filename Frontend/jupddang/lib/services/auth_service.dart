@@ -63,7 +63,7 @@ class AuthService {
   Future<void> deletePost(String postId) => _socialService.deletePost(postId);
 
   // --- Plogging ---
-  Future<void> endPlogging({required PloggingEndRequest requestData, required String beforeImagePath, required String afterImagePath, required String mapImagePath}) 
+  Future<dynamic> endPlogging({required PloggingEndRequest requestData, required String beforeImagePath, required String afterImagePath, required String mapImagePath}) 
       => _ploggingService.endPlogging(requestData: requestData, beforeImagePath: beforeImagePath, afterImagePath: afterImagePath, mapImagePath: mapImagePath);
       
   Future<dynamic> savePloggingTemp({required TempPloggingRequest requestData, String? beforeImagePath, String? afterImagePath, String? mapImagePath})

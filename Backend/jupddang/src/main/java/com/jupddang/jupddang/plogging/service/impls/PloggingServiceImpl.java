@@ -67,6 +67,7 @@ public class PloggingServiceImpl implements PloggingService {
     @Override
     @Transactional
     public void processLocation(String userId, LocationRequest request) {
+
         log.info("📥 위치 수신: userId={}, lat={}, lon={}", userId, request.getLat(), request.getLon());
         log.info("📦 요청 데이터: currentH3Index={}, occupyProgress={}",
                 request.getCurrentH3Index(), request.getOccupyProgress());
@@ -296,6 +297,7 @@ public class PloggingServiceImpl implements PloggingService {
                 .distance(request.distance())
                 .times(request.times())
                 .score(ploggingScore)
+                .recordName(request.recordTitle())
                 .build());
 
         int totalRaidScore = 0;
@@ -326,6 +328,9 @@ public class PloggingServiceImpl implements PloggingService {
                 .content(finalContent)  // 기록 정보 포함된 content
                 .likeCount(0)
                 .build());
+
+        // 게시글 작성 성공 이후 플로깅 기록 상태 변경
+        savedPlogging.markAsUsed();
 
         PloggingCompletedEvent event = PloggingCompletedEvent.builder()
                 .ploggingId(savedPlogging.getId())
@@ -399,6 +404,7 @@ public class PloggingServiceImpl implements PloggingService {
         // 날짜 포맷 (endTime에서 추출)
         // "2024-02-02T10:30:00" → "2024-02-02"
         String dateStr;
+
         try {
             dateStr = request.endTime()
                     .toLocalDate()
@@ -418,14 +424,15 @@ public class PloggingServiceImpl implements PloggingService {
         // 기록 정보 조합 (구분자: ·)
         return String.format("기록: %s · %s · %skm · %s · %d점",
                 recordTitle, dateStr, distanceKm, timeStr, score);
+
     }
 
     @Transactional
     public PloggingTempSaveResponse savePloggingTemp(
             String userId,
             PloggingEndRequest request,
-            MultipartFile before,  // ✅ nullable
-            MultipartFile after,   // ✅ nullable
+            MultipartFile before,  //
+            MultipartFile after,   //
             MultipartFile map) {   // 맵은 필수
 
         log.info("임시 저장 시작: userId={}", userId);

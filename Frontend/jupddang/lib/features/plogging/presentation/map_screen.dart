@@ -1418,6 +1418,11 @@ class _MapScreenState extends State<MapScreen> {
                       _summaryStat(Pixel.coin, "$_coinsGained", "POINT"),
                     ],
                   ),
+                  // 파티 모드일 때 보너스 점수 상세 표시
+                  if (widget.partyId != null) ...[
+                    const SizedBox(height: 16),
+                    _buildPartyBonusInfo(),
+                  ],
                   const SizedBox(height: 32),
                   if (_startAddress != null)
                     Padding(
@@ -1636,6 +1641,89 @@ class _MapScreenState extends State<MapScreen> {
       Text(label, style: const TextStyle(color: Colors.grey, fontSize: 8)),
     ],
   );
+
+  // 파티 보너스 점수 상세 정보 위젯 (NES UI 스타일)
+  Widget _buildPartyBonusInfo() {
+    final memberCount = _party?.members.length ?? 1;
+    final multiplier = memberCount >= 2 ? 1.0 + (memberCount - 1) * 0.2 : 1.0;
+    final bonusPoints = (_coinsGained * (multiplier - 1.0)).toInt();
+    final finalScore = (_coinsGained * multiplier).toInt();
+
+    return NesContainer(
+      backgroundColor: const Color(0xFFFFF9E6),
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Pixel.coin,
+                color: const Color(0xFFFBBF24),
+                size: 16,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'PARTY BONUS (${memberCount}명 x${multiplier.toStringAsFixed(1)})',
+                style: const TextStyle(
+                  color: Colors.black,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _bonusStatItem('BASE', '$_coinsGained'),
+              const Text('+', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+              _bonusStatItem('BONUS', '+$bonusPoints'),
+              const Text('=', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+              _bonusStatItem('TOTAL', '$finalScore', isHighlight: true),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _bonusStatItem(String label, String value, {bool isHighlight = false}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: isHighlight
+          ? BoxDecoration(
+              color: const Color(0xFF17C964),
+              border: Border.all(color: Colors.black, width: 2),
+              boxShadow: const [
+                BoxShadow(color: Colors.black, offset: Offset(2, 2)),
+              ],
+            )
+          : null,
+      child: Column(
+        children: [
+          Text(
+            value,
+            style: TextStyle(
+              color: isHighlight ? Colors.white : Colors.black87,
+              fontSize: isHighlight ? 14 : 12,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          Text(
+            label,
+            style: TextStyle(
+              color: isHighlight ? Colors.white70 : Colors.black54,
+              fontSize: 8,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _summaryLabel(String text) => Align(
     alignment: Alignment.centerLeft,

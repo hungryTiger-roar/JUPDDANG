@@ -102,6 +102,62 @@ class PartyScreen extends StatelessWidget {
                 ),
               ),
 
+              const SizedBox(height: 12),
+
+              // 파티 보너스 설명 (NES UI 스타일)
+              NesContainer(
+                backgroundColor: const Color(0xFFFFF9E6),
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(
+                          Pixel.coin,
+                          color: Color(0xFFFBBF24),
+                          size: 18,
+                        ),
+                        const SizedBox(width: 8),
+                        const Text(
+                          'PARTY BONUS',
+                          style: TextStyle(
+                            color: Colors.black,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 1,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    const Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        _BonusChip(members: '2명', bonus: 'x1.2'),
+                        _BonusChip(members: '3명', bonus: 'x1.4'),
+                        _BonusChip(members: '4명', bonus: 'x1.6'),
+                        _BonusChip(members: '5명', bonus: 'x1.8'),
+                        _BonusChip(members: '6명', bonus: 'x2.0'),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    const Center(
+                      child: Text(
+                        '▶ 인원이 많을수록 점수 UP! ◀',
+                        style: TextStyle(
+                          color: Color(0xFF17C964),
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
               const SizedBox(height: 100), // navbar 공간
             ],
           ),
@@ -157,6 +213,47 @@ class PartyScreen extends StatelessWidget {
             const Icon(Pixel.arrowright, color: Colors.black54, size: 24),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _BonusChip extends StatelessWidget {
+  final String members;
+  final String bonus;
+
+  const _BonusChip({required this.members, required this.bonus});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border.all(color: Colors.black, width: 2),
+        boxShadow: const [
+          BoxShadow(color: Colors.black, offset: Offset(2, 2)),
+        ],
+      ),
+      child: Column(
+        children: [
+          Text(
+            bonus,
+            style: const TextStyle(
+              color: Color(0xFF17C964),
+              fontSize: 11,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            members,
+            style: const TextStyle(
+              color: Colors.black54,
+              fontSize: 9,
+            ),
+          ),
+        ],
       ),
     );
   }

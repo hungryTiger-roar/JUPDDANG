@@ -66,6 +66,7 @@ class CommunityPost {
   final String id;
   final String? userId;
   final String nickname;
+  final String? profileImage; // 프로필 사진 URL
   final String content;
   final DateTime createdAt;
   final int likeCount;
@@ -78,6 +79,7 @@ class CommunityPost {
     required this.id,
     this.userId,
     required this.nickname,
+    this.profileImage,
     required this.content,
     required this.createdAt,
     required this.likeCount,
@@ -98,10 +100,16 @@ class CommunityPost {
             ?.map((c) => CommunityComment.fromJson(c as Map<String, dynamic>))
             .toList() ??
         [];
+    
+    // 디버깅: profileImage 확인
+    final profileImage = json['profileImage']?.toString();
+    print('🖼️ Post ${json['postId']}: profileImage = $profileImage');
+    
     return CommunityPost(
       id: json['postId']?.toString() ?? '',
       userId: json['userId']?.toString(),
       nickname: json['nickname']?.toString() ?? 'unknown',
+      profileImage: profileImage,
       content: json['content']?.toString() ?? '',
       createdAt: createdAt,
       likeCount: json['like'] is int ? json['like'] as int : 0,
@@ -143,6 +151,7 @@ class CommunityPost {
     String? id,
     String? userId,
     String? nickname,
+    String? profileImage,
     String? content,
     DateTime? createdAt,
     int? likeCount,
@@ -155,6 +164,7 @@ class CommunityPost {
       id: id ?? this.id,
       userId: userId ?? this.userId,
       nickname: nickname ?? this.nickname,
+      profileImage: profileImage ?? this.profileImage,
       content: content ?? this.content,
       createdAt: createdAt ?? this.createdAt,
       likeCount: likeCount ?? this.likeCount,

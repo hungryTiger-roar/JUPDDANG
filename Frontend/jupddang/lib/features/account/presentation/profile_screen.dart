@@ -176,10 +176,11 @@ class _ProfileScreenState extends State<ProfileScreen> with WidgetsBindingObserv
             ? totalScore
             : (totalScore as num).toInt(); //화현이: score 저장
         _loading = false;
+        
+        // 화현이: userPosts를 _myPosts에 직접 저장
+        _myPosts = userPosts;
+        _loadingPosts = false;
       });
-
-      //화현이: 본인 게시글 로드
-      await _loadMyPosts();
     } catch (e) {
       setState(() => _loading = false);
       if (mounted) {
@@ -187,33 +188,6 @@ class _ProfileScreenState extends State<ProfileScreen> with WidgetsBindingObserv
           context,
         ).showSnackBar(const SnackBar(content: Text('프로필 정보를 불러오는데 실패했습니다.')));
       }
-    }
-  }
-
-  //화현이: 본인 작성 게시글 로드
-  Future<void> _loadMyPosts() async {
-    setState(() => _loadingPosts = true);
-
-    try {
-      final postsData = await _authService.getMyPosts();
-      
-      final posts = postsData
-          .whereType<Map>()
-          .map(
-            (item) => CommunityPost.fromPostJson(item.cast<String, dynamic>()),
-          )
-          .toList();
-
-      // createdAt 기준 최신순 정렬
-      posts.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-
-      setState(() {
-        _myPosts = posts;
-        _loadingPosts = false;
-      });
-    } catch (e) {
-      setState(() => _loadingPosts = false);
-      print('My Posts Load Error: $e');
     }
   }
 

@@ -2,7 +2,7 @@ class PloggingEndRequest {
   final String userId;
   final double totalDistance;
   final String content;
-  final int totalTime;
+  final int times;
   final String endTime;
   final int? partyId;
   final String? recordTitle;
@@ -14,7 +14,7 @@ class PloggingEndRequest {
     required this.userId,
     required this.totalDistance,
     required this.content,
-    required this.totalTime,
+    required this.times,
     required this.endTime,
     this.partyId,
     this.recordTitle,
@@ -27,7 +27,7 @@ class PloggingEndRequest {
     'userId': userId,
     'totalDistance': totalDistance,
     'content': content,
-    'totalTime': totalTime,
+    'times': times,
     'endTime': endTime,
     if (partyId != null) 'partyId': partyId,
     if (recordTitle != null) 'recordTitle': recordTitle,
@@ -41,7 +41,7 @@ class TempPloggingRequest {
   final String userId;
   final double? totalDistance;
   final String? content;
-  final int? totalTime;
+  final int? time;
   final String? endTime;
   final int? partyId;
   final String? recordTitle;
@@ -50,7 +50,7 @@ class TempPloggingRequest {
     required this.userId,
     this.totalDistance,
     this.content,
-    this.totalTime,
+    this.time,
     this.endTime,
     this.partyId,
     this.recordTitle,
@@ -60,7 +60,7 @@ class TempPloggingRequest {
     'userId': userId,
     if (totalDistance != null) 'totalDistance': totalDistance,
     if (content != null && content!.isNotEmpty) 'content': content,
-    if (totalTime != null) 'totalTime': totalTime,
+    if (time != null) 'time': time,
     if (endTime != null) 'endTime': endTime,
     if (partyId != null) 'partyId': partyId,
     if (recordTitle != null && recordTitle!.isNotEmpty) 'recordTitle': recordTitle,

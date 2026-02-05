@@ -12,7 +12,7 @@ class PloggingService {
     : _apiClient = apiClient ?? ApiClient();
 
   // 플로깅 종료 및 결과 저장
-  Future<void> endPlogging({
+  Future<dynamic> endPlogging({
     required PloggingEndRequest requestData,
     required String beforeImagePath,
     required String afterImagePath,
@@ -32,11 +32,12 @@ class PloggingService {
       // [Header Note] userId 헤더가 필요한 경우 Interceptor나 여기서 추가.
       // 현재 ApiClient는 Authorization만 처리하므로, 필요 시 options 파라미터 사용.
 
-      await _apiClient.dio.post(
+      final response = await _apiClient.dio.post(
         '/v1/plogging/end',
         data: formData,
         options: Options(headers: {'userId': AuthService.userId ?? ''}),
       );
+      return response.data;
     } catch (e) {
       print('End Plogging Error: $e');
       rethrow;

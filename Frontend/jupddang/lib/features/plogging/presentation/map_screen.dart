@@ -1463,7 +1463,7 @@ class _MapScreenState extends State<MapScreen> {
         userId: AuthService.userId ?? '',
         totalDistance: _totalDistance / 1000.0,
         content: _descriptionController.text.trim(),
-        totalTime: _sessionStopwatch.elapsed.inSeconds,
+        times: _sessionStopwatch.elapsed.inSeconds,
         endTime: _formatEndTime(DateTime.now()),
         partyId: widget.partyId,
         recordTitle: _recordTitleController.text.trim(),
@@ -1471,7 +1471,7 @@ class _MapScreenState extends State<MapScreen> {
         route: route,
       );
 
-      await _authService.endPlogging(
+      final response = await _authService.endPlogging(
         requestData: request,
         beforeImagePath: _beforeImage!.path,
         afterImagePath: _afterImage!.path,
@@ -1480,6 +1480,7 @@ class _MapScreenState extends State<MapScreen> {
 
       if (mounted) Navigator.pop(context);
       _snack("기록이 업로드되었습니다!");
+      widget.onPloggingComplete?.call(_extractPostId(response));
       _resetPlogging();
     } catch (e) {
       if (mounted) Navigator.pop(context);
@@ -1503,7 +1504,7 @@ class _MapScreenState extends State<MapScreen> {
         content: _descriptionController.text.trim().isNotEmpty
             ? _descriptionController.text.trim()
             : null,
-        totalTime: _sessionStopwatch.elapsed.inSeconds,
+        time: _sessionStopwatch.elapsed.inSeconds,
         endTime: _formatEndTime(DateTime.now()),
         partyId: widget.partyId,
         recordTitle: _recordTitleController.text.trim(),
@@ -1596,6 +1597,21 @@ class _MapScreenState extends State<MapScreen> {
     );
   }
 
+  String? _extractPostId(dynamic response) {
+    if (response is Map) {
+      final direct =
+          response['postId'] ?? response['post_id'] ?? response['id'];
+      if (direct != null) return direct.toString();
+      final data = response['data'];
+      if (data is Map) {
+        final nested =
+            data['postId'] ?? data['post_id'] ?? data['id'];
+        if (nested != null) return nested.toString();
+      }
+    }
+    return null;
+  }
+
   Widget _manualMoveButton(IconData icon, String tag, VoidCallback onPressed) {
     return FloatingActionButton.small(
       heroTag: tag,
@@ -1622,10 +1638,11 @@ class _MapScreenState extends State<MapScreen> {
 
   String _formatDuration(Duration d) =>
       "${d.inMinutes.remainder(60).toString().padLeft(2, '0')}:${d.inSeconds.remainder(60).toString().padLeft(2, '0')}";
-  String _formatEndTime(DateTime time) =>
-      "${time.year}.${time.month.toString().padLeft(2, '0')}.${time.day.toString().padLeft(2, '0')} ${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}";
+
+  String _formatEndTime(DateTime time) => time.toIso8601String().split('.').first;
 
   Color _getTrashcanColor(TrashcanStatus status) {
+
     switch (status) {
       case TrashcanStatus.VERIFIED:
         return Colors.blueAccent;

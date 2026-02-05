@@ -14,7 +14,10 @@ import '../../account/presentation/profile_screen.dart';
 import '../../../main.dart';
 
 class CommunityScreen extends StatefulWidget {
-  const CommunityScreen({super.key});
+  final String? focusPostId;
+  final VoidCallback? onFocusHandled;
+
+  const CommunityScreen({super.key, this.focusPostId, this.onFocusHandled});
 
   @override
   State<CommunityScreen> createState() => _CommunityScreenState();
@@ -22,12 +25,16 @@ class CommunityScreen extends StatefulWidget {
 
 class _CommunityScreenState extends State<CommunityScreen> with RouteAware {
   final AuthService _authService = AuthService();
+  final ScrollController _scrollController = ScrollController();
   final List<CommunityPost> _localPosts = [];
   List<CommunityPost> _remotePosts = [];
   List<AccountSummary> _accounts = [];
   bool _loadingAccounts = true;
   bool _loadingPosts = true;
   String? _errorMessage;
+  String? _pendingFocusPostId;
+  final Map<String, GlobalKey> _postKeys = {};
+  final GlobalKey cardKey = GlobalKey();
 
   // Follow & Like state
   bool _showFollowingOnly = false;
@@ -39,6 +46,10 @@ class _CommunityScreenState extends State<CommunityScreen> with RouteAware {
   @override
   void initState() {
     super.initState();
+    _pendingFocusPostId = widget.focusPostId;
+    if (_pendingFocusPostId != null) {
+      _showFollowingOnly = false;
+    }
     _refreshAll();
   }
 
@@ -133,12 +144,44 @@ class _CommunityScreenState extends State<CommunityScreen> with RouteAware {
         _remotePosts = posts;
         _loadingPosts = false;
       });
+      final targetId = _pendingFocusPostId;
+      if (targetId != null &&
+          !_allPosts.any((post) => post.id == targetId)) {
+        _pendingFocusPostId = null;
+        widget.onFocusHandled?.call();
+        return;
+      }
+      _focusPostIfNeeded();
     } catch (e) {
       setState(() {
         _loadingPosts = false;
         _errorMessage = '게시글 조회에 실패했습니다.';
       });
     }
+  }
+
+  void _focusPostIfNeeded() {
+    final targetId = _pendingFocusPostId;
+    if (targetId == null) return;
+    final key = _postKeys[targetId];
+    final targetContext = key?.currentContext;
+    if (targetContext == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final ctx = key?.currentContext;
+      if (ctx == null) return;
+      Scrollable.ensureVisible(
+        ctx,
+        duration: const Duration(milliseconds: 350),
+        curve: Curves.easeOut,
+        alignment: 0.1,
+      );
+      _pendingFocusPostId = null;
+      widget.onFocusHandled?.call();
+    });
+  }
+
+  GlobalKey _ensurePostKey(String postId) {
+    return _postKeys.putIfAbsent(postId, () => GlobalKey());
   }
 
   List<CommunityPost> get _allPosts {
@@ -379,6 +422,7 @@ class _CommunityScreenState extends State<CommunityScreen> with RouteAware {
 
   Widget _buildHeader() {
     return Padding(
+      key: cardKey,
       padding: const EdgeInsets.fromLTRB(20, 10, 20, 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -581,8 +625,14 @@ class _CommunityScreenState extends State<CommunityScreen> with RouteAware {
     final String currentUserId = AuthService.userId?.toString() ?? '';
     final String postUserId = post.userId?.toString() ?? '';
     final isMine = postUserId.isNotEmpty && postUserId == currentUserId;
+    final cardKey = _ensurePostKey(post.id);
+
+    if (_pendingFocusPostId == post.id) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _focusPostIfNeeded());
+    }
 
     return Padding(
+      key: cardKey,
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       child: NesContainer(
         padding: EdgeInsets.zero, // 내부 패딩을 직접 제어하므로 0으로 설정
@@ -640,6 +690,8 @@ class _CommunityScreenState extends State<CommunityScreen> with RouteAware {
                               ),
                             ),
                             const SizedBox(width: 8),
+                            // 팔로우 버튼 (내 글 아닐 때만)
+                            if (!isMine) _followButton(post.nickname),
 
                             // 임시 저장 글 태그 (내 글이고 임시글일 때)
                             if (isMine && isLocalDraft)
@@ -732,6 +784,13 @@ class _CommunityScreenState extends State<CommunityScreen> with RouteAware {
                         },
                       ),
                     ),
+                  // else
+                  // // 남의 글인 경우 (단순 아이콘)
+                  //   const SizedBox(
+                  //     width: 24,
+                  //     height: 24,
+                  //     child: Icon(Pixel.menu, color: Colors.white38, size: 20),
+                  //   ),
                 ],
               ),
             ),
@@ -1030,6 +1089,33 @@ class _CommunityScreenState extends State<CommunityScreen> with RouteAware {
           Icons.broken_image_outlined,
           color: Colors.white54,
           size: 48,
+        ),
+      ),
+    );
+  }
+
+  Widget _followButton(String nickname) {
+    if (nickname == AuthService.userId) return const SizedBox.shrink();
+
+    final isFollowing = _followingNicknames.contains(nickname);
+    return GestureDetector(
+      onTap: () => _toggleFollow(nickname),
+      child: Container(
+        padding: const EdgeInsets.all(6),
+        decoration: BoxDecoration(
+          color: isFollowing
+              ? Colors.white.withOpacity(0.05)
+              : const Color(0xFF17C964).withOpacity(0.1),
+          border: Border.all(
+            color: isFollowing ? Colors.white24 : const Color(0xFF17C964),
+            width: 1.5,
+          ),
+          borderRadius: BorderRadius.circular(4),
+        ),
+        child: Icon(
+          isFollowing ? Pixel.check : Pixel.userplus,
+          color: isFollowing ? Colors.white38 : const Color(0xFF17C964),
+          size: 16,
         ),
       ),
     );

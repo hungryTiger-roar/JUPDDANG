@@ -8,7 +8,8 @@ import '../../../../services/auth_service.dart';
 class PloggingService {
   final ApiClient _apiClient;
 
-  PloggingService({ApiClient? apiClient}) : _apiClient = apiClient ?? ApiClient();
+  PloggingService({ApiClient? apiClient})
+    : _apiClient = apiClient ?? ApiClient();
 
   // 플로깅 종료 및 결과 저장
   Future<void> endPlogging({
@@ -28,10 +29,10 @@ class PloggingService {
         'afterImage': await MultipartFile.fromFile(afterImagePath),
         'mapImage': await MultipartFile.fromFile(mapImagePath),
       });
-      // [Header Note] userId 헤더가 필요한 경우 Interceptor나 여기서 추가. 
+      // [Header Note] userId 헤더가 필요한 경우 Interceptor나 여기서 추가.
       // 현재 ApiClient는 Authorization만 처리하므로, 필요 시 options 파라미터 사용.
-      
-      final response = await _apiClient.dio.post(
+
+      await _apiClient.dio.post(
         '/v1/plogging/end',
         data: formData,
         options: Options(headers: {'userId': AuthService.userId ?? ''}),
@@ -74,6 +75,6 @@ class PloggingService {
       rethrow;
     }
   }
-  
+
   // [WebSocket] 관련 메서드는 추후 여기에 추가하거나 별도 SocketService로 분리
 }

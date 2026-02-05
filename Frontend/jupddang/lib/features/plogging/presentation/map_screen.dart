@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:io';
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:nes_ui/nes_ui.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -69,7 +68,6 @@ class _MapScreenState extends State<MapScreen> {
   Party? _party;
   Timer? _partyPollTimer;
   List<RaidBossModel> _raidBosses = [];
-  Set<String> _bossH3Indices = {};
   List<TrashcanModel> _trashcans = [];
   PartyMemberLocation? _leaderLocation;
 
@@ -201,7 +199,6 @@ class _MapScreenState extends State<MapScreen> {
       if (!mounted) return;
       setState(() {
         _raidBosses = bosses;
-        _bossH3Indices = bosses.map((b) => b.h3Index).toSet();
       });
     } catch (e) {
       debugPrint("❌ Failed to load raid bosses: $e");
@@ -833,6 +830,8 @@ class _MapScreenState extends State<MapScreen> {
       children: [
         TileLayer(
           urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+          userAgentPackageName:
+              'com.ssafy.jupddang', // Updated to avoid OSM block
         ),
         if (_pathPoints.isNotEmpty)
           PolylineLayer(
@@ -1034,7 +1033,7 @@ class _MapScreenState extends State<MapScreen> {
       Text(
         val,
         style: const TextStyle(
-          color: Colors.white,
+          color: Colors.black,
           fontWeight: FontWeight.bold,
           fontSize: 14,
         ),
@@ -1061,7 +1060,7 @@ class _MapScreenState extends State<MapScreen> {
                   const Text(
                     "CUSTOMIZE",
                     style: TextStyle(
-                      color: Colors.white,
+                      color: Colors.black,
                       fontSize: 10,
                       fontWeight: FontWeight.bold,
                     ),
@@ -1070,7 +1069,7 @@ class _MapScreenState extends State<MapScreen> {
                     onTap: () => setState(() => _showCustomizer = false),
                     child: const Icon(
                       Pixel.close,
-                      color: Colors.white,
+                      color: Colors.black,
                       size: 16,
                     ),
                   ),
@@ -1080,7 +1079,7 @@ class _MapScreenState extends State<MapScreen> {
               const Text(
                 "GRID OPACITY",
                 style: TextStyle(
-                  color: Colors.white,
+                  color: Colors.black,
                   fontSize: 8,
                   fontWeight: FontWeight.bold,
                 ),
@@ -1106,7 +1105,7 @@ class _MapScreenState extends State<MapScreen> {
               const Text(
                 "COLOR PALETTE",
                 style: TextStyle(
-                  color: Colors.white,
+                  color: Colors.black,
                   fontSize: 8,
                   fontWeight: FontWeight.bold,
                 ),
@@ -1214,7 +1213,7 @@ class _MapScreenState extends State<MapScreen> {
         return SizedBox(
           width: 200,
           child: PixelButton(
-            text: "START JUPKING",
+            text: "START",
             isGreen: false,
             color: _selectedGridColor,
             onPressed: _startPlogging,
@@ -1533,8 +1532,6 @@ class _MapScreenState extends State<MapScreen> {
         return Colors.orangeAccent;
       case TrashcanStatus.OFFICIAL:
         return Colors.green;
-      default:
-        return Colors.grey;
     }
   }
 

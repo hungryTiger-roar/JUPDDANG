@@ -39,6 +39,7 @@ class _CommunityScreenState extends State<CommunityScreen> with RouteAware {
   // Follow & Like state
   bool _showFollowingOnly = false;
   final Set<String> _likedPostIds = {}; // Track liked posts locally
+  final Map<String, int> _currentImageIndex = {}; // 각 게시글의 현재 이미지 인덱스
 
   @override
   void initState() {
@@ -670,12 +671,27 @@ class _CommunityScreenState extends State<CommunityScreen> with RouteAware {
                         color: Colors.white,
                         border: Border.all(color: Colors.black, width: 2.0),
                       ),
-                      child: Center(
-                        child: PixelCharacter(
-                          size: 24,
-                          color: _getColorForNickname(post.nickname),
-                        ),
-                      ),
+                      child: post.profileImage != null && post.profileImage!.isNotEmpty
+                          ? ClipRect(
+                              child: Image.network(
+                                post.profileImage!,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return Center(
+                                    child: PixelCharacter(
+                                      size: 24,
+                                      color: _getColorForNickname(post.nickname),
+                                    ),
+                                  );
+                                },
+                              ),
+                            )
+                          : Center(
+                              child: PixelCharacter(
+                                size: 24,
+                                color: _getColorForNickname(post.nickname),
+                              ),
+                            ),
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -1005,33 +1021,81 @@ class _CommunityScreenState extends State<CommunityScreen> with RouteAware {
         : post.imageUrls;
     if (images.isEmpty) return const SizedBox.shrink();
 
+    // 현재 이미지 인덱스 가져오기
+    final currentIndex = _currentImageIndex[post.id] ?? 0;
+
     // If there are exactly 2 images (Before/After), show them side by side with labels
     if (images.length == 2) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(16),
-          child: Row(
-            children: [
-              Expanded(child: _labeledImage(images[0], '전', post.localOnly)),
-              const SizedBox(width: 4),
-              Expanded(child: _labeledImage(images[1], '후', post.localOnly)),
-            ],
+      return GestureDetector(
+        onTap: () {
+          setState(() {
+            _currentImageIndex[post.id] = (currentIndex + 1) % images.length;
+          });
+        },
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: Row(
+              children: [
+                Expanded(child: _labeledImage(images[0], '전', post.localOnly)),
+                const SizedBox(width: 4),
+                Expanded(child: _labeledImage(images[1], '후', post.localOnly)),
+              ],
+            ),
           ),
         ),
       );
     }
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
-        child: SizedBox(
-          height: 240,
-          child: PageView.builder(
-            itemCount: images.length,
-            itemBuilder: (context, index) =>
-                _buildImageTile(path: images[index], isLocal: post.localOnly),
+    // 단일 이미지 또는 여러 이미지인 경우 클릭하면 순환
+    return GestureDetector(
+      onTap: () {
+        if (images.length > 1) {
+          setState(() {
+            _currentImageIndex[post.id] = (currentIndex + 1) % images.length;
+          });
+        }
+      },
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: Stack(
+            children: [
+              SizedBox(
+                height: 240,
+                width: double.infinity,
+                child: _buildImageTile(
+                  path: images[currentIndex],
+                  isLocal: post.localOnly,
+                ),
+              ),
+              // 이미지 순환 인디케이터 (여러 이미지가 있을 경우)
+              if (images.length > 1)
+                Positioned(
+                  top: 12,
+                  right: 12,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.6),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      '${currentIndex + 1}/${images.length}',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
           ),
         ),
       ),

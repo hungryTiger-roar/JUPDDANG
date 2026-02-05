@@ -76,66 +76,69 @@ class SettingsScreen extends StatelessWidget {
 
             // Profile Section (Clickable)
             SliverToBoxAdapter(
-              child: GestureDetector(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) =>
-                          ProfileScreen(userId: AuthService.userId ?? 'Guest'),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                child: GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            ProfileScreen(userId: AuthService.userId ?? 'Guest'),
+                      ),
+                    );
+                  },
+                  child: NesContainer(
+                    padding: const EdgeInsets.all(20),
+                    child: Row(
+                      children: [
+                        // Avatar
+                        Container(
+                          width: 56,
+                          height: 56,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            border: Border.all(color: Colors.black, width: 2),
+                          ),
+                          child: const Icon(
+                            Pixel.user,
+                            color: Color(0xFF17C964),
+                            size: 32,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        // Info
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                (AuthService.userId ?? 'Guest').toUpperCase(),
+                                style: const TextStyle(
+                                  color: Colors.black,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              const Text(
+                                'View Profile',
+                                style: TextStyle(
+                                  color: Color(0xFF17C964),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const Icon(
+                          Pixel.chevronright,
+                          color: Colors.black26,
+                          size: 24,
+                        ),
+                      ],
                     ),
-                  );
-                },
-                child: NesContainer(
-                  padding: const EdgeInsets.all(20),
-                  child: Row(
-                    children: [
-                      // Avatar
-                      Container(
-                        width: 56,
-                        height: 56,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          border: Border.all(color: Colors.black, width: 2),
-                        ),
-                        child: const Icon(
-                          Pixel.user,
-                          color: Color(0xFF17C964),
-                          size: 32,
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      // Info
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              (AuthService.userId ?? 'Guest').toUpperCase(),
-                              style: const TextStyle(
-                                color: Colors.black,
-                                fontSize: 18,
-                                fontWeight: FontWeight.w900,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            const Text(
-                              'View Profile',
-                              style: TextStyle(
-                                color: Color(0xFF17C964),
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const Icon(
-                        Pixel.chevronright,
-                        color: Colors.black26,
-                        size: 24,
-                      ),
-                    ],
                   ),
                 ),
               ),
@@ -144,7 +147,7 @@ class SettingsScreen extends StatelessWidget {
             // Settings Grid Title
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 24, 20, 16),
+                padding: const EdgeInsets.fromLTRB(20, 32, 20, 20),
                 child: const Text(
                   'QUICK SETTINGS',
                   style: TextStyle(
@@ -178,7 +181,7 @@ class SettingsScreen extends StatelessWidget {
                         );
                       },
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 16),
                     // 앱 정보
                     _settingTileHorizontal(
                       context,
@@ -187,7 +190,7 @@ class SettingsScreen extends StatelessWidget {
                       color: const Color(0xFFFBBF24),
                       onTap: () => _showAppInfo(context),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 16),
                     // 회원 탈퇴
                     _settingTileHorizontal(
                       context,

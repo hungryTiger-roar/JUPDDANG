@@ -890,19 +890,46 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   Widget _buildMapLayer() {
-    return FlutterMap(
-      mapController: _mapController,
-      options: MapOptions(
-        initialCenter: const LatLng(37.5665, 126.9780),
-        initialZoom: 16.0,
-        minZoom: 5.0,
-        maxZoom: 19.0,
-        onPositionChanged: _onMapPositionChanged,
-        onMapReady: () {
-          Future.delayed(const Duration(milliseconds: 500), () {
-            if (mounted) _updateHexagons(_mapController.camera.visibleBounds);
-          });
-        },
+    return RepaintBoundary(
+      key: _mapRepaintKey,
+      child: FlutterMap(
+        mapController: _mapController,
+        options: MapOptions(
+          initialCenter: const LatLng(37.5665, 126.9780),
+          initialZoom: 16.0,
+          minZoom: 5.0,
+          maxZoom: 19.0,
+          onPositionChanged: _onMapPositionChanged,
+          onMapReady: () {
+            Future.delayed(const Duration(milliseconds: 500), () {
+              if (mounted) _updateHexagons(_mapController.camera.visibleBounds);
+            });
+          },
+        ),
+        children: [
+          TileLayer(
+            urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+            userAgentPackageName:
+                'com.ssafy.jupddang.app', // Updated to avoid OSM block
+          ),
+          if (_pathPoints.isNotEmpty)
+            PolylineLayer(
+              polylines: [
+                Polyline(
+                  points: _pathPoints,
+                  color: _selectedGridColor.withOpacity(0.6),
+                  strokeWidth: 5.0,
+                  borderColor: Colors.white,
+                  borderStrokeWidth: 2.0,
+                ),
+              ],
+            ),
+          PolygonLayer(
+            key: ValueKey('grid_${_selectedGridColor.value}_$_gridOpacity'),
+            polygons: _hexagons,
+          ),
+          MarkerLayer(markers: _buildMarkers()),
+        ],
       ),
       children: [
         TileLayer(
@@ -1422,7 +1449,7 @@ class _MapScreenState extends State<MapScreen> {
                   TextField(
                     controller: _descriptionController,
                     maxLines: 3,
-                    style: const TextStyle(fontSize: 12),
+                    style: const TextStyle(fontSize: 12, color: Colors.black),
                     decoration: _inputDeco("오늘의 줍킹은 어땠나요?"),
                   ),
                   const SizedBox(height: 24),
@@ -1462,7 +1489,7 @@ class _MapScreenState extends State<MapScreen> {
                   _summaryLabel("RECORD NAME"),
                   TextField(
                     controller: _recordTitleController,
-                    style: const TextStyle(fontSize: 12),
+                    style: const TextStyle(fontSize: 12, color: Colors.black),
                     decoration: _inputDeco("ex) 한강 플로깅"),
                   ),
                   const SizedBox(height: 24),
@@ -1502,6 +1529,16 @@ class _MapScreenState extends State<MapScreen> {
     if (_recordTitleController.text.trim().isEmpty)
       return _snack("기록 제목을 입력해주세요.");
 
+    // Ensure userId is available
+    if (AuthService.userId == null || AuthService.userId!.isEmpty) {
+      try {
+        final profile = await _authService.getMyProfile();
+        AuthService.userId = profile['userId'];
+      } catch (e) {
+        return _snack("회원 정보를 불러올 수 없습니다. 다시 로그인해주세요.", isError: true);
+      }
+    }
+
     if (_mapImage == null) {
       final captured = await _captureMapImage();
       if (captured != null) {
@@ -1512,19 +1549,15 @@ class _MapScreenState extends State<MapScreen> {
 
     _showLoading(const Color(0xFF17C964));
     try {
-      final route = _pathPoints
-          .map((p) => '${p.latitude},${p.longitude}')
-          .toList(growable: false);
       final request = PloggingEndRequest(
-        userId: AuthService.userId ?? '',
-        totalDistance: _totalDistance / 1000.0,
+        distance: _totalDistance / 1000.0,
         content: _descriptionController.text.trim(),
         times: _sessionStopwatch.elapsed.inSeconds,
-        endTime: _formatEndTime(DateTime.now()),
+        endTime:
+            "${DateTime.now().year}-${DateTime.now().month.toString().padLeft(2, '0')}-${DateTime.now().day.toString().padLeft(2, '0')}T${DateTime.now().hour.toString().padLeft(2, '0')}:${DateTime.now().minute.toString().padLeft(2, '0')}:${DateTime.now().second.toString().padLeft(2, '0')}",
         partyId: widget.partyId,
         recordTitle: _recordTitleController.text.trim(),
         score: _coinsGained,
-        route: route,
       );
 
       final response = await _authService.endPlogging(
@@ -1551,17 +1584,27 @@ class _MapScreenState extends State<MapScreen> {
     if (_recordTitleController.text.trim().isEmpty)
       return _snack("기록 제목을 입력해주세요.");
 
+    // Ensure userId is available
+    if (AuthService.userId == null || AuthService.userId!.isEmpty) {
+      try {
+        final profile = await _authService.getMyProfile();
+        AuthService.userId = profile['userId'];
+      } catch (e) {
+        return _snack("회원 정보를 불러올 수 없습니다. 다시 로그인해주세요.", isError: true);
+      }
+    }
+
     _showLoading(const Color(0xFFF59E0B));
 
     try {
       final request = TempPloggingRequest(
-        userId: AuthService.userId ?? '',
-        totalDistance: _totalDistance / 1000.0,
+        distance: _totalDistance / 1000.0,
         content: _descriptionController.text.trim().isNotEmpty
             ? _descriptionController.text.trim()
             : null,
-        time: _sessionStopwatch.elapsed.inSeconds,
-        endTime: _formatEndTime(DateTime.now()),
+        times: _sessionStopwatch.elapsed.inSeconds,
+        endTime:
+            "${DateTime.now().year}-${DateTime.now().month.toString().padLeft(2, '0')}-${DateTime.now().day.toString().padLeft(2, '0')}T${DateTime.now().hour.toString().padLeft(2, '0')}:${DateTime.now().minute.toString().padLeft(2, '0')}:${DateTime.now().second.toString().padLeft(2, '0')}",
         partyId: widget.partyId,
         recordTitle: _recordTitleController.text.trim(),
       );
@@ -1694,8 +1737,6 @@ class _MapScreenState extends State<MapScreen> {
 
   String _formatDuration(Duration d) =>
       "${d.inMinutes.remainder(60).toString().padLeft(2, '0')}:${d.inSeconds.remainder(60).toString().padLeft(2, '0')}";
-
-  String _formatEndTime(DateTime time) => time.toIso8601String().split('.').first;
 
   Color _getTrashcanColor(TrashcanStatus status) {
 

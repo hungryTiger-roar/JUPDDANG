@@ -9,7 +9,7 @@ class PartySocketService {
 
   PartySocketService({this.stompClientFactory});
 
-  static const String wsUrl = 'wss://i14d208.p.ssafy.io/dev-api/ws';
+  static const String wsUrl = 'https://i14d208.p.ssafy.io/dev-api/ws';
 
   StompClient? _client;
   Function(List<PartyActivity>)? onActivitiesUpdated;
@@ -107,7 +107,6 @@ class PartySocketService {
     }
   }
 
-
   /// 자신의 활동 정보 전송 (방장이 주로 사용)
   void sendLocation(int partyId, LocationRequest location) {
     if (_client == null || !_client!.connected) return;
@@ -122,5 +121,4 @@ class PartySocketService {
     _client?.deactivate();
     _client = null;
   }
-
 }

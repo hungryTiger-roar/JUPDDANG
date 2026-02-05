@@ -9,6 +9,7 @@ class PixelButton extends StatelessWidget {
   final double height;
   final bool isGreen;
   final bool isPulse;
+  final double? fontSize;
 
   const PixelButton({
     super.key,
@@ -19,6 +20,7 @@ class PixelButton extends StatelessWidget {
     this.height = 60,
     this.isGreen = true,
     this.isPulse = false,
+    this.fontSize,
   });
 
   @override
@@ -27,9 +29,18 @@ class PixelButton extends StatelessWidget {
       width: width,
       height: height,
       child: NesButton(
-        type: isGreen ? NesButtonType.success : NesButtonType.primary,
+        type: isGreen ? NesButtonType.success : NesButtonType.success,
         onPressed: onPressed,
-        child: Text(text),
+        child: Center(
+          child: Text(
+            text,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: fontSize ?? 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
       ),
     );
   }

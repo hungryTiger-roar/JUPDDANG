@@ -36,8 +36,20 @@ class AuthService {
     return data;
   }
 
-  Future<dynamic> signup({required String id, required String pw, required String email, required String nickname, required String color}) {
-    return _authService.signup(id: id, pw: pw, email: email, nickname: nickname, color: color);
+  Future<dynamic> signup({
+    required String id,
+    required String pw,
+    required String email,
+    required String nickname,
+    required String color,
+  }) {
+    return _authService.signup(
+      id: id,
+      pw: pw,
+      email: email,
+      nickname: nickname,
+      color: color,
+    );
   }
 
   Future<bool> deleteAccount() {
@@ -52,6 +64,7 @@ class AuthService {
   // --- Social ---
   Future<List<dynamic>> getPosts() => _socialService.getPosts();
   Future<List<dynamic>> getMyPosts() => _socialService.getMyPosts();
+  Future<List<dynamic>> getMyComments() => _socialService.getMyComments();
   Future<List<dynamic>> getFollowings(String userId) => _socialService.getFollowings(userId);
   Future<List<dynamic>> getFollowers(String userId) => _socialService.getFollowers(userId);
   Future<bool> toggleFollow(String targetId) => _socialService.toggleFollow(targetId);
@@ -63,7 +76,7 @@ class AuthService {
   Future<void> deletePost(String postId) => _socialService.deletePost(postId);
 
   // --- Plogging ---
-  Future<dynamic> endPlogging({required PloggingEndRequest requestData, required String beforeImagePath, required String afterImagePath, required String mapImagePath}) 
+  Future<dynamic> endPlogging({required PloggingEndRequest requestData, required String beforeImagePath, required String afterImagePath, required String mapImagePath})
       => _ploggingService.endPlogging(requestData: requestData, beforeImagePath: beforeImagePath, afterImagePath: afterImagePath, mapImagePath: mapImagePath);
       
   Future<dynamic> savePloggingTemp({required TempPloggingRequest requestData, String? beforeImagePath, String? afterImagePath, String? mapImagePath})

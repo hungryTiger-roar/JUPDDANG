@@ -11,6 +11,7 @@ import '../../../widgets/pixel_loader.dart';
 import 'package:pixelarticons/pixelarticons.dart';
 import '../../../widgets/pixel_character.dart';
 import '../../account/presentation/profile_screen.dart';
+import '../../../main.dart';
 
 class CommunityScreen extends StatefulWidget {
   final String? focusPostId;
@@ -51,21 +52,36 @@ class _CommunityScreenState extends State<CommunityScreen> {
   }
 
   @override
-  void didUpdateWidget(covariant CommunityScreen oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.focusPostId != null &&
-        widget.focusPostId != oldWidget.focusPostId) {
-      _pendingFocusPostId = widget.focusPostId;
-      _showFollowingOnly = false;
-      _loadPosts();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // RouteObserver 구독
+    final route = ModalRoute.of(context);
+    if (route is PageRoute) {
+      routeObserver.subscribe(this, route);
     }
   }
 
   @override
   void dispose() {
-    _scrollController.dispose();
+    routeObserver.unsubscribe(this);
     super.dispose();
   }
+
+  // 다른 화면에서 돌아올 때 호출됨 (댓글 삭제 후 돌아올 때)
+  @override
+  void didPopNext() {
+    // 게시글 목록 새로고침하여 댓글이 동기화되도록 함
+    _loadPosts();
+  }
+
+  @override
+  void didPush() {}
+
+  @override
+  void didPushNext() {}
+
+  @override
+  void didPop() {}
 
   Future<void> _refreshAll() async {
     await Future.wait([_loadAccounts(), _loadPosts()]);
@@ -101,7 +117,9 @@ class _CommunityScreenState extends State<CommunityScreen> {
     });
 
     try {
-      final data = await _authService.getPosts();
+      // _showFollowingOnly가 false면 전체 게시글 조회 (/posts/all)
+      // true면 팔로우한 사람들의 게시글만 조회 (/posts)
+      final data = await _authService.getPosts(allPosts: !_showFollowingOnly);
       final posts = data
           .whereType<Map>()
           .map(
@@ -153,13 +171,9 @@ class _CommunityScreenState extends State<CommunityScreen> {
   }
 
   List<CommunityPost> get _allPosts {
-    final posts = [..._localPosts, ..._remotePosts];
-    if (_showFollowingOnly) {
-      return posts
-          .where((p) => _followingNicknames.contains(p.nickname))
-          .toList();
-    }
-    return posts;
+    // 로컬 임시 게시글과 서버에서 받은 게시글을 합침
+    // API에서 이미 필터링된 데이터를 받아오므로 추가 필터링 불필요
+    return [..._localPosts, ..._remotePosts];
   }
 
   Future<void> _toggleLike(CommunityPost post) async {
@@ -205,26 +219,9 @@ class _CommunityScreenState extends State<CommunityScreen> {
     // 임시 저장된 글인지 확인
     final isLocalDraft = _localPosts.any((p) => p.id == postId);
 
-    final confirmed = await showDialog<bool>(
+    final confirmed = await NesConfirmDialog.show(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1F1F1F),
-        title: const Text('삭제하시겠습니까?', style: TextStyle(color: Colors.white)),
-        content: Text(
-          isLocalDraft ? '임시 저장된 글은 복구할 수 없습니다.' : '게시글을 삭제하시겠습니까?',
-          style: const TextStyle(color: Colors.white70),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('취소', style: TextStyle(color: Colors.white54)),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('삭제', style: TextStyle(color: Colors.redAccent)),
-          ),
-        ],
-      ),
+      message: isLocalDraft ? '임시 저장된 글은 복구할 수 없습니다.' : '게시글을 삭제하시겠습니까?',
     );
 
     if (confirmed == true) {
@@ -242,15 +239,19 @@ class _CommunityScreenState extends State<CommunityScreen> {
           }
         });
         if (mounted) {
-          ScaffoldMessenger.of(
+          NesSnackbar.show(
             context,
-          ).showSnackBar(const SnackBar(content: Text('게시글이 삭제되었습니다.')));
+            text: '게시글이 삭제되었습니다.',
+            type: NesSnackbarType.success,
+          );
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(
+          NesSnackbar.show(
             context,
-          ).showSnackBar(const SnackBar(content: Text('삭제에 실패했습니다.')));
+            text: '삭제에 실패했습니다.',
+            type: NesSnackbarType.error,
+          );
         }
       }
     }
@@ -381,15 +382,16 @@ class _CommunityScreenState extends State<CommunityScreen> {
     final double navClearance = navBarHeight + navBarMargin + bottomInset;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF141414),
+      backgroundColor: Colors.white,
       floatingActionButton: Padding(
         padding: const EdgeInsets.only(bottom: 10, right: 10),
         child: SizedBox(
-          width: 120,
+          width: 140,
           child: PixelButton(
             text: 'WRITE',
             onPressed: _openComposer,
             height: 52,
+            fontSize: 20,
           ),
         ),
       ),
@@ -403,7 +405,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
             physics: const AlwaysScrollableScrollPhysics(),
             slivers: [
               SliverToBoxAdapter(child: _buildHeader()),
-              // SliverToBoxAdapter(child: _buildAccountStories()),
+              SliverToBoxAdapter(child: _buildAccountStories()),
               SliverToBoxAdapter(child: _buildFilterTabs()),
               _buildFeed(),
               SliverToBoxAdapter(child: SizedBox(height: navClearance + 80)),
@@ -427,7 +429,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
               const Text(
                 'COMMUNITY',
                 style: TextStyle(
-                  color: Colors.white,
+                  color: Colors.black,
                   fontSize: 28,
                   fontWeight: FontWeight.w900,
                   letterSpacing: 2.0,
@@ -443,7 +445,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
                     ),
                   );
                 },
-                icon: const Icon(Icons.search, color: Colors.white, size: 28),
+                icon: const Icon(Icons.search, color: Colors.black, size: 28),
                 padding: EdgeInsets.zero, // 패딩 제거해서 정렬 맞추기
                 constraints: const BoxConstraints(), // 불필요한 여백 제거
               ),
@@ -454,7 +456,11 @@ class _CommunityScreenState extends State<CommunityScreen> {
             _loadingAccounts
                 ? 'LOADING USERS...'
                 : 'USERS ${_accounts.length} • LATEST FEED',
-            style: const TextStyle(color: Colors.white70, fontSize: 12),
+            style: const TextStyle(
+              color: Colors.black54,
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+            ),
           ),
           if (_errorMessage != null) ...[
             const SizedBox(height: 6),
@@ -484,7 +490,11 @@ class _CommunityScreenState extends State<CommunityScreen> {
           child: Center(
             child: Text(
               '로그인 후 유저 목록을 확인할 수 있어요.',
-              style: TextStyle(color: Colors.white54),
+              style: TextStyle(
+                color: Colors.black54,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
         ),
@@ -506,7 +516,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
                 width: 56,
                 height: 56,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF1F1F1F),
+                  color: Colors.white,
                   border: Border.all(color: Colors.black, width: 3.0),
                   boxShadow: const [
                     BoxShadow(color: Colors.black, offset: Offset(4, 4)),
@@ -528,7 +538,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
                   overflow: TextOverflow.ellipsis,
                   textAlign: TextAlign.center,
                   style: const TextStyle(
-                    color: Colors.white,
+                    color: Colors.black,
                     fontSize: 10,
 
                     fontWeight: FontWeight.bold,
@@ -549,10 +559,12 @@ class _CommunityScreenState extends State<CommunityScreen> {
         children: [
           _filterChip('LATEST', !_showFollowingOnly, () {
             setState(() => _showFollowingOnly = false);
+            _loadPosts(); // LATEST 탭을 누를 때 전체 게시글 다시 로드
           }),
           const SizedBox(width: 12),
           _filterChip('FOLLOWING', _showFollowingOnly, () {
             setState(() => _showFollowingOnly = true);
+            _loadPosts(); // FOLLOWING 탭을 누를 때 팔로우 게시글 다시 로드
           }),
         ],
       ),
@@ -561,11 +573,14 @@ class _CommunityScreenState extends State<CommunityScreen> {
 
   Widget _filterChip(String label, bool isSelected, VoidCallback onTap) {
     return SizedBox(
-      height: 40,
+      height: 48, // Increased height to prevent text clipping
       child: NesButton(
         type: isSelected ? NesButtonType.success : NesButtonType.normal,
         onPressed: onTap,
-        child: Text(label),
+        child: Text(
+          label,
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ), // Explicit font size
       ),
     );
   }
@@ -587,7 +602,11 @@ class _CommunityScreenState extends State<CommunityScreen> {
           child: Center(
             child: Text(
               '첫 번째 글을 작성해 보세요.',
-              style: TextStyle(color: Colors.white54, fontSize: 16),
+              style: TextStyle(
+                color: Colors.black54,
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
         ),
@@ -642,7 +661,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
                       width: 36,
                       height: 36,
                       decoration: BoxDecoration(
-                        color: const Color(0xFF1F1F1F),
+                        color: Colors.white,
                         border: Border.all(color: Colors.black, width: 2.0),
                       ),
                       child: Center(
@@ -665,7 +684,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
                               child: Text(
                                 post.nickname.toUpperCase(),
                                 style: const TextStyle(
-                                  color: Colors.white,
+                                  color: Colors.black,
                                   fontWeight: FontWeight.w900,
                                   fontSize: 14,
                                 ),
@@ -688,7 +707,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
                         Text(
                           _formatTime(post.createdAt).toUpperCase(),
                           style: const TextStyle(
-                            color: Colors.white38,
+                            color: Colors.black38,
                             fontSize: 10,
                           ),
                         ),
@@ -705,10 +724,10 @@ class _CommunityScreenState extends State<CommunityScreen> {
                         constraints: const BoxConstraints(), // 불필요한 공간 제거
                         icon: const Icon(
                           Pixel.menu,
-                          color: Colors.white38,
+                          color: Colors.black38,
                           size: 20,
                         ),
-                        color: const Color(0xFF2A2A2A),
+                        color: Colors.white,
                         onSelected: (value) {
                           if (value == 'delete') {
                             _deletePost(post.id);
@@ -728,13 +747,13 @@ class _CommunityScreenState extends State<CommunityScreen> {
                                   children: [
                                     Icon(
                                       Pixel.edit,
-                                      color: Colors.white,
+                                      color: Colors.black,
                                       size: 18,
                                     ),
                                     SizedBox(width: 8),
                                     Text(
                                       '이어쓰기',
-                                      style: TextStyle(color: Colors.white),
+                                      style: TextStyle(color: Colors.black),
                                     ),
                                   ],
                                 ),
@@ -756,7 +775,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
                                   SizedBox(width: 8),
                                   Text(
                                     '삭제',
-                                    style: TextStyle(color: Colors.white),
+                                    style: TextStyle(color: Colors.black),
                                   ),
                                 ],
                               ),
@@ -800,7 +819,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
                     onTap: () => _showComments(post),
                   ),
                   const Spacer(),
-                  const Icon(Pixel.flag, color: Colors.white38),
+                  const Icon(Pixel.flag, color: Colors.black38),
                 ],
               ),
             ),
@@ -869,7 +888,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
             child: Text(
               sections['body']!.join('\n'),
               style: const TextStyle(
-                color: Colors.white,
+                color: Colors.black,
                 height: 1.5,
                 fontSize: 14,
               ),
@@ -897,7 +916,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
               Text(
                 parts.isNotEmpty ? parts[0] : '활동 기록',
                 style: const TextStyle(
-                  color: Colors.white,
+                  color: Colors.black,
                   fontWeight: FontWeight.bold,
                   fontSize: 14,
                 ),
@@ -927,11 +946,11 @@ class _CommunityScreenState extends State<CommunityScreen> {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, color: Colors.white38, size: 12),
+        Icon(icon, color: Colors.black38, size: 12),
         const SizedBox(width: 4),
         Text(
           value,
-          style: const TextStyle(color: Colors.white70, fontSize: 11),
+          style: const TextStyle(color: Colors.black54, fontSize: 11),
         ),
       ],
     );
@@ -958,7 +977,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
                   icon,
                   color: isActive && icon == Pixel.heart
                       ? Colors.redAccent
-                      : (isActive ? const Color(0xFF17C964) : Colors.white38),
+                      : (isActive ? const Color(0xFF17C964) : Colors.black38),
                   size: 22,
                 ),
               );
@@ -968,7 +987,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
           Text(
             label,
             style: const TextStyle(
-              color: Colors.white70,
+              color: Colors.black54,
               fontSize: 12,
               fontWeight: FontWeight.w900,
             ),
@@ -1268,7 +1287,7 @@ class _CommentBottomSheetState extends State<_CommentBottomSheet> {
       height:
           MediaQuery.of(context).size.height * 0.95, // Increased height to 95%
       decoration: const BoxDecoration(
-        color: Color(0xFF1A1A1A),
+        color: Colors.white,
         borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
       ),
       padding: EdgeInsets.only(
@@ -1281,7 +1300,7 @@ class _CommentBottomSheetState extends State<_CommentBottomSheet> {
             width: 40,
             height: 4,
             decoration: BoxDecoration(
-              color: Colors.white24,
+              color: Colors.black12,
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -1290,7 +1309,7 @@ class _CommentBottomSheetState extends State<_CommentBottomSheet> {
             child: Text(
               '댓글',
               style: TextStyle(
-                color: Colors.white,
+                color: Colors.black,
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
               ),
@@ -1302,7 +1321,7 @@ class _CommentBottomSheetState extends State<_CommentBottomSheet> {
                 ? const Center(
                     child: Text(
                       '댓글이 없습니다',
-                      style: TextStyle(color: Colors.white38, fontSize: 16),
+                      style: TextStyle(color: Colors.black38, fontSize: 16),
                     ),
                   )
                 : ListView.builder(
@@ -1347,7 +1366,7 @@ class _CommentBottomSheetState extends State<_CommentBottomSheet> {
                                         child: Text(
                                           comment.nickname.toUpperCase(),
                                           style: const TextStyle(
-                                            color: Colors.white54,
+                                            color: Colors.black54,
                                             fontWeight: FontWeight.bold,
                                             fontSize: 14,
                                           ),
@@ -1359,19 +1378,17 @@ class _CommentBottomSheetState extends State<_CommentBottomSheet> {
                                             isDense: true,
                                             icon: const Icon(
                                               Icons.more_vert,
-                                              color: Colors.white54,
+                                              color: Colors.black54,
                                               size: 18,
                                             ),
-                                            dropdownColor: const Color(
-                                              0xFF2A2A2A,
-                                            ),
+                                            dropdownColor: Colors.white,
                                             items: const [
                                               DropdownMenuItem(
                                                 value: 'delete',
                                                 child: Text(
                                                   '삭제',
                                                   style: TextStyle(
-                                                    color: Colors.white,
+                                                    color: Colors.black,
                                                   ),
                                                 ),
                                               ),
@@ -1390,7 +1407,7 @@ class _CommentBottomSheetState extends State<_CommentBottomSheet> {
                                   Text(
                                     comment.content,
                                     style: const TextStyle(
-                                      color: Colors.white,
+                                      color: Colors.black,
                                       fontSize: 14,
                                     ),
                                   ),
@@ -1431,7 +1448,7 @@ class _CommentBottomSheetState extends State<_CommentBottomSheet> {
           ),
           const SizedBox(width: 12),
           NesButton(
-            type: NesButtonType.primary,
+            type: NesButtonType.success,
             onPressed: _submitComment,
             child: _isSubmitting
                 ? const SizedBox(

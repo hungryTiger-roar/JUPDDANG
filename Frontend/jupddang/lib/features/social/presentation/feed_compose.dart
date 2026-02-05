@@ -82,7 +82,7 @@ class _CommunityComposeScreenState extends State<CommunityComposeScreen> {
     super.initState();
     _selectedAccount =
         widget.initialAccount ??
-            (widget.accounts.isNotEmpty ? widget.accounts.first : null);
+        (widget.accounts.isNotEmpty ? widget.accounts.first : null);
 
     // 이어쓰기 데이터가 있으면 불러오기 실행
     if (widget.initialDraft != null) {
@@ -166,7 +166,7 @@ class _CommunityComposeScreenState extends State<CommunityComposeScreen> {
   void _openRecordPicker() {
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF1F1F1F),
+      backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -175,19 +175,23 @@ class _CommunityComposeScreenState extends State<CommunityComposeScreen> {
           child: ListView.separated(
             padding: const EdgeInsets.symmetric(vertical: 16),
             itemCount: _records.length,
-            separatorBuilder: (_, __) => const Divider(height: 1, color: Colors.white24),
+            separatorBuilder: (_, __) =>
+                const Divider(height: 1, color: Colors.blueGrey),
             itemBuilder: (context, index) {
               final record = _records[index];
               final selected = _selectedRecord?.id == record.id;
               return ListTile(
-                title: Text(record.title, style: const TextStyle(color: Colors.white)),
+                title: Text(
+                  record.title,
+                  style: const TextStyle(color: Colors.black),
+                ),
                 subtitle: Text(
                   '${record.date} · ${record.distance} · ${record.duration}',
-                  style: const TextStyle(color: Colors.white70),
+                  style: const TextStyle(color: Colors.black54),
                 ),
                 trailing: selected
                     ? const Icon(Icons.check_circle, color: _navAccent)
-                    : const Icon(Icons.circle_outlined, color: Colors.white24),
+                    : const Icon(Icons.circle_outlined, color: Colors.black26),
                 onTap: () {
                   setState(() {
                     _selectedRecord = record;
@@ -278,11 +282,11 @@ class _CommunityComposeScreenState extends State<CommunityComposeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF141414),
+      backgroundColor: Colors.white,
       appBar: AppBar(
         title: const Text('NEW POST'),
         backgroundColor: Colors.transparent, // ★ 투명 배경
-        foregroundColor: Colors.white,       // ★ 흰색 글씨/아이콘
+        foregroundColor: Colors.black, // ★ 검은색 글씨/아이콘
         leading: IconButton(
           icon: const Icon(Icons.close_rounded, size: 24),
           onPressed: () => Navigator.pop(context),
@@ -333,9 +337,9 @@ class _CommunityComposeScreenState extends State<CommunityComposeScreen> {
     return Text(
       label,
       style: const TextStyle(
-        color: Colors.white,
+        color: Colors.black,
         fontWeight: FontWeight.w900,
-        fontSize: 14,
+        fontSize: 16,
 
         letterSpacing: 1.0,
       ),
@@ -346,10 +350,16 @@ class _CommunityComposeScreenState extends State<CommunityComposeScreen> {
     return _buildInputContainer(
       TextField(
         controller: _hashtagController,
-        style: const TextStyle(color: Colors.white),
+        cursorColor: const Color(0xFF17C964),
+        style: const TextStyle(
+          color: Colors.black,
+          fontSize: 20,
+          fontWeight: FontWeight.bold,
+          fontFamily: 'NeoDunggeunmo',
+        ),
         decoration: const InputDecoration(
           hintText: '#플로깅 #환경',
-          hintStyle: TextStyle(color: Colors.white38),
+          hintStyle: TextStyle(color: Colors.black38),
           border: InputBorder.none,
         ),
       ),
@@ -362,24 +372,30 @@ class _CommunityComposeScreenState extends State<CommunityComposeScreen> {
         controller: _contentController,
         maxLines: 6,
         maxLength: 1000,
-        style: const TextStyle(color: Colors.white),
+        cursorColor: const Color(0xFF17C964),
+        style: const TextStyle(
+          color: Colors.black,
+          fontSize: 20,
+          fontWeight: FontWeight.bold,
+          fontFamily: 'NeoDunggeunmo',
+        ),
         decoration: const InputDecoration(
           hintText: '내용을 입력하세요',
-          hintStyle: TextStyle(color: Colors.white38),
+          hintStyle: TextStyle(color: Colors.black38),
           border: InputBorder.none,
           counterText: '',
         ),
         buildCounter:
             (context, {required currentLength, required isFocused, maxLength}) {
-          final limit = maxLength ?? 1000;
-          return Align(
-            alignment: Alignment.centerRight,
-            child: Text(
-              '$currentLength / 최대 $limit자',
-              style: const TextStyle(color: Colors.white38, fontSize: 12),
-            ),
-          );
-        },
+              final limit = maxLength ?? 1000;
+              return Align(
+                alignment: Alignment.centerRight,
+                child: Text(
+                  '$currentLength / 최대 $limit자',
+                  style: const TextStyle(color: Colors.black38, fontSize: 12),
+                ),
+              );
+            },
       ),
     );
   }
@@ -420,7 +436,7 @@ class _CommunityComposeScreenState extends State<CommunityComposeScreen> {
         aspectRatio: 1,
         child: Container(
           decoration: BoxDecoration(
-            color: const Color(0xFF1F1F1F),
+            color: Colors.white,
             border: Border.all(color: _borderColor, width: 2.0),
             boxShadow: [
               BoxShadow(
@@ -433,9 +449,9 @@ class _CommunityComposeScreenState extends State<CommunityComposeScreen> {
             image: image == null
                 ? null
                 : DecorationImage(
-              image: FileImage(File(image.path)),
-              fit: BoxFit.cover,
-            ),
+                    image: FileImage(File(image.path)),
+                    fit: BoxFit.cover,
+                  ),
           ),
           child: Stack(
             children: [
@@ -444,11 +460,11 @@ class _CommunityComposeScreenState extends State<CommunityComposeScreen> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Pixel.camera, color: Colors.white54),
+                      const Icon(Pixel.camera, color: Colors.black54),
                       const SizedBox(height: 6),
                       Text(
                         label,
-                        style: const TextStyle(color: Colors.white54),
+                        style: const TextStyle(color: Colors.black54),
                       ),
                     ],
                   ),
@@ -500,7 +516,7 @@ class _CommunityComposeScreenState extends State<CommunityComposeScreen> {
             width: double.infinity,
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: const Color(0xFF1F1F1F),
+              color: Colors.white,
               border: Border.all(color: _borderColor, width: 2.0),
               boxShadow: [
                 BoxShadow(
@@ -538,20 +554,20 @@ class _CommunityComposeScreenState extends State<CommunityComposeScreen> {
                         _selectedRecord!.title,
                         style: const TextStyle(
                           fontWeight: FontWeight.w600,
-                          color: Colors.white,
+                          color: Colors.black,
                         ),
                       ),
                       const SizedBox(height: 4),
                       Text(
                         '${_selectedRecord!.date} · ${_selectedRecord!.distance} · ${_selectedRecord!.duration}',
-                        style: const TextStyle(color: Colors.white70),
+                        style: const TextStyle(color: Colors.black87),
                       ),
                     ],
                   ),
                 ),
                 IconButton(
                   onPressed: () => setState(() => _selectedRecord = null),
-                  icon: const Icon(Pixel.close, color: Colors.white54),
+                  icon: const Icon(Pixel.close, color: Colors.black54),
                 ),
               ],
             ),
@@ -561,7 +577,7 @@ class _CommunityComposeScreenState extends State<CommunityComposeScreen> {
             width: double.infinity,
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: const Color(0xFF1F1F1F),
+              color: Colors.white,
               border: Border.all(color: _borderColor, width: 2.0),
               boxShadow: [
                 BoxShadow(
@@ -574,7 +590,7 @@ class _CommunityComposeScreenState extends State<CommunityComposeScreen> {
             ),
             child: const Text(
               '플로깅 기록을 선택하면 게시글에 함께 올라갑니다.',
-              style: TextStyle(color: Colors.white38),
+              style: TextStyle(color: Colors.black38),
             ),
           ),
       ],
@@ -583,9 +599,9 @@ class _CommunityComposeScreenState extends State<CommunityComposeScreen> {
 
   Widget _buildInputContainer(Widget child) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 22),
       decoration: BoxDecoration(
-        color: const Color(0xFF1F1F1F),
+        color: Colors.white,
         border: Border.all(color: _borderColor, width: 2.0),
         boxShadow: [
           BoxShadow(

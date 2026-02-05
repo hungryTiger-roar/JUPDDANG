@@ -10,7 +10,7 @@ class PartyScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF141414),
+      backgroundColor: Colors.white,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(20),
@@ -24,9 +24,9 @@ class PartyScreen extends StatelessWidget {
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: Color(0xFF17C964),
-                  fontSize: 32,
+                  fontSize: 28,
                   fontWeight: FontWeight.w900,
-                  letterSpacing: 2,
+                  letterSpacing: 1.5,
                   height: 1.2,
                 ),
               ),
@@ -58,7 +58,7 @@ class PartyScreen extends StatelessWidget {
                 icon: Pixel.login,
                 title: 'JOIN ROOM',
                 subtitle: '초대 코드로 참가해요',
-                color: const Color(0xFF3B82F6),
+                color: const Color(0xFF17C964),
                 onTap: () {
                   Navigator.push(
                     context,
@@ -79,22 +79,22 @@ class PartyScreen extends StatelessWidget {
                   children: [
                     Row(
                       children: [
-                        Icon(Pixel.users, color: Colors.white70, size: 16),
+                        Icon(Pixel.users, color: Colors.black54, size: 16),
                         SizedBox(width: 8),
                         Text(
                           '최대 4명까지 함께 플로깅!',
-                          style: TextStyle(color: Colors.white70, fontSize: 12),
+                          style: TextStyle(color: Colors.black54, fontSize: 12),
                         ),
                       ],
                     ),
                     SizedBox(height: 8),
                     Row(
                       children: [
-                        Icon(Pixel.trophy, color: Colors.white70, size: 16),
+                        Icon(Pixel.trophy, color: Colors.black54, size: 16),
                         SizedBox(width: 8),
                         Text(
                           '방장의 화면이 모두에게 공유돼요',
-                          style: TextStyle(color: Colors.white70, fontSize: 12),
+                          style: TextStyle(color: Colors.black54, fontSize: 12),
                         ),
                       ],
                     ),
@@ -140,21 +140,21 @@ class PartyScreen extends StatelessWidget {
                   Text(
                     title,
                     style: const TextStyle(
-                      color: Colors.white,
+                      color: Colors.black,
                       fontSize: 20,
                       fontWeight: FontWeight.w900,
-                      letterSpacing: 1.5,
+                      letterSpacing: 1.0,
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     subtitle,
-                    style: const TextStyle(color: Colors.white54, fontSize: 14),
+                    style: const TextStyle(color: Colors.black54, fontSize: 14),
                   ),
                 ],
               ),
             ),
-            const Icon(Pixel.arrowright, color: Colors.white54, size: 24),
+            const Icon(Pixel.arrowright, color: Colors.black54, size: 24),
           ],
         ),
       ),

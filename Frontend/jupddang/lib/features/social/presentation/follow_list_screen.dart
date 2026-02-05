@@ -83,7 +83,7 @@ class _FollowListScreenState extends State<FollowListScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF141414),
+      backgroundColor: Colors.white,
       body: SafeArea(
         child: Column(
           children: [
@@ -97,7 +97,7 @@ class _FollowListScreenState extends State<FollowListScreen>
                     child: Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF1F1F1F),
+                        color: Colors.white,
                         border: Border.all(color: Colors.black, width: 3),
                         boxShadow: const [
                           BoxShadow(color: Colors.black, offset: Offset(4, 4)),
@@ -105,7 +105,7 @@ class _FollowListScreenState extends State<FollowListScreen>
                       ),
                       child: const Icon(
                         Pixel.arrowleft,
-                        color: Colors.white,
+                        color: Colors.black,
                         size: 24,
                       ),
                     ),
@@ -114,8 +114,8 @@ class _FollowListScreenState extends State<FollowListScreen>
                   const Text(
                     'FOLLOW',
                     style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 20,
+                      color: Colors.black,
+                      fontSize: 24,
                       fontWeight: FontWeight.w900,
                       letterSpacing: 1.5,
                     ),
@@ -130,7 +130,7 @@ class _FollowListScreenState extends State<FollowListScreen>
             Container(
               margin: const EdgeInsets.symmetric(horizontal: 20),
               decoration: BoxDecoration(
-                color: const Color(0xFF1F1F1F),
+                color: Colors.white,
                 border: Border.all(color: Colors.black, width: 3),
                 boxShadow: const [
                   BoxShadow(color: Colors.black, offset: Offset(4, 4)),
@@ -140,10 +140,10 @@ class _FollowListScreenState extends State<FollowListScreen>
                 controller: _tabController,
                 indicatorColor: const Color(0xFF17C964),
                 indicatorWeight: 3,
-                labelColor: Colors.white,
-                unselectedLabelColor: Colors.white54,
+                labelColor: Colors.black,
+                unselectedLabelColor: Colors.black54,
                 labelStyle: const TextStyle(
-                  fontSize: 14,
+                  fontSize: 16,
                   fontWeight: FontWeight.w900,
                   letterSpacing: 1.2,
                 ),
@@ -187,7 +187,7 @@ class _FollowListScreenState extends State<FollowListScreen>
                             vertical: 2,
                           ),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF3B82F6),
+                            color: const Color(0xFF17C964),
                             border: Border.all(color: Colors.black, width: 2),
                           ),
                           child: Text(
@@ -237,7 +237,7 @@ class _FollowListScreenState extends State<FollowListScreen>
           margin: const EdgeInsets.all(20),
           padding: const EdgeInsets.all(40),
           decoration: BoxDecoration(
-            color: const Color(0xFF1F1F1F),
+            color: Colors.white,
             border: Border.all(color: Colors.black, width: 3),
             boxShadow: const [
               BoxShadow(color: Colors.black, offset: Offset(6, 6)),
@@ -248,15 +248,15 @@ class _FollowListScreenState extends State<FollowListScreen>
             children: [
               Icon(
                 type == 'FOLLOWING' ? Pixel.userplus : Pixel.users,
-                color: Colors.white24,
+                color: Colors.black26,
                 size: 48,
               ),
               const SizedBox(height: 16),
               Text(
                 '팔로우 목록이 없음',
                 style: const TextStyle(
-                  color: Colors.white38,
-                  fontSize: 16,
+                  color: Colors.black38,
+                  fontSize: 18,
                   fontWeight: FontWeight.w900,
                 ),
               ),
@@ -275,7 +275,7 @@ class _FollowListScreenState extends State<FollowListScreen>
           margin: const EdgeInsets.only(bottom: 12),
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: const Color(0xFF1F1F1F),
+            color: Colors.white,
             border: Border.all(color: Colors.black, width: 3),
             boxShadow: const [
               BoxShadow(color: Colors.black, offset: Offset(4, 4)),
@@ -302,7 +302,7 @@ class _FollowListScreenState extends State<FollowListScreen>
                         width: 48,
                         height: 48,
                         decoration: BoxDecoration(
-                          color: const Color(0xFF2A2A2A),
+                          color: Colors.white,
                           border: Border.all(color: Colors.black, width: 2),
                         ),
                         child: user.profileImage.isNotEmpty
@@ -367,7 +367,7 @@ class _FollowListScreenState extends State<FollowListScreen>
                       vertical: 4,
                     ),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF2A2A2A),
+                      color: Colors.white,
                       border: Border.all(color: Colors.black, width: 2),
                     ),
                     child: Text(
@@ -390,7 +390,7 @@ class _FollowListScreenState extends State<FollowListScreen>
                       ),
                       decoration: BoxDecoration(
                         color: _followingIds.contains(user.userId)
-                            ? const Color(0xFF2A2A2A)
+                            ? Colors.white
                             : const Color(0xFF17C964),
                         border: Border.all(color: Colors.black, width: 2),
                         boxShadow: const [
@@ -403,9 +403,9 @@ class _FollowListScreenState extends State<FollowListScreen>
                             : 'FOLLOW',
                         style: TextStyle(
                           color: _followingIds.contains(user.userId)
-                              ? Colors.white54
+                              ? Colors.black54
                               : Colors.black,
-                          fontSize: 10,
+                          fontSize: 12,
                           fontWeight: FontWeight.w900,
                         ),
                       ),

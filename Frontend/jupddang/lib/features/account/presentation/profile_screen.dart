@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:nes_ui/nes_ui.dart';
 import '../../../services/auth_service.dart';
 import '../../../widgets/pixel_character.dart';
 import 'package:pixelarticons/pixelarticons.dart';
 import '../../social/models/community_models.dart';
 import '../../social/presentation/follow_list_screen.dart';
+import '../../social/presentation/my_comments_screen.dart';
+import '../../../main.dart';
 
 class ProfileScreen extends StatefulWidget {
   final String userId;
@@ -14,7 +17,7 @@ class ProfileScreen extends StatefulWidget {
   State<ProfileScreen> createState() => _ProfileScreenState();
 }
 
-class _ProfileScreenState extends State<ProfileScreen> {
+class _ProfileScreenState extends State<ProfileScreen> with WidgetsBindingObserver, RouteAware {
   final AuthService _authService = AuthService();
   bool _loading = true;
   String _profileNickname = '';
@@ -38,15 +41,72 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadProfile();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // RouteObserver 구독
+    routeObserver.subscribe(this, ModalRoute.of(context) as PageRoute);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    routeObserver.unsubscribe(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // 앱이 다시 활성화되면 프로필 정보 갱신
+    if (state == AppLifecycleState.resumed) {
+      _loadProfile();
+    }
+  }
+
+  // 다른 화면에서 돌아올 때 호출됨 (중요!)
+  @override
+  void didPopNext() {
+    // feed에서 댓글 작성 후 돌아왔을 때, 또는 다른 화면에서 돌아왔을 때 갱신
+    _loadProfile();
+  }
+
+  // 이 화면으로 처음 push되었을 때 호출됨
+  @override
+  void didPush() {
+    // 필요시 구현
+  }
+
+  // 이 화면에서 다른 화면으로 push했을 때 호출됨
+  @override
+  void didPushNext() {
+    // 필요시 구현
+  }
+
+  // 이 화면이 pop되었을 때 호출됨
+  @override
+  void didPop() {
+    // 필요시 구현
   }
 
   Future<void> _loadProfile() async {
     setState(() => _loading = true);
 
     try {
-      // 모든 게시글 가져오기
-      final postsData = await _authService.getPosts();
+      // 병렬로 데이터 가져오기
+      final results = await Future.wait([
+        _authService.getPosts(allPosts: true), // 전체 게시글 (해당 유저의 게시글 필터링을 위해)
+        _authService.getMyComments(), // 내 댓글
+        _authService.getProfileById(widget.userId), // 프로필 정보
+      ]);
+
+      final postsData = results[0] as List<dynamic>;
+      final commentsData = results[1] as List<dynamic>;
+      final profileData = results[2] as Map<String, dynamic>;
+
       final allPosts = postsData
           .whereType<Map>()
           .map(
@@ -62,27 +122,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
           )
           .toList();
 
-      // 해당 유저가 작성한 댓글 카운트
-      int commentCount = 0;
-      for (var post in allPosts) {
-        commentCount += post.comments
-            .where((comment) => comment.nickname == widget.userId)
-            .length;
-      }
+      // 내가 작성한 댓글 개수 (API에서 직접 가져오기)
+      final commentCount = commentsData.length;
 
       // 받은 좋아요 수 (작성한 게시글의 likeCount 합계)
       int totalLikes = userPosts.fold(0, (sum, post) => sum + post.likeCount);
 
-      //화현이: 프로필 정보를 한 번에 가져오기 (최적화: 3번 호출 -> 1번 호출)
-      final profileData = await _authService.getProfileById(widget.userId);
-
+      // 팔로우 상태 확인
       bool realIsFollowing = false;
       if (AuthService.userId != null) {
         try {
-          final myFollowings = await _authService.getFollowings(AuthService.userId!);
+          final myFollowings = await _authService.getFollowings(
+            AuthService.userId!,
+          );
           // 내 팔로잉 목록에 이 사람(widget.userId)이 있는지 확인!
-          realIsFollowing = myFollowings.any((user) =>
-          user['userId'] == widget.userId || user['followerId'] == widget.userId
+          realIsFollowing = myFollowings.any(
+            (user) =>
+                user['userId'] == widget.userId ||
+                user['followerId'] == widget.userId,
           );
         } catch (e) {
           print('팔로잉 목록 확인 실패: $e');
@@ -96,7 +153,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final followingCount = profileData['followingCount'] ?? 0;
       final fetchedNickname = profileData['nickname'] ?? widget.userId;
 
-      print('서버 isFollowing: ${profileData['isFollowing']} / 내 검증 결과: $realIsFollowing');
+      print(
+        '서버 isFollowing: ${profileData['isFollowing']} / 내 검증 결과: $realIsFollowing',
+      );
 
       setState(() {
         _profileNickname = fetchedNickname;
@@ -182,9 +241,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
           _stats['followers'] = currentFollowers;
         });
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('요청 처리에 실패했습니다.')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('요청 처리에 실패했습니다.')));
         }
       }
     } catch (e) {
@@ -200,7 +259,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF141414),
+      backgroundColor: Colors.white,
       body: _loading
           ? const Center(
               child: CircularProgressIndicator(color: Color(0xFF17C964)),
@@ -216,24 +275,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         children: [
                           GestureDetector(
                             onTap: () => Navigator.pop(context),
-                            child: Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF1F1F1F),
-                                border: Border.all(
-                                  color: Colors.black,
-                                  width: 3,
-                                ),
-                                boxShadow: const [
-                                  BoxShadow(
-                                    color: Colors.black,
-                                    offset: Offset(4, 4),
-                                  ),
-                                ],
-                              ),
+                            child: NesButton(
+                              type: NesButtonType.normal,
+                              onPressed: () => Navigator.pop(context),
                               child: const Icon(
                                 Pixel.arrowleft,
-                                color: Colors.white,
+                                color: Colors.black,
                                 size: 24,
                               ),
                             ),
@@ -242,7 +289,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           Text(
                             widget.userId.toUpperCase(),
                             style: const TextStyle(
-                              color: Colors.white,
+                              color: Colors.black,
                               fontSize: 20,
                               fontWeight: FontWeight.w900,
                               letterSpacing: 1.5,
@@ -268,7 +315,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       child: Text(
                         'MY POSTS',
                         style: TextStyle(
-                          color: Colors.white70,
+                          color: Colors.black54,
                           fontSize: 14,
                           fontWeight: FontWeight.w900,
                           letterSpacing: 1.2,
@@ -299,14 +346,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildProfileHeader() {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+    return NesContainer(
       padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1F1F1F),
-        border: Border.all(color: Colors.black, width: 3),
-        boxShadow: const [BoxShadow(color: Colors.black, offset: Offset(6, 6))],
-      ),
       child: Column(
         children: [
           // Avatar
@@ -314,14 +355,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
             width: 100,
             height: 100,
             decoration: BoxDecoration(
-              color: const Color(0xFF2A2A2A),
+              color: Colors.white,
               border: Border.all(color: Colors.black, width: 3),
               boxShadow: const [
                 BoxShadow(color: Colors.black, offset: Offset(4, 4)),
               ],
             ),
             child: const Center(
-              child: PixelCharacter(size: 64, color: Colors.blueAccent),
+              child: PixelCharacter(size: 64, color: const Color(0xFF17C964)),
             ),
           ),
 
@@ -329,9 +370,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
           // Nickname
           Text(
-              (_profileNickname.isEmpty ? widget.userId : _profileNickname).toUpperCase(),
+            (_profileNickname.isEmpty ? widget.userId : _profileNickname)
+                .toUpperCase(),
             style: const TextStyle(
-              color: Colors.white,
+              color: Colors.black,
               fontSize: 24,
               fontWeight: FontWeight.w900,
               letterSpacing: 1.5,
@@ -356,30 +398,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
           //     ),
           //   ),
           // ),
-
           const SizedBox(height: 16),
 
           if (widget.userId != AuthService.userId)
-            GestureDetector(
-              onTap: _toggleFollow,
-              child: Container(
-                width: 120,
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                decoration: BoxDecoration(
-                  color: _isFollowing ? const Color(0xFF2A2A2A) : const Color(0xFF17C964),
-                  border: Border.all(color: Colors.black, width: 2),
-                  boxShadow: _isFollowing ? [] : const [
-                    BoxShadow(color: Colors.black, offset: Offset(2, 2))
-                  ],
-                ),
+            SizedBox(
+              width: 140,
+              child: NesButton(
+                type: _isFollowing
+                    ? NesButtonType.normal
+                    : NesButtonType.success,
+                onPressed: _toggleFollow,
                 child: Center(
                   child: Text(
                     _isFollowing ? 'UNFOLLOW' : 'FOLLOW',
-                    style: TextStyle(
-                      color: _isFollowing ? Colors.white54 : Colors.black,
+                    style: const TextStyle(
                       fontSize: 14,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 1.0,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
                 ),
@@ -419,7 +453,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 },
                 child: _statBadge('FOLLOWERS', _stats['followers']!),
               ),
-              Container(width: 2, height: 30, color: Colors.white24),
+              Container(width: 2, height: 30, color: Colors.black12),
               GestureDetector(
                 onTap: () {
                   Navigator.push(
@@ -456,7 +490,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         Text(
           label,
           style: const TextStyle(
-            color: Colors.white54,
+            color: Colors.black54,
             fontSize: 10,
             fontWeight: FontWeight.w900,
             letterSpacing: 0.5,
@@ -482,7 +516,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
           Expanded(child: _statCard(Pixel.file, 'POSTS', _stats['posts']!)),
           const SizedBox(width: 12),
           Expanded(
-            child: _statCard(Pixel.message, 'COMMENTS', _stats['comments']!),
+            child: GestureDetector(
+              onTap: () async {
+                // 내 프로필일 때만 댓글 목록 화면으로 이동
+                if (widget.userId == AuthService.userId ||
+                    widget.userId == AuthService.nickname) {
+                  await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => MyCommentsScreen(userId: widget.userId),
+                    ),
+                  );
+                  // 댓글 목록 화면에서 돌아오면 프로필 정보 갱신
+                  _loadProfile();
+                }
+              },
+              child: _statCard(Pixel.message, 'COMMENTS', _stats['comments']!),
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(child: _statCard(Pixel.heart, 'LIKES', _stats['likes']!)),
@@ -492,13 +542,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _statCard(IconData icon, String label, int count) {
-    return Container(
+    return NesContainer(
       padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 12),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1F1F1F),
-        border: Border.all(color: Colors.black, width: 3),
-        boxShadow: const [BoxShadow(color: Colors.black, offset: Offset(4, 4))],
-      ),
       child: Column(
         children: [
           Icon(icon, color: const Color(0xFF17C964), size: 28),
@@ -506,7 +551,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           Text(
             count.toString(),
             style: const TextStyle(
-              color: Colors.white,
+              color: Colors.black,
               fontSize: 20,
               fontWeight: FontWeight.w900,
             ),
@@ -515,7 +560,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           Text(
             label,
             style: const TextStyle(
-              color: Colors.white54,
+              color: Colors.black54,
               fontSize: 9,
               fontWeight: FontWeight.bold,
             ),
@@ -528,24 +573,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
   //화현이: 본인 게시글 그리드 빌더
   Widget _buildPostsGrid() {
     if (_myPosts.isEmpty) {
-      return Container(
-        margin: const EdgeInsets.symmetric(horizontal: 20),
+      return NesContainer(
         padding: const EdgeInsets.all(40),
-        decoration: BoxDecoration(
-          color: const Color(0xFF1F1F1F),
-          border: Border.all(color: Colors.black, width: 3),
-          boxShadow: const [
-            BoxShadow(color: Colors.black, offset: Offset(6, 6)),
-          ],
-        ),
         child: Column(
           children: const [
-            Icon(Pixel.file, color: Colors.white24, size: 48),
+            Icon(Pixel.file, color: Colors.black26, size: 48),
             SizedBox(height: 16),
             Text(
               '작성한 게시글이 없습니다',
               style: TextStyle(
-                color: Colors.white38,
+                color: Colors.black38,
                 fontSize: 16,
                 fontWeight: FontWeight.w900,
               ),
@@ -624,7 +661,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       },
       child: Container(
         decoration: BoxDecoration(
-          color: const Color(0xFF1F1F1F),
+          color: const Color(0xFFF0F0F0),
           border: Border.all(color: Colors.black, width: 2),
         ),
         child: Stack(
@@ -637,10 +674,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 fit: BoxFit.cover,
                 errorBuilder: (context, error, stackTrace) {
                   return Container(
-                    color: const Color(0xFF2A2A2A),
+                    color: Colors.white,
                     child: const Icon(
                       Pixel.image,
-                      color: Colors.white24,
+                      color: Colors.black26,
                       size: 32,
                     ),
                   );
@@ -648,8 +685,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
               )
             else
               Container(
-                color: const Color(0xFF2A2A2A),
-                child: const Icon(Pixel.file, color: Colors.white24, size: 32),
+                color: Colors.white,
+                child: const Icon(Pixel.file, color: Colors.black26, size: 32),
               ),
 
             // 좋아요 & 댓글 오버레이 (아이콘 크기 16px로 확대)

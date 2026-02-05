@@ -75,7 +75,7 @@ class _LoginScreenState extends State<LoginScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               IconButton(
-                icon: const Icon(Pixel.arrowleft),
+                icon: const Icon(Pixel.arrowleft, color: Colors.black),
                 onPressed: () => Navigator.pop(context),
               ),
               const SizedBox(height: 20),
@@ -85,15 +85,14 @@ class _LoginScreenState extends State<LoginScreen> {
                   fontSize: 28,
                   fontWeight: FontWeight.w900,
                   letterSpacing: 2,
+                  color: Colors.black,
                 ),
               ),
               const SizedBox(height: 12),
               Text(
                 'Please sign in to continue.',
                 style: TextStyle(
-                  color: Theme.of(
-                    context,
-                  ).textTheme.bodyMedium?.color?.withOpacity(0.7),
+                  color: Colors.black87,
                   fontSize: 14,
                   letterSpacing: 1.0,
                 ),

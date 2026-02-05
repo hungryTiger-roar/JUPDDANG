@@ -6,7 +6,8 @@ import '../../../widgets/animated_boss_widget.dart';
 
 class BossDetailScreen extends StatefulWidget {
   final int bossId;
-  final RaidBossModel? boss; // Optional: for displaying boss animation immediately
+  final RaidBossModel?
+  boss; // Optional: for displaying boss animation immediately
 
   const BossDetailScreen({super.key, required this.bossId, this.boss});
 
@@ -33,14 +34,16 @@ class _BossDetailScreenState extends State<BossDetailScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF141414),
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1F1F1F),
+        backgroundColor: Colors.transparent,
+        foregroundColor: Colors.black,
         title: const Text(
           'BOSS ZONE',
           style: TextStyle(
             fontWeight: FontWeight.w900,
             letterSpacing: 2.0,
+            fontSize: 24, // Increased size
           ),
         ),
         leading: IconButton(
@@ -53,9 +56,7 @@ class _BossDetailScreenState extends State<BossDetailScreen> {
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(
-              child: CircularProgressIndicator(
-                color: Color(0xFF17C964),
-              ),
+              child: CircularProgressIndicator(color: Color(0xFF17C964)),
             );
           } else if (snapshot.hasError || !snapshot.hasData) {
             return Center(
@@ -64,7 +65,7 @@ class _BossDetailScreenState extends State<BossDetailScreen> {
                 children: [
                   const Text(
                     '데이터를 불러올 수 없습니다.',
-                    style: TextStyle(color: Colors.white70),
+                    style: TextStyle(color: Colors.black54, fontSize: 16),
                   ),
                   const SizedBox(height: 16),
                   ElevatedButton(
@@ -123,26 +124,21 @@ class _BossDetailScreenState extends State<BossDetailScreen> {
       height: 200,
       margin: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFF1F1F1F),
+        color: Colors.white,
         border: Border.all(color: Colors.red, width: 4),
-        boxShadow: const [
-          BoxShadow(color: Colors.black, offset: Offset(8, 8)),
-        ],
+        boxShadow: const [BoxShadow(color: Colors.black, offset: Offset(8, 8))],
       ),
       child: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            AnimatedBossWidget(
-              bossType: bossType,
-              size: 120,
-            ),
+            AnimatedBossWidget(bossType: bossType, size: 120),
             const SizedBox(height: 16),
             const Text(
               'BOSS',
               style: TextStyle(
                 color: Colors.red,
-                fontSize: 24,
+                fontSize: 28, // Increased size
                 fontWeight: FontWeight.w900,
                 letterSpacing: 4,
               ),
@@ -158,11 +154,9 @@ class _BossDetailScreenState extends State<BossDetailScreen> {
       margin: const EdgeInsets.symmetric(horizontal: 20),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFF1F1F1F),
+        color: Colors.white,
         border: Border.all(color: const Color(0xFF17C964), width: 3),
-        boxShadow: const [
-          BoxShadow(color: Colors.black, offset: Offset(6, 6)),
-        ],
+        boxShadow: const [BoxShadow(color: Colors.black, offset: Offset(6, 6))],
       ),
       child: Column(
         children: [
@@ -182,11 +176,7 @@ class _BossDetailScreenState extends State<BossDetailScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(
-                Icons.eco,
-                color: Color(0xFF17C964),
-                size: 32,
-              ),
+              const Icon(Icons.eco, color: Color(0xFF17C964), size: 32),
               const SizedBox(width: 12),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -194,8 +184,8 @@ class _BossDetailScreenState extends State<BossDetailScreen> {
                   const Text(
                     'TOTAL CONTRIBUTION',
                     style: TextStyle(
-                      color: Colors.white70,
-                      fontSize: 10,
+                      color: Colors.black54,
+                      fontSize: 12, // Increased size
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -203,7 +193,7 @@ class _BossDetailScreenState extends State<BossDetailScreen> {
                     '${detail.totalAccumulatedScore} P',
                     style: const TextStyle(
                       color: Color(0xFF17C964),
-                      fontSize: 24,
+                      fontSize: 28, // Increased size
                       fontWeight: FontWeight.w900,
                     ),
                   ),
@@ -225,8 +215,8 @@ class _BossDetailScreenState extends State<BossDetailScreen> {
           child: Text(
             'CONTRIBUTION RANKING',
             style: TextStyle(
-              color: Colors.white,
-              fontSize: 18,
+              color: Colors.black,
+              fontSize: 20, // Increased size
               fontWeight: FontWeight.w900,
               letterSpacing: 2,
             ),
@@ -243,7 +233,7 @@ class _BossDetailScreenState extends State<BossDetailScreen> {
             child: Center(
               child: Text(
                 '아직 참여자가 없습니다.',
-                style: TextStyle(color: Colors.white54),
+                style: TextStyle(color: Colors.black54, fontSize: 16),
               ),
             ),
           ),
@@ -271,14 +261,16 @@ class _BossDetailScreenState extends State<BossDetailScreen> {
       margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isMe ? const Color(0xFF17C964).withOpacity(0.2) : const Color(0xFF1F1F1F),
+        color: isMe ? const Color(0xFF17C964).withOpacity(0.2) : Colors.white,
         border: Border.all(
           color: isMe ? const Color(0xFF17C964) : Colors.black,
           width: 3.0,
         ),
         boxShadow: [
           BoxShadow(
-            color: isMe ? const Color(0xFF17C964).withOpacity(0.3) : Colors.black,
+            color: isMe
+                ? const Color(0xFF17C964).withOpacity(0.3)
+                : Colors.black,
             offset: const Offset(4, 4),
           ),
         ],
@@ -290,9 +282,9 @@ class _BossDetailScreenState extends State<BossDetailScreen> {
             child: Text(
               '#${ranker.rank}',
               style: TextStyle(
-                color: isMe ? const Color(0xFF17C964) : Colors.white,
+                color: isMe ? const Color(0xFF17C964) : Colors.black,
                 fontWeight: FontWeight.w900,
-                fontSize: 18,
+                fontSize: 20, // Increased size
               ),
             ),
           ),
@@ -309,9 +301,9 @@ class _BossDetailScreenState extends State<BossDetailScreen> {
                 Text(
                   ranker.nickname.toUpperCase(),
                   style: TextStyle(
-                    color: isMe ? const Color(0xFF17C964) : Colors.white,
+                    color: isMe ? const Color(0xFF17C964) : Colors.black,
                     fontWeight: FontWeight.w900,
-                    fontSize: 14,
+                    fontSize: 16, // Increased size
                   ),
                 ),
                 if (isMe)

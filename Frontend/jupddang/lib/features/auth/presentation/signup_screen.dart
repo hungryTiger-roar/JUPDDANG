@@ -97,7 +97,7 @@ class _SignupScreenState extends State<SignupScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               IconButton(
-                icon: const Icon(Pixel.arrowleft),
+                icon: const Icon(Pixel.arrowleft, color: Colors.black),
                 onPressed: () => Navigator.pop(context),
               ),
               const SizedBox(height: 20),
@@ -107,6 +107,7 @@ class _SignupScreenState extends State<SignupScreen> {
                   fontSize: 28,
                   fontWeight: FontWeight.w900,
                   letterSpacing: 2,
+                  color: Colors.black,
                 ),
               ),
               const SizedBox(height: 40),

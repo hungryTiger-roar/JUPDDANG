@@ -3,7 +3,6 @@ import 'package:dio/dio.dart';
 import '../../../../core/network/api_client.dart';
 import 'package:http_parser/http_parser.dart';
 import 'package:jupddang/features/plogging/models/plogging_models.dart';
-import '../../../../services/auth_service.dart';
 
 class PloggingService {
   final ApiClient _apiClient;
@@ -19,25 +18,25 @@ class PloggingService {
     required String mapImagePath,
   }) async {
     try {
-      final dataJson = jsonEncode(requestData.toJson());
       final formData = FormData.fromMap({
-        'data': MultipartFile.fromString(
-          dataJson,
-          contentType: MediaType('application', 'json'),
+        'data': jsonEncode(requestData.toJson()),
+        'beforeImage': await MultipartFile.fromFile(
+          beforeImagePath,
+          filename: 'before.jpg',
         ),
-        'beforeImage': await MultipartFile.fromFile(beforeImagePath),
-        'afterImage': await MultipartFile.fromFile(afterImagePath),
-        'mapImage': await MultipartFile.fromFile(mapImagePath),
+        'afterImage': await MultipartFile.fromFile(
+          afterImagePath,
+          filename: 'after.jpg',
+        ),
+        'mapImage': await MultipartFile.fromFile(
+          mapImagePath,
+          filename: 'map.png',
+        ),
       });
       // [Header Note] userId 헤더가 필요한 경우 Interceptor나 여기서 추가.
       // 현재 ApiClient는 Authorization만 처리하므로, 필요 시 options 파라미터 사용.
 
-      final response = await _apiClient.dio.post(
-        '/v1/plogging/end',
-        data: formData,
-        options: Options(headers: {'userId': AuthService.userId ?? ''}),
-      );
-      return response.data;
+      await _apiClient.dio.post('/v1/plogging/end', data: formData);
     } catch (e) {
       print('End Plogging Error: $e');
       rethrow;
@@ -68,7 +67,6 @@ class PloggingService {
       final response = await _apiClient.dio.post(
         '/v1/plogging/temp',
         data: formData,
-        // userId는 헤더 혹은 토큰에서 처리되지만 API 명세 확인 필요
       );
       return response.data;
     } catch (e) {

@@ -75,32 +75,33 @@ class _IntroScreenState extends State<IntroScreen>
             padding: const EdgeInsets.symmetric(horizontal: 24.0),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 const Spacer(flex: 2),
-                // 로고 (작게)
+                // 로고 (크게)
                 SlideTransition(
                   position: _floatAnimation,
                   child: Center(
-                    child: Image.asset(
-                      'assets/images/splash_logo.png',
-                      width: 120,
-                      height: 120,
+                    child: Container(
+                      width: 320,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        border: Border.all(
+                          color: const Color(0xFF17C964),
+                          width: 5,
+                        ),
+                      ),
+                      padding: const EdgeInsets.all(30),
+                      child: Image.asset(
+                        'assets/images/splash_logo.png',
+                        width: 260,
+                        height: 260,
+                        fit: BoxFit.contain,
+                      ),
                     ),
                   ),
                 ),
                 const SizedBox(height: 16),
-                const Center(
-                  child: Text(
-                    'JUPDDANG',
-                    style: TextStyle(
-                      color: Color(0xFF17C964),
-                      fontSize: 32,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 4,
-                    ),
-                  ),
-                ),
                 const Spacer(flex: 1),
                 // 로그인 버튼
                 _buildAnimatedItem(
@@ -108,6 +109,7 @@ class _IntroScreenState extends State<IntroScreen>
                   child: PixelButton(
                     text: 'LOGIN',
                     isPulse: true,
+                    width: 320,
                     onPressed: () {
                       Navigator.push(
                         context,
@@ -125,6 +127,7 @@ class _IntroScreenState extends State<IntroScreen>
                   child: PixelButton(
                     text: 'SIGN UP',
                     isGreen: false,
+                    width: 320,
                     onPressed: () {
                       Navigator.push(
                         context,

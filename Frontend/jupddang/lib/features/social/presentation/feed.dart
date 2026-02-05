@@ -51,6 +51,17 @@ class _CommunityScreenState extends State<CommunityScreen> with RouteAware {
   }
 
   @override
+  void didUpdateWidget(covariant CommunityScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.focusPostId != oldWidget.focusPostId &&
+        widget.focusPostId != null) {
+      _pendingFocusPostId = widget.focusPostId;
+      _showFollowingOnly = false;
+      _loadPosts();
+    }
+  }
+
+  @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     // RouteObserver 구독

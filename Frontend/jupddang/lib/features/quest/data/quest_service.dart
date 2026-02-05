@@ -8,8 +8,7 @@ import '../models/quest_models.dart';
 class QuestService {
   final ApiClient _apiClient;
 
-  QuestService({ApiClient? apiClient})
-      : _apiClient = apiClient ?? ApiClient();
+  QuestService({ApiClient? apiClient}) : _apiClient = apiClient ?? ApiClient();
 
   /// 로컬 GPS 거리 검증 (Haversine 공식)
   double calculateDistance(LatLng point1, LatLng point2) {
@@ -20,7 +19,8 @@ class QuestService {
     double deltaLat = (point2.latitude - point1.latitude) * pi / 180;
     double deltaLon = (point2.longitude - point1.longitude) * pi / 180;
 
-    double a = sin(deltaLat / 2) * sin(deltaLat / 2) +
+    double a =
+        sin(deltaLat / 2) * sin(deltaLat / 2) +
         cos(lat1Rad) * cos(lat2Rad) * sin(deltaLon / 2) * sin(deltaLon / 2);
 
     double c = 2 * atan2(sqrt(a), sqrt(1 - a));
@@ -34,14 +34,14 @@ class QuestService {
     required LatLng afterLocation,
   }) {
     const double maxDistanceMeters = 10.0;
-    
+
     double distance = calculateDistance(beforeLocation, afterLocation);
     bool isValid = distance <= maxDistanceMeters;
 
     return QuestValidationResponse(
       isValid: isValid,
       beforeTrashCount: 0, // 로컬에서는 알 수 없음
-      afterTrashCount: 0,  // 로컬에서는 알 수 없음
+      afterTrashCount: 0, // 로컬에서는 알 수 없음
       distanceMeters: distance,
       message: isValid
           ? '거리 검증 성공 (${distance.toStringAsFixed(1)}m)'

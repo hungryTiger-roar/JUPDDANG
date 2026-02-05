@@ -100,7 +100,10 @@ class _RankingScreenState extends State<RankingScreen> {
 
                               // 내 주변 리스트
                               ...myRankWindow.map(
-                                (ranker) => _buildRankItem(ranker),
+                                (ranker) => Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+                                  child: _buildRankItem(ranker),
+                                ),
                               ),
 
                               // 리스트가 너무 짧을 때를 대비한 여백

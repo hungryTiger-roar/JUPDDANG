@@ -84,29 +84,27 @@ public class PloggingController {
                 return ResponseEntity.ok(response);
         }
 
-        /**
-         * 임시 저장 목록 조회 (미완)
-         */
-        // @GetMapping("/temp")
-        // public ResponseEntity<List<PloggingTempDetailResponse>> getTempPloggings(
-        // @AuthenticationPrincipal Account account) {
-        //
-        // List<PloggingTempDetailResponse> temps =
-        // ploggingService.getTempPloggings(account.getUserId());
-        // return ResponseEntity.ok(temps);
-        // }
+    /**
+     * 임시 저장 목록 조회
+     */
+    @GetMapping("/temp")
+    public ResponseEntity<List<PloggingTempDetailResponse>> getTempPloggings(
+            @AuthenticationPrincipal Account account) {
 
-        /**
-         * 임시 저장 상세 조회 (게시글 폼에 채우기) (미완)
-         */
-        @GetMapping("/temp/{ploggingId}")
-        public ResponseEntity<PloggingTempDetailResponse> getTempPloggingDetail(
-                        @AuthenticationPrincipal Account account,
-                        @PathVariable Long ploggingId) {
+        List<PloggingTempDetailResponse> temps = ploggingService.getTempPloggings(account.getUserId());
+        return ResponseEntity.ok(temps);
+    }
 
-                PloggingTempDetailResponse detail = ploggingService.getTempPloggingDetail(account.getUserId(),
-                                ploggingId);
-                return ResponseEntity.ok(detail);
-        }
+    /**
+     * 임시 저장 상세 조회 (게시글 폼에 채우기)
+     */
+    @GetMapping("/temp/{ploggingId}")
+    public ResponseEntity<PloggingTempDetailResponse> getTempPloggingDetail(
+            @AuthenticationPrincipal Account account,
+            @PathVariable Long ploggingId) {
+
+        PloggingTempDetailResponse detail = ploggingService.getTempPloggingDetail(account.getUserId(), ploggingId);
+        return ResponseEntity.ok(detail);
+    }
 
 }

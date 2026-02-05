@@ -17,8 +17,22 @@ class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 2; // 초기 화면: 지도 (인덱스 2)
   dynamic _ploggingResult; // 🎯 플로깅 결과 저장
   final GlobalKey<NavigatorState> _mapNavigatorKey = GlobalKey<NavigatorState>(); // 🎯 맵 네비게이터 키
+  final GlobalKey<State<CommunityScreen>> _communityKey = GlobalKey<State<CommunityScreen>>(); // 🎯 커뮤니티 스크롤 제어용
 
   void _onItemTapped(int index) async {
+    // 🎯 커뮤니티 탭을 다시 누르면 스크롤을 맨 위로 이동
+    if (_selectedIndex == 0 && index == 0) {
+      final communityState = _communityKey.currentState;
+      if (communityState != null) {
+        try {
+          (communityState as dynamic).scrollToTop();
+        } catch (e) {
+          // scrollToTop 메서드가 없을 경우 무시
+        }
+      }
+      return;
+    }
+
     // 🎯 맵 화면에서 다른 탭으로 이동할 때 플로깅 완료 확인
     if (_selectedIndex == 2 && index != 2) {
       // 맵 화면의 네비게이터에서 결과를 받아올 수 있도록 처리
@@ -51,7 +65,9 @@ class _MainScreenState extends State<MainScreen> {
     final String? focusPostId =
         _ploggingResult is String ? _ploggingResult as String? : null;
     final List<Widget> screens = [
+
       CommunityScreen(
+        key: _communityKey,
         focusPostId: focusPostId,
         onFocusHandled: _onPloggingResultProcessed,
       ),

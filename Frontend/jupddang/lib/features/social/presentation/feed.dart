@@ -40,9 +40,6 @@ class _CommunityScreenState extends State<CommunityScreen> with RouteAware {
   bool _showFollowingOnly = false;
   final Set<String> _likedPostIds = {}; // Track liked posts locally
 
-  // ScrollController for scrolling to top
-  final ScrollController _scrollController = ScrollController();
-
   @override
   void initState() {
     super.initState();
@@ -690,8 +687,6 @@ class _CommunityScreenState extends State<CommunityScreen> with RouteAware {
                               ),
                             ),
                             const SizedBox(width: 8),
-                            // 팔로우 버튼 (내 글 아닐 때만)
-                            if (!isMine) _followButton(post.nickname),
 
                             // 임시 저장 글 태그 (내 글이고 임시글일 때)
                             if (isMine && isLocalDraft)
@@ -1089,33 +1084,6 @@ class _CommunityScreenState extends State<CommunityScreen> with RouteAware {
           Icons.broken_image_outlined,
           color: Colors.white54,
           size: 48,
-        ),
-      ),
-    );
-  }
-
-  Widget _followButton(String nickname) {
-    if (nickname == AuthService.userId) return const SizedBox.shrink();
-
-    final isFollowing = _followingNicknames.contains(nickname);
-    return GestureDetector(
-      onTap: () => _toggleFollow(nickname),
-      child: Container(
-        padding: const EdgeInsets.all(6),
-        decoration: BoxDecoration(
-          color: isFollowing
-              ? Colors.white.withOpacity(0.05)
-              : const Color(0xFF17C964).withOpacity(0.1),
-          border: Border.all(
-            color: isFollowing ? Colors.white24 : const Color(0xFF17C964),
-            width: 1.5,
-          ),
-          borderRadius: BorderRadius.circular(4),
-        ),
-        child: Icon(
-          isFollowing ? Pixel.check : Pixel.userplus,
-          color: isFollowing ? Colors.white38 : const Color(0xFF17C964),
-          size: 16,
         ),
       ),
     );

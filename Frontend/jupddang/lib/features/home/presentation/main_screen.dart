@@ -65,14 +65,12 @@ class _MainScreenState extends State<MainScreen> {
     final String? focusPostId =
         _ploggingResult is String ? _ploggingResult as String? : null;
     final List<Widget> screens = [
-<<<<<<< HEAD
-      CommunityScreen(key: _communityKey),
-=======
+
       CommunityScreen(
+        key: _communityKey,
         focusPostId: focusPostId,
         onFocusHandled: _onPloggingResultProcessed,
       ),
->>>>>>> d42011ad04c5cdc30b16abe1d8d98a46fd163f2f
       const PartyScreen(),
       MapScreen(
         onPloggingComplete: _setPloggingResult, // 🎯 콜백 전달

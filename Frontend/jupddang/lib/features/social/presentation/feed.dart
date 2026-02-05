@@ -31,8 +31,10 @@ class _CommunityScreenState extends State<CommunityScreen> with RouteAware {
 
   // Follow & Like state
   bool _showFollowingOnly = false;
-  final Set<String> _followingNicknames = {'admin'}; // Initial followed users
   final Set<String> _likedPostIds = {}; // Track liked posts locally
+
+  // ScrollController for scrolling to top
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
@@ -52,8 +54,20 @@ class _CommunityScreenState extends State<CommunityScreen> with RouteAware {
 
   @override
   void dispose() {
+    _scrollController.dispose();
     routeObserver.unsubscribe(this);
     super.dispose();
+  }
+
+  // Scroll to top method (called from parent)
+  void scrollToTop() {
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(
+        0,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+    }
   }
 
   // 다른 화면에서 돌아올 때 호출됨 (댓글 삭제 후 돌아올 때)
@@ -162,16 +176,6 @@ class _CommunityScreenState extends State<CommunityScreen> with RouteAware {
     });
   }
 
-  void _toggleFollow(String nickname) {
-    setState(() {
-      if (_followingNicknames.contains(nickname)) {
-        _followingNicknames.remove(nickname);
-      } else {
-        _followingNicknames.add(nickname);
-      }
-    });
-  }
-
   Future<void> _deletePost(String postId) async {
     // 임시 저장된 글인지 확인
     final isLocalDraft = _localPosts.any((p) => p.id == postId);
@@ -271,7 +275,7 @@ class _CommunityScreenState extends State<CommunityScreen> with RouteAware {
   }
 
   Future<void> _openComposer() async {
-    if (AuthService.accessToken == null) {
+    if (AuthService.userId == null || AuthService.userId!.isEmpty) {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
@@ -358,6 +362,7 @@ class _CommunityScreenState extends State<CommunityScreen> with RouteAware {
           onRefresh: _refreshAll,
           color: const Color(0xFF17C964),
           child: CustomScrollView(
+            controller: _scrollController,
             physics: const AlwaysScrollableScrollPhysics(),
             slivers: [
               SliverToBoxAdapter(child: _buildHeader()),
@@ -406,17 +411,6 @@ class _CommunityScreenState extends State<CommunityScreen> with RouteAware {
               ),
             ],
           ),
-          const SizedBox(height: 6),
-          Text(
-            _loadingAccounts
-                ? 'LOADING USERS...'
-                : 'USERS ${_accounts.length} • LATEST FEED',
-            style: const TextStyle(
-              color: Colors.black54,
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
           if (_errorMessage != null) ...[
             const SizedBox(height: 6),
             Text(
@@ -438,22 +432,27 @@ class _CommunityScreenState extends State<CommunityScreen> with RouteAware {
     }
 
     if (_accounts.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(horizontal: 20),
-        child: SizedBox(
-          height: 80,
-          child: Center(
-            child: Text(
-              '로그인 후 유저 목록을 확인할 수 있어요.',
-              style: TextStyle(
-                color: Colors.black54,
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
+      // 로그인하지 않았을 때만 메시지 표시
+      if (AuthService.userId == null || AuthService.userId!.isEmpty) {
+        return const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 20),
+          child: SizedBox(
+            height: 80,
+            child: Center(
+              child: Text(
+                '로그인 후 유저 목록을 확인할 수 있어요.',
+                style: TextStyle(
+                  color: Colors.black54,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
           ),
-        ),
-      );
+        );
+      }
+      // 로그인했는데 계정 목록이 비어있으면 빈 상태 표시
+      return const SizedBox.shrink();
     }
 
     return SizedBox(
@@ -741,9 +740,15 @@ class _CommunityScreenState extends State<CommunityScreen> with RouteAware {
             if (post.localImagePaths.isNotEmpty || post.imageUrls.isNotEmpty)
               _buildPostImages(post),
 
-            // Actions
+            // Content
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+              child: _buildPostContent(post),
+            ),
+
+            // Actions (좋아요, 댓글)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
               child: Row(
                 children: [
                   _actionButton(
@@ -758,16 +763,8 @@ class _CommunityScreenState extends State<CommunityScreen> with RouteAware {
                     post.comments.length.toString(),
                     onTap: () => _showComments(post),
                   ),
-                  const Spacer(),
-                  const Icon(Pixel.flag, color: Colors.black38),
                 ],
               ),
-            ),
-
-            // Content
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
-              child: _buildPostContent(post),
             ),
           ],
         ),
@@ -1064,7 +1061,10 @@ class _CommunityScreenState extends State<CommunityScreen> with RouteAware {
     if (diff.inHours < 24) {
       return '${diff.inHours}시간 전';
     }
-    return '${time.month}/${time.day}';
+    if (diff.inDays < 7) {
+      return '${diff.inDays}일 전';
+    }
+    return '${time.year}년 ${time.month}월 ${time.day}일';
   }
 
   Widget _myPostTag() {

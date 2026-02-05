@@ -140,6 +140,58 @@ class PartyMenuScreen extends StatelessWidget {
                   ],
                 ),
               ),
+
+              const SizedBox(height: 12),
+
+              // 파티 보너스 설명
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFF9E6),
+                  border: Border.all(color: Color(0xFFFBBF24), width: 2),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Pixel.coin, color: Color(0xFFFBBF24), size: 18),
+                        SizedBox(width: 8),
+                        Text(
+                          'PARTY BONUS',
+                          style: TextStyle(
+                            color: Color(0xFFB45309),
+                            fontSize: 14,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 12),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        _BonusChip(members: '2명', bonus: '1.2배'),
+                        _BonusChip(members: '3명', bonus: '1.4배'),
+                        _BonusChip(members: '4명', bonus: '1.6배'),
+                        _BonusChip(members: '5명', bonus: '1.8배'),
+                        _BonusChip(members: '6명', bonus: '2.0배'),
+                      ],
+                    ),
+                    SizedBox(height: 8),
+                    Center(
+                      child: Text(
+                        '인원이 많을수록 점수 보너스 UP!',
+                        style: TextStyle(
+                          color: Color(0xFF17C964),
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ],
           ),
         ),
@@ -202,6 +254,37 @@ class PartyMenuScreen extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _BonusChip extends StatelessWidget {
+  final String members;
+  final String bonus;
+
+  const _BonusChip({required this.members, required this.bonus});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Text(
+          bonus,
+          style: const TextStyle(
+            color: Color(0xFF17C964),
+            fontSize: 12,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          members,
+          style: const TextStyle(
+            color: Colors.black54,
+            fontSize: 10,
+          ),
+        ),
+      ],
     );
   }
 }

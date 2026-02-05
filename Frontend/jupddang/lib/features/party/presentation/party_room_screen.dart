@@ -123,6 +123,70 @@ class _PartyRoomScreenState extends State<PartyRoomScreen> {
     return colors[userId.hashCode % colors.length];
   }
 
+  // 파티 인원수에 따른 보너스 배율 계산
+  double _getBonusMultiplier(int memberCount) {
+    if (memberCount < 2) return 1.0;
+    return 1.0 + (memberCount - 1) * 0.2;
+  }
+
+  // 보너스 카드 위젯 (NES UI 스타일)
+  Widget _buildBonusCard() {
+    final memberCount = _party?.currentMembers ?? 1;
+    final multiplier = _getBonusMultiplier(memberCount);
+    final bonusPercent = ((multiplier - 1.0) * 100).toInt();
+
+    return NesContainer(
+      padding: const EdgeInsets.all(12),
+      backgroundColor: const Color(0xFFFFF9E6),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(
+                Pixel.coin,
+                color: Color(0xFFFBBF24),
+                size: 18,
+              ),
+              const SizedBox(width: 8),
+              const Text(
+                'PARTY BONUS',
+                style: TextStyle(
+                  color: Colors.black,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              color: memberCount >= 2 ? const Color(0xFF17C964) : Colors.grey,
+              border: Border.all(color: Colors.black, width: 2),
+              boxShadow: const [
+                BoxShadow(color: Colors.black, offset: Offset(2, 2)),
+              ],
+            ),
+            child: Text(
+              memberCount >= 2
+                  ? '${memberCount}명 ▶ x${multiplier.toStringAsFixed(1)} (+$bonusPercent%)'
+                  : '2명 이상 참여시 보너스!',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 12,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -239,6 +303,11 @@ class _PartyRoomScreenState extends State<PartyRoomScreen> {
                         ),
                       ],
                     ),
+
+                    const SizedBox(height: 12),
+
+                    // 파티 보너스 배율 표시
+                    _buildBonusCard(),
 
                     const SizedBox(height: 16),
 

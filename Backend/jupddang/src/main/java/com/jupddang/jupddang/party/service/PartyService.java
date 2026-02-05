@@ -289,13 +289,27 @@ public class PartyService {
 
                         List<PartyMember> members = partyMemberRepository.findByPartyId(partyId);
 
+                        // [추가] 파티 인원 수에 따른 보너스 점수 계산
+                        // 2명: 1.2배, 3명: 1.4배, ..., 6명: 2.0배
+                        // 공식: 1.0 + (인원수 - 1) * 0.2
+                        int memberCount = members.size();
+                        double multiplier = 1.0;
+                        if (memberCount >= 2) {
+                                multiplier = 1.0 + (memberCount - 1) * 0.2;
+                        }
+
+                        int finalScore = (int) (plogging.getScore() * multiplier);
+
+                        log.info("🎉 파티 보너스 적용: 인원={}명, 배율={}, 기본점수={}, 최종점수={}",
+                                        memberCount, multiplier, plogging.getScore(), finalScore);
+
                         for (PartyMember member : members) {
                                 Account account = accountRepository.findById(member.getUserId())
                                                 .orElseThrow(() -> new IllegalStateException(
                                                                 "사용자 정보를 찾을 수 없습니다: " + member.getUserId()));
 
-                                // 플로깅 엔티티에서 계산된 점수 사용
-                                account.addActivityStats(plogging.getScore(), request.distance(), request.times());
+                                // 보너스가 적용된 점수 지급
+                                account.addActivityStats(finalScore, request.distance(), request.times());
                         }
                 }
 

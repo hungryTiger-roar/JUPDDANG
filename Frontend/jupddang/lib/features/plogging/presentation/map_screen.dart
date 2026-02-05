@@ -11,7 +11,7 @@ import 'package:pixelarticons/pixelarticons.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:gal/gal.dart';
-import 'dart:ui' as ui;
+
 
 // --- Project Imports (경로는 프로젝트에 맞게 유지해주세요) ---
 import '../../../services/location_h3_service.dart';
@@ -31,7 +31,7 @@ import '../../trashcan/data/trashcan_service.dart';
 import '../../trashcan/models/trashcan_model.dart';
 import 'package:jupddang/features/plogging/models/plogging_models.dart';
 import '../../quest/data/quest_service.dart';
-import '../../quest/models/quest_models.dart';
+
 import '../../quest/presentation/quest_widgets.dart';
 
 // ==========================================
@@ -931,29 +931,6 @@ class _MapScreenState extends State<MapScreen> {
           MarkerLayer(markers: _buildMarkers()),
         ],
       ),
-      children: [
-        TileLayer(
-          urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-          userAgentPackageName: 'com.ssafy.jupddang',
-        ),
-        if (_pathPoints.isNotEmpty)
-          PolylineLayer(
-            polylines: [
-              Polyline(
-                points: _pathPoints,
-                color: _selectedGridColor.withOpacity(0.6),
-                strokeWidth: 5.0,
-                borderColor: Colors.white,
-                borderStrokeWidth: 2.0,
-              ),
-            ],
-          ),
-        PolygonLayer(
-          key: ValueKey('grid_${_selectedGridColor.value}_$_gridOpacity'),
-          polygons: _hexagons,
-        ),
-        MarkerLayer(markers: _buildMarkers()),
-      ],
     );
   }
 
@@ -1558,7 +1535,6 @@ class _MapScreenState extends State<MapScreen> {
         partyId: widget.partyId,
         recordTitle: _recordTitleController.text.trim(),
         score: _coinsGained,
-        route: route,
       );
 
       final response = await _authService.endPlogging(

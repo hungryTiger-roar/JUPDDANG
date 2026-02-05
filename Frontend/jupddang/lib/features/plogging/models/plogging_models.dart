@@ -32,7 +32,6 @@ class PloggingEndRequest {
 }
 
 class TempPloggingRequest {
-  final String userId;
   final double? distance;
   final String? content;
   final int? times;
@@ -41,7 +40,6 @@ class TempPloggingRequest {
   final String? recordTitle;
 
   TempPloggingRequest({
-    required this.userId,
     this.distance,
     this.content,
     this.times,
@@ -51,7 +49,6 @@ class TempPloggingRequest {
   });
 
   Map<String, dynamic> toJson() => {
-    'userId': userId,
     if (distance != null) 'distance': distance,
     if (content != null && content!.isNotEmpty) 'content': content,
     if (times != null) 'times': times,

@@ -6,9 +6,14 @@ import 'profile_screen.dart';
 import 'edit_profile_screen.dart';
 import '../../../services/auth_service.dart';
 
-class SettingsScreen extends StatelessWidget {
+class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
 
+  @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -23,7 +28,7 @@ class SettingsScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
+                    const Text(
                       'SETTINGS',
                       style: TextStyle(
                         color: Colors.white,
@@ -32,15 +37,15 @@ class SettingsScreen extends StatelessWidget {
                         letterSpacing: 2.0,
                       ),
                     ),
-                    SizedBox(height: 6),
+                    const SizedBox(height: 6),
                     Row(
                       children: [
-                        Text(
+                        const Text(
                           'MANAGE YOUR ACCOUNT',
                           style: TextStyle(color: Colors.white70, fontSize: 12),
                         ),
-                        Spacer(),
-                        //화현: 로그아웃 버튼
+                        const Spacer(),
+                        // 화현: 로그아웃 버튼
                         GestureDetector(
                           onTap: () => _showLogoutDialog(context),
                           child: NesButton(
@@ -48,7 +53,7 @@ class SettingsScreen extends StatelessWidget {
                             onPressed: () => _showLogoutDialog(context),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
-                              children: [
+                              children: const [
                                 Icon(
                                   Pixel.power,
                                   color: Colors.black,
@@ -74,19 +79,37 @@ class SettingsScreen extends StatelessWidget {
               ),
             ),
 
-            // Profile Section (Clickable)
+            // My Profile Title
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                padding: const EdgeInsets.fromLTRB(20, 24, 20, 16),
+                child: const Text(
+                  'MY PROFILE',
+                  style: TextStyle(
+                    color: Colors.black54,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 1.2,
+                  ),
+                ),
+              ),
+            ),
+
+            // Profile Section (Clickable) - 괄호 오류 수정됨
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: GestureDetector(
-                  onTap: () {
-                    Navigator.push(
+                  onTap: () async {
+                    await Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) =>
-                            ProfileScreen(userId: AuthService.userId ?? 'Guest'),
+                        builder: (context) => ProfileScreen(
+                            userId: AuthService.userId ?? 'Guest'),
                       ),
                     );
+                    // 프로필 화면에서 돌아온 후 UI 업데이트
+                    if (mounted) setState(() {});
                   },
                   child: NesContainer(
                     padding: const EdgeInsets.all(20),
@@ -100,11 +123,26 @@ class SettingsScreen extends StatelessWidget {
                             color: Colors.white,
                             border: Border.all(color: Colors.black, width: 2),
                           ),
-                          child: const Icon(
-                            Pixel.user,
-                            color: Color(0xFF17C964),
-                            size: 32,
-                          ),
+                          child: AuthService.profileImage != null &&
+                                  AuthService.profileImage!.isNotEmpty
+                              ? ClipRect(
+                                  child: Image.network(
+                                    AuthService.profileImage!,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (context, error, stackTrace) {
+                                      return const Icon(
+                                        Pixel.user,
+                                        color: Color(0xFF17C964),
+                                        size: 32,
+                                      );
+                                    },
+                                  ),
+                                )
+                              : const Icon(
+                                  Pixel.user,
+                                  color: Color(0xFF17C964),
+                                  size: 32,
+                                ),
                         ),
                         const SizedBox(width: 16),
                         // Info
@@ -172,13 +210,17 @@ class SettingsScreen extends StatelessWidget {
                       icon: Pixel.edit,
                       label: '개인정보 변경',
                       color: const Color(0xFF17C964),
-                      onTap: () {
-                        Navigator.push(
+                      onTap: () async {
+                        final result = await Navigator.push(
                           context,
                           MaterialPageRoute(
                             builder: (context) => const EditProfileScreen(),
                           ),
                         );
+                        // 프로필 수정 후 돌아오면 UI 업데이트
+                        if (result == true && mounted) {
+                          setState(() {});
+                        }
                       },
                     ),
                     const SizedBox(height: 16),
@@ -212,12 +254,12 @@ class SettingsScreen extends StatelessWidget {
   }
 
   Widget _settingTileHorizontal(
-    BuildContext context, {
-    required IconData icon,
-    required String label,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
+      BuildContext context, {
+        required IconData icon,
+        required String label,
+        required Color color,
+        required VoidCallback onTap,
+      }) {
     return GestureDetector(
       onTap: onTap,
       child: NesContainer(
@@ -324,13 +366,6 @@ class SettingsScreen extends StatelessWidget {
                 NesButton(
                   type: NesButtonType.error,
                   onPressed: () async {
-                    // ... implementation retained but needs context copy ...
-                    // Since the original code had complex logic inside onPressed,
-                    // I will simplify this chunk replacement to just the UI part
-                    // and keep logic if possible.
-                    // But replacement chunk must contain the Logic.
-
-                    // RE-INSERTING LOGIC CAREFULLY
                     final originalContext = context;
                     Navigator.pop(context);
 
@@ -348,7 +383,7 @@ class SettingsScreen extends StatelessWidget {
                     final success = await authService.deleteAccount();
 
                     if (originalContext.mounted) {
-                      Navigator.of(originalContext).pop();
+                      Navigator.of(originalContext).pop(); // 로딩 닫기
                     }
 
                     if (success) {
@@ -357,7 +392,7 @@ class SettingsScreen extends StatelessWidget {
                           MaterialPageRoute(
                             builder: (context) => const SplashScreen(),
                           ),
-                          (route) => false,
+                              (route) => false,
                         );
                       }
                     } else {
@@ -383,8 +418,7 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 
-  //화현: 로그아웃 다이얼로그
-  //화현: 로그아웃 다이얼로그
+  // 화현: 로그아웃 다이얼로그
   void _showLogoutDialog(BuildContext context) {
     showDialog(
       context: context,
@@ -418,7 +452,7 @@ class SettingsScreen extends StatelessWidget {
                   type: NesButtonType.warning,
                   onPressed: () {
                     Navigator.pop(context);
-                    // JWT 토큰 삭제
+                    // JWT 토큰 삭제 및 정보 초기화
                     AuthService.accessToken = null;
                     AuthService.userId = null;
                     AuthService.nickname = null;
@@ -427,7 +461,7 @@ class SettingsScreen extends StatelessWidget {
                       MaterialPageRoute(
                         builder: (context) => const SplashScreen(),
                       ),
-                      (route) => false,
+                          (route) => false,
                     );
                   },
                   child: const Text(

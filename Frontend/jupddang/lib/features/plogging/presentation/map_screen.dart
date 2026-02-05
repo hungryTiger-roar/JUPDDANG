@@ -1456,19 +1456,14 @@ class _MapScreenState extends State<MapScreen> {
 
     _showLoading(const Color(0xFF17C964));
     try {
-      final route = _pathPoints
-          .map((p) => '${p.latitude},${p.longitude}')
-          .toList(growable: false);
       final request = PloggingEndRequest(
-        userId: AuthService.userId ?? '',
-        totalDistance: _totalDistance / 1000.0,
+        distance: _totalDistance / 1000.0,
         content: _descriptionController.text.trim(),
         times: _sessionStopwatch.elapsed.inSeconds,
         endTime: _formatEndTime(DateTime.now()),
         partyId: widget.partyId,
         recordTitle: _recordTitleController.text.trim(),
         score: _coinsGained,
-        route: route,
       );
 
       final response = await _authService.endPlogging(
@@ -1500,11 +1495,11 @@ class _MapScreenState extends State<MapScreen> {
     try {
       final request = TempPloggingRequest(
         userId: AuthService.userId ?? '',
-        totalDistance: _totalDistance / 1000.0,
+        distance: _totalDistance / 1000.0,
         content: _descriptionController.text.trim().isNotEmpty
             ? _descriptionController.text.trim()
             : null,
-        time: _sessionStopwatch.elapsed.inSeconds,
+        times: _sessionStopwatch.elapsed.inSeconds,
         endTime: _formatEndTime(DateTime.now()),
         partyId: widget.partyId,
         recordTitle: _recordTitleController.text.trim(),

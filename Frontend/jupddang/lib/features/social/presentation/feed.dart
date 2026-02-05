@@ -11,6 +11,7 @@ import '../../../widgets/pixel_loader.dart';
 import 'package:pixelarticons/pixelarticons.dart';
 import '../../../widgets/pixel_character.dart';
 import '../../account/presentation/profile_screen.dart';
+import '../../../main.dart';
 
 class CommunityScreen extends StatefulWidget {
   const CommunityScreen({super.key});
@@ -19,7 +20,7 @@ class CommunityScreen extends StatefulWidget {
   State<CommunityScreen> createState() => _CommunityScreenState();
 }
 
-class _CommunityScreenState extends State<CommunityScreen> {
+class _CommunityScreenState extends State<CommunityScreen> with RouteAware {
   final AuthService _authService = AuthService();
   final List<CommunityPost> _localPosts = [];
   List<CommunityPost> _remotePosts = [];
@@ -38,6 +39,38 @@ class _CommunityScreenState extends State<CommunityScreen> {
     super.initState();
     _refreshAll();
   }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // RouteObserver 구독
+    final route = ModalRoute.of(context);
+    if (route is PageRoute) {
+      routeObserver.subscribe(this, route);
+    }
+  }
+
+  @override
+  void dispose() {
+    routeObserver.unsubscribe(this);
+    super.dispose();
+  }
+
+  // 다른 화면에서 돌아올 때 호출됨 (댓글 삭제 후 돌아올 때)
+  @override
+  void didPopNext() {
+    // 게시글 목록 새로고침하여 댓글이 동기화되도록 함
+    _loadPosts();
+  }
+
+  @override
+  void didPush() {}
+
+  @override
+  void didPushNext() {}
+
+  @override
+  void didPop() {}
 
   Future<void> _refreshAll() async {
     await Future.wait([_loadAccounts(), _loadPosts()]);
@@ -73,7 +106,9 @@ class _CommunityScreenState extends State<CommunityScreen> {
     });
 
     try {
-      final data = await _authService.getPosts();
+      // _showFollowingOnly가 false면 전체 게시글 조회 (/posts/all)
+      // true면 팔로우한 사람들의 게시글만 조회 (/posts)
+      final data = await _authService.getPosts(allPosts: !_showFollowingOnly);
       final posts = data
           .whereType<Map>()
           .map(
@@ -93,13 +128,9 @@ class _CommunityScreenState extends State<CommunityScreen> {
   }
 
   List<CommunityPost> get _allPosts {
-    final posts = [..._localPosts, ..._remotePosts];
-    if (_showFollowingOnly) {
-      return posts
-          .where((p) => _followingNicknames.contains(p.nickname))
-          .toList();
-    }
-    return posts;
+    // 로컬 임시 게시글과 서버에서 받은 게시글을 합침
+    // API에서 이미 필터링된 데이터를 받아오므로 추가 필터링 불필요
+    return [..._localPosts, ..._remotePosts];
   }
 
   Future<void> _toggleLike(CommunityPost post) async {
@@ -483,10 +514,12 @@ class _CommunityScreenState extends State<CommunityScreen> {
         children: [
           _filterChip('LATEST', !_showFollowingOnly, () {
             setState(() => _showFollowingOnly = false);
+            _loadPosts(); // LATEST 탭을 누를 때 전체 게시글 다시 로드
           }),
           const SizedBox(width: 12),
           _filterChip('FOLLOWING', _showFollowingOnly, () {
             setState(() => _showFollowingOnly = true);
+            _loadPosts(); // FOLLOWING 탭을 누를 때 팔로우 게시글 다시 로드
           }),
         ],
       ),
@@ -608,8 +641,6 @@ class _CommunityScreenState extends State<CommunityScreen> {
                               ),
                             ),
                             const SizedBox(width: 8),
-                            // 팔로우 버튼 (내 글 아닐 때만)
-                            if (!isMine) _followButton(post.nickname),
 
                             // 임시 저장 글 태그 (내 글이고 임시글일 때)
                             if (isMine && isLocalDraft)
@@ -702,13 +733,6 @@ class _CommunityScreenState extends State<CommunityScreen> {
                         },
                       ),
                     ),
-                  // else
-                  // // 남의 글인 경우 (단순 아이콘)
-                  //   const SizedBox(
-                  //     width: 24,
-                  //     height: 24,
-                  //     child: Icon(Pixel.menu, color: Colors.white38, size: 20),
-                  //   ),
                 ],
               ),
             ),
@@ -1009,33 +1033,6 @@ class _CommunityScreenState extends State<CommunityScreen> {
           Icons.broken_image_outlined,
           color: Colors.white54,
           size: 48,
-        ),
-      ),
-    );
-  }
-
-  Widget _followButton(String nickname) {
-    if (nickname == AuthService.userId) return const SizedBox.shrink();
-
-    final isFollowing = _followingNicknames.contains(nickname);
-    return GestureDetector(
-      onTap: () => _toggleFollow(nickname),
-      child: Container(
-        padding: const EdgeInsets.all(6),
-        decoration: BoxDecoration(
-          color: isFollowing
-              ? Colors.black.withOpacity(0.05)
-              : const Color(0xFF17C964).withOpacity(0.1),
-          border: Border.all(
-            color: isFollowing ? Colors.black12 : const Color(0xFF17C964),
-            width: 1.5,
-          ),
-          borderRadius: BorderRadius.circular(4),
-        ),
-        child: Icon(
-          isFollowing ? Pixel.check : Pixel.userplus,
-          color: isFollowing ? Colors.black38 : const Color(0xFF17C964),
-          size: 16,
         ),
       ),
     );

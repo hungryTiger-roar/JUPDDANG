@@ -185,13 +185,24 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       // 3. 사진만 바꾸더라도 updates에 위 데이터들이 들어있으므로
       // if (updates.isEmpty) 체크에 걸리지 않고 정상 진행됩니다.
 
-      await _authService.updateMyProfile(updates, _selectedImage);
+      final response = await _authService.updateMyProfile(updates, _selectedImage);
+
+      // AuthService 정적 변수 업데이트 (즉시 반영)
+      if (response is Map<String, dynamic>) {
+        AuthService.nickname = response['nickname']?.toString();
+        AuthService.profileImage = response['profileImage']?.toString();
+      }
+
+      // 선택한 이미지가 있으면 즉시 반영
+      if (_selectedImage != null && response is Map<String, dynamic>) {
+        AuthService.profileImage = response['profileImage']?.toString();
+      }
 
       if (mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(const SnackBar(content: Text('정보가 성공적으로 업데이트되었습니다.')));
-        Navigator.pop(context);
+        Navigator.pop(context, true); // 업데이트 성공 플래그 반환
       }
     } catch (e) {
       // 에러 처리...

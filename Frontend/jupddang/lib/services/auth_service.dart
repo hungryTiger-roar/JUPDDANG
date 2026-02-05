@@ -20,6 +20,7 @@ class AuthService {
 
   static String? userId; // [Warning] 상태 관리(Provider 등)로 이관 필요
   static String? nickname;
+  static String? profileImage; // 프로필 이미지 URL
   static int? userColor = 0xFF46A140; // Default Green
 
   // --- Auth ---
@@ -31,6 +32,7 @@ class AuthService {
       if (account is Map) {
         userId = account['userId']?.toString();
         nickname = account['nickname']?.toString();
+        profileImage = account['profileImage']?.toString();
       }
     }
     return data;

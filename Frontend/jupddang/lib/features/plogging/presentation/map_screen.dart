@@ -10,6 +10,7 @@ import 'package:pixelarticons/pixelarticons.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:gal/gal.dart';
+import 'dart:ui' as ui;
 
 // --- Project Imports (경로는 프로젝트에 맞게 유지해주세요) ---
 import '../../../services/location_h3_service.dart';
@@ -847,29 +848,27 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   Widget _buildMapLayer() {
-    return FlutterMap(
-      mapController: _mapController,
-      options: MapOptions(
-        initialCenter: const LatLng(37.5665, 126.9780),
-        initialZoom: 16.0,
-        minZoom: 5.0,
-        maxZoom: 19.0,
-        onPositionChanged: _onMapPositionChanged,
-        onMapReady: () {
-          Future.delayed(const Duration(milliseconds: 500), () {
-            if (mounted) _updateHexagons(_mapController.camera.visibleBounds);
-          });
-        },
-      ),
-      children: [
-        TileLayer(
-          urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-          userAgentPackageName:
-              'com.ssafy.jupddang', // Updated to avoid OSM block
+    return RepaintBoundary(
+      key: _mapRepaintKey,
+      child: FlutterMap(
+        mapController: _mapController,
+        options: MapOptions(
+          initialCenter: const LatLng(37.5665, 126.9780),
+          initialZoom: 16.0,
+          minZoom: 5.0,
+          maxZoom: 19.0,
+          onPositionChanged: _onMapPositionChanged,
+          onMapReady: () {
+            Future.delayed(const Duration(milliseconds: 500), () {
+              if (mounted) _updateHexagons(_mapController.camera.visibleBounds);
+            });
+          },
         ),
         children: [
           TileLayer(
             urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+            userAgentPackageName:
+                'com.ssafy.jupddang', // Updated to avoid OSM block
           ),
           if (_pathPoints.isNotEmpty)
             PolylineLayer(
@@ -1376,12 +1375,7 @@ class _MapScreenState extends State<MapScreen> {
                   const SizedBox(height: 12),
                   Row(
                     children: [
-                      Expanded(
-                        child: _mapPhotoSlot(
-                          "MAP",
-                          _mapImage,
-                        ),
-                      ),
+                      Expanded(child: _mapPhotoSlot("MAP", _mapImage)),
                     ],
                   ),
                   const SizedBox(height: 24),
@@ -1458,8 +1452,7 @@ class _MapScreenState extends State<MapScreen> {
         _mapImage = captured;
       }
     }
-    if (_mapImage == null)
-      return _snack("맵 이미지 생성 중입니다. 잠시 후 다시 시도해주세요.");
+    if (_mapImage == null) return _snack("맵 이미지 생성 중입니다. 잠시 후 다시 시도해주세요.");
 
     _showLoading(const Color(0xFF17C964));
     try {

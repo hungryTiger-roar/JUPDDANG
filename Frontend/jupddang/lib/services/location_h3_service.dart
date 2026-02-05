@@ -10,9 +10,9 @@ import 'auth_service.dart';
 class LocationH3Service {
   late final H3 _h3;
   final int resolution = 9;
-  
+
   // [수정 1] final 제거 및 late 선언 (테스트 주입을 위해)
-  late Dio _dio; 
+  late Dio _dio;
 
   static final LocationH3Service _instance = LocationH3Service._internal();
   factory LocationH3Service() => _instance;
@@ -35,18 +35,20 @@ class LocationH3Service {
   // [수정 2] Dio 파라미터 추가 (테스트 시 Mock 주입 가능)
   Future<void> init({H3? h3, Dio? dio}) async {
     if (_isInitialized) return;
-    
+
     _h3 = h3 ?? const H3Factory().load();
-    
+
     // Dio가 주입되지 않았으면(실제 앱 실행 시) 기본 설정으로 생성
-    _dio = dio ?? Dio(
-      BaseOptions(
-        baseUrl: AuthService.apiBase,
-        connectTimeout: const Duration(seconds: 5),
-        receiveTimeout: const Duration(seconds: 5),
-      ),
-    );
-    
+    _dio =
+        dio ??
+        Dio(
+          BaseOptions(
+            baseUrl: AuthService.apiBase,
+            connectTimeout: const Duration(seconds: 5),
+            receiveTimeout: const Duration(seconds: 5),
+          ),
+        );
+
     _isInitialized = true;
   }
 
@@ -232,59 +234,59 @@ class LocationH3Service {
     }
 
     // API 호출 (병렬)
-    List<Future> futures = [];
-    for (var index in h3Indices) {
-      // 로컬 화면 갱신을 위해 API 호출
-      // (로컬에 이미 100m 달성으로 점령된게 있어도, 서버 상태 확인은 필요할 수 있음.
-      // 하지만 여기서는 로컬 점령(방금 내가 먹은거)을 유지하는게 UX상 좋음)
+    // Limit concurrency to 5 requests at a time
+    for (var chunk in _chunkList(h3Indices, 5)) {
+      await Future.wait(
+        chunk.map((index) async {
+          if (_occupiedHexagons.containsKey(index)) {
+            results.add(_occupiedHexagons[index]!);
+            return;
+          }
 
-      if (_occupiedHexagons.containsKey(index)) {
-        // 내가 방금 점령했거나 로컬 캐시된 내용
-        results.add(_occupiedHexagons[index]!);
-        continue;
-      }
+          try {
+            final response = await _dio.get(
+              '/v1/plogging/grid/status',
+              queryParameters: {'h3Index': index},
+              options: Options(
+                headers: {'Authorization': 'Bearer $token', 'userId': userId},
+              ),
+            );
 
-      futures.add(() async {
-        try {
-          final response = await _dio.get(
-            '/v1/plogging/grid/status',
-            queryParameters: {'h3Index': index},
-            options: Options(
-              headers: {
-                'Authorization': 'Bearer $token',
-                // userId 헤더 필수 (Backend GridStatusController line 25)
-                'userId': userId,
-              },
-            ),
-          );
-
-          if (response.statusCode == 200) {
-            final data = response.data;
-            if (data != null) {
-              bool isClaimable = data['isClaimable'] ?? true;
-              if (!isClaimable) {
-                // 이미 점령됨 (남이 먹었거나 내가 예전에 먹었거나)
-                final model = HexagonModel(
-                  h3Index: index,
-                  color: 0x66888888, // 회색 (남의 땅)
-                  ownerId: "occupied",
-                );
-                // 캐시 생략 or 저장 (여기서는 결과 리스트에만 추가)
-                results.add(model);
-              } else {
-                // 빈 땅
-                results.add(HexagonModel(h3Index: index, color: 0x00000000));
+            if (response.statusCode == 200) {
+              final data = response.data;
+              if (data != null) {
+                bool isClaimable = data['isClaimable'] ?? true;
+                if (!isClaimable) {
+                  final model = HexagonModel(
+                    h3Index: index,
+                    color: 0x66888888,
+                    ownerId: "occupied",
+                  );
+                  results.add(model);
+                } else {
+                  results.add(HexagonModel(h3Index: index, color: 0x00000000));
+                }
               }
             }
+          } catch (e) {
+            results.add(HexagonModel(h3Index: index, color: 0x00000000));
           }
-        } catch (e) {
-          // 에러 시 빈 땅 취급
-          results.add(HexagonModel(h3Index: index, color: 0x00000000));
-        }
-      }());
+        }),
+      );
     }
-
-    await Future.wait(futures);
     return results;
+  }
+
+  List<List<T>> _chunkList<T>(List<T> list, int chunkSize) {
+    List<List<T>> chunks = [];
+    for (var i = 0; i < list.length; i += chunkSize) {
+      chunks.add(
+        list.sublist(
+          i,
+          i + chunkSize > list.length ? list.length : i + chunkSize,
+        ),
+      );
+    }
+    return chunks;
   }
 }

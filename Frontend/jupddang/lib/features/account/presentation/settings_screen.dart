@@ -157,68 +157,44 @@ class SettingsScreen extends StatelessWidget {
               ),
             ),
 
-            // 2x2 Settings Grid
+            // Settings List (3 rows)
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Column(
                   children: [
-                    // Row 1
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _settingTile(
-                            context,
-                            icon: Pixel.edit,
-                            label: '개인정보\n변경',
-                            color: const Color(0xFF17C964),
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) =>
-                                      const EditProfileScreen(),
-                                ),
-                              );
-                            },
+                    // 개인정보 변경
+                    _settingTileHorizontal(
+                      context,
+                      icon: Pixel.edit,
+                      label: '개인정보 변경',
+                      color: const Color(0xFF17C964),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const EditProfileScreen(),
                           ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: _settingTile(
-                            context,
-                            icon: Pixel.notification,
-                            label: '알림\n설정',
-                            color: const Color(0xFF17C964),
-                            onTap: () => _showComingSoon(context, '알림 설정'),
-                          ),
-                        ),
-                      ],
+                        );
+                      },
                     ),
-                    const SizedBox(height: 16),
-                    // Row 2
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _settingTile(
-                            context,
-                            icon: Pixel.infobox,
-                            label: '앱\n정보',
-                            color: const Color(0xFFFBBF24),
-                            onTap: () => _showAppInfo(context),
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: _settingTile(
-                            context,
-                            icon: Pixel.logout,
-                            label: '회원\n탈퇴',
-                            color: const Color(0xFFEF4444),
-                            onTap: () => _showDeleteDialog(context),
-                          ),
-                        ),
-                      ],
+                    const SizedBox(height: 12),
+                    // 앱 정보
+                    _settingTileHorizontal(
+                      context,
+                      icon: Pixel.infobox,
+                      label: '앱 정보',
+                      color: const Color(0xFFFBBF24),
+                      onTap: () => _showAppInfo(context),
+                    ),
+                    const SizedBox(height: 12),
+                    // 회원 탈퇴
+                    _settingTileHorizontal(
+                      context,
+                      icon: Pixel.logout,
+                      label: '회원 탈퇴',
+                      color: const Color(0xFFEF4444),
+                      onTap: () => _showDeleteDialog(context),
                     ),
                   ],
                 ),
@@ -232,7 +208,7 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 
-  Widget _settingTile(
+  Widget _settingTileHorizontal(
     BuildContext context, {
     required IconData icon,
     required String label,
@@ -242,56 +218,22 @@ class SettingsScreen extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: NesContainer(
-        height: 140,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        child: Row(
           children: [
-            Icon(icon, color: color, size: 40),
-            const SizedBox(height: 12),
-            Text(
-              label,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: Colors.black,
-                fontSize: 11,
-                fontWeight: FontWeight.w900,
-                height: 1.1,
+            Icon(icon, color: color, size: 32),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Text(
+                label,
+                style: const TextStyle(
+                  color: Colors.black,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w900,
+                ),
               ),
             ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showComingSoon(BuildContext context, String feature) {
-    showDialog(
-      context: context,
-      builder: (context) => NesDialog(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              'Coming Soon',
-              style: TextStyle(
-                color: Colors.black,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-            SizedBox(height: 16),
-            Text(
-              '$feature 기능은 곧 추가될 예정입니다!',
-              style: const TextStyle(color: Colors.black),
-            ),
-            SizedBox(height: 16),
-            NesButton(
-              type: NesButtonType.success,
-              onPressed: () => Navigator.pop(context),
-              child: const Text(
-                'OK',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-            ),
+            const Icon(Pixel.chevronright, color: Colors.black26, size: 20),
           ],
         ),
       ),

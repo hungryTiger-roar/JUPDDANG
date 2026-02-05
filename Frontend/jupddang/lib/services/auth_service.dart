@@ -64,14 +64,25 @@ class AuthService {
   ) => _accountService.updateMyProfile(updates, imageFile);
 
   // --- Social ---
-  Future<List<dynamic>> getPosts({bool allPosts = false}) => _socialService.getPosts(allPosts: allPosts);
+  Future<List<dynamic>> getPosts({bool allPosts = false}) =>
+      _socialService.getPosts(allPosts: allPosts);
   Future<List<dynamic>> getMyPosts() => _socialService.getMyPosts();
   Future<List<dynamic>> getMyComments() => _socialService.getMyComments();
-  Future<List<dynamic>> getFollowings(String userId) => _socialService.getFollowings(userId);
-  Future<List<dynamic>> getFollowers(String userId) => _socialService.getFollowers(userId);
-  Future<bool> toggleFollow(String targetId) => _socialService.toggleFollow(targetId);
-  Future<dynamic> createPost({required String userId, required String content, List<String> imagePaths = const []}) 
-      => _socialService.createPost(userId: userId, content: content, imagePaths: imagePaths);
+  Future<List<dynamic>> getFollowings(String userId) =>
+      _socialService.getFollowings(userId);
+  Future<List<dynamic>> getFollowers(String userId) =>
+      _socialService.getFollowers(userId);
+  Future<bool> toggleFollow(String targetId) =>
+      _socialService.toggleFollow(targetId);
+  Future<dynamic> createPost({
+    required String userId,
+    required String content,
+    List<String> imagePaths = const [],
+  }) => _socialService.createPost(
+    userId: userId,
+    content: content,
+    imagePaths: imagePaths,
+  );
   Future<void> likePost(String postId) => _socialService.likePost(postId);
   Future<dynamic> addComment(String postId, String userId, String content) =>
       _socialService.addComment(postId, userId, content);
@@ -80,7 +91,7 @@ class AuthService {
   Future<void> deletePost(String postId) => _socialService.deletePost(postId);
 
   // --- Plogging ---
-  Future<void> endPlogging({
+  Future<dynamic> endPlogging({
     required PloggingEndRequest requestData,
     required String beforeImagePath,
     required String afterImagePath,

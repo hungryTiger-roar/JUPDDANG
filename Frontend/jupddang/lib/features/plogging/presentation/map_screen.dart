@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:io';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
@@ -1338,6 +1338,7 @@ class _MapScreenState extends State<MapScreen> {
                   color: _questCompleted
                       ? _selectedGridColor
                       : Colors.grey[600]!,
+
                   onPressed: _questCompleted ? _finishPlogging : _showQuestHint,
                 ),
               ),
@@ -1368,6 +1369,7 @@ class _MapScreenState extends State<MapScreen> {
                   color: _questCompleted
                       ? _selectedGridColor
                       : Colors.grey[600]!,
+
                   onPressed: _questCompleted ? _finishPlogging : _showQuestHint,
                 ),
               ),
@@ -1556,6 +1558,7 @@ class _MapScreenState extends State<MapScreen> {
       if (widget.onPloggingComplete != null) {
         widget.onPloggingComplete!(_extractPostId(response));
       }
+
       _resetPlogging();
 
       // 파티 모드일 때는 메인 화면으로 바로 이동
@@ -1695,6 +1698,7 @@ class _MapScreenState extends State<MapScreen> {
       final data = response['data'];
       if (data is Map) {
         final nested = data['postId'] ?? data['post_id'] ?? data['id'];
+
         if (nested != null) return nested.toString();
       }
     }
@@ -1811,6 +1815,7 @@ class _MapScreenState extends State<MapScreen> {
         source: ImageSource.camera,
         imageQuality: 85,
       );
+
       if (photo == null) return;
       final currentLocation = _currentPosition;
       if (currentLocation == null) {
@@ -1848,6 +1853,7 @@ class _MapScreenState extends State<MapScreen> {
         beforeLocation: _questBeforeLocation!,
         afterLocation: _questAfterLocation!,
       );
+
       if (mounted) Navigator.pop(context);
       if (response.isValid) {
         setState(() {

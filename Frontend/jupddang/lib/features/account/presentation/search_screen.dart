@@ -77,7 +77,7 @@ class _SearchScreenState extends State<SearchScreen> {
           icon: const Icon(Icons.arrow_back, color: Colors.black),
         ),
         title: const Text(
-          'USER SEARCH',
+          '계정 검색',
           style: TextStyle(
             color: Colors.black,
             fontWeight: FontWeight.w900,
@@ -112,7 +112,7 @@ class _SearchScreenState extends State<SearchScreen> {
                   fontFamily: 'NeoDunggeunmo',
                 ),
                 decoration: InputDecoration(
-                  hintText: 'ENTER USER ID...',
+                  hintText: '아이디를 입력해주세요.',
                   hintStyle: const TextStyle(color: Colors.black38),
                   border: InputBorder.none,
                   prefixIcon: const Icon(
@@ -131,7 +131,7 @@ class _SearchScreenState extends State<SearchScreen> {
                       : null,
                   contentPadding: const EdgeInsets.symmetric(
                     horizontal: 20,
-                    vertical: 24,
+                    vertical: 14,
                   ),
                 ),
                 onChanged: (value) => setState(() {}),

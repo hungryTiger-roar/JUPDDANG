@@ -1,4 +1,5 @@
 class PloggingEndRequest {
+  final int? ploggingId;
   final double distance;
   final String content;
   final int times;
@@ -8,6 +9,7 @@ class PloggingEndRequest {
   final int? score;
 
   PloggingEndRequest({
+    this.ploggingId,
     required this.distance,
     required this.content,
     required this.times,
@@ -18,6 +20,7 @@ class PloggingEndRequest {
   });
 
   Map<String, dynamic> toJson() => {
+    if (ploggingId != null) 'ploggingId': ploggingId,
     'distance': distance,
     'content': content,
     'times': times,
@@ -51,7 +54,6 @@ class TempPloggingRequest {
     if (times != null) 'times': times,
     if (endTime != null) 'endTime': endTime,
     if (partyId != null) 'partyId': partyId,
-    if (recordTitle != null && recordTitle!.isNotEmpty)
-      'recordTitle': recordTitle,
+    if (recordTitle != null && recordTitle!.isNotEmpty) 'recordTitle': recordTitle,
   };
 }

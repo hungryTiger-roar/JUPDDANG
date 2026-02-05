@@ -24,14 +24,11 @@ void main() {
   group('PloggingService Tests', () {
     test('endPlogging should make a POST request', () async {
       final request = PloggingEndRequest(
-        userId: 'test',
-        totalDistance: 1000,
+        distance: 1000,
         content: 'Test Plogging',
-        totalTime: 600,
+        times: 600,
         endTime: DateTime.now().toIso8601String(),
-        pickCount: 10,
         score: 100,
-        route: [],
       );
 
       when(mockDio.post(any, data: anyNamed('data'), options: anyNamed('options')))
@@ -47,9 +44,8 @@ void main() {
 
     test('savePloggingTemp should make a POST request', () async {
       final request = TempPloggingRequest(
-        userId: 'test',
-        totalDistance: 500,
-        totalTime: 300,
+        distance: 500,
+        times: 300,
       );
 
       when(mockDio.post(any, data: anyNamed('data')))

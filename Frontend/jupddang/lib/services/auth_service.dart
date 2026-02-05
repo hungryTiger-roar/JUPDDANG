@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import '../core/network/api_client.dart';
 import '../features/auth/data/auth_service.dart' as AuthFeature;
 import '../features/account/data/account_service.dart';
@@ -25,11 +26,12 @@ class AuthService {
   Future<dynamic> login(String id, String pw) async {
     final data = await _authService.login(id, pw);
     // [Legacy Support] 정적 변수에 값 할당
-    // [Legacy Support] 정적 변수에 값 할당
-    final account = data['account'];
-    if (account is Map) {
-      userId = account['userId']?.toString();
-      nickname = account['nickname']?.toString();
+    if (data is Map) {
+      final account = data['account'];
+      if (account is Map) {
+        userId = account['userId']?.toString();
+        nickname = account['nickname']?.toString();
+      }
     }
     return data;
   }

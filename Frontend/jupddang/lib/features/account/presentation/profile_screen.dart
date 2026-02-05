@@ -21,6 +21,7 @@ class _ProfileScreenState extends State<ProfileScreen> with WidgetsBindingObserv
   final AuthService _authService = AuthService();
   bool _loading = true;
   String _profileNickname = '';
+  String? _profileImage; // 프로필 이미지 URL
   bool _isFollowing = false;
 
   // Mock stats - replace with actual API calls
@@ -152,6 +153,7 @@ class _ProfileScreenState extends State<ProfileScreen> with WidgetsBindingObserv
       final followerCount = profileData['followerCount'] ?? 0;
       final followingCount = profileData['followingCount'] ?? 0;
       final fetchedNickname = profileData['nickname'] ?? widget.userId;
+      final profileImageUrl = profileData['profileImage'] as String?; // 프로필 이미지 URL
 
       print(
         '서버 isFollowing: ${profileData['isFollowing']} / 내 검증 결과: $realIsFollowing',
@@ -159,6 +161,7 @@ class _ProfileScreenState extends State<ProfileScreen> with WidgetsBindingObserv
 
       setState(() {
         _profileNickname = fetchedNickname;
+        _profileImage = profileImageUrl; // 프로필 이미지 저장
         _isFollowing = realIsFollowing;
         _stats['posts'] = userPosts.length;
         _stats['comments'] = commentCount;
@@ -173,10 +176,11 @@ class _ProfileScreenState extends State<ProfileScreen> with WidgetsBindingObserv
             ? totalScore
             : (totalScore as num).toInt(); //화현이: score 저장
         _loading = false;
+        
+        // 화현이: userPosts를 _myPosts에 직접 저장
+        _myPosts = userPosts;
+        _loadingPosts = false;
       });
-
-      //화현이: 본인 게시글 로드
-      await _loadMyPosts();
     } catch (e) {
       setState(() => _loading = false);
       if (mounted) {
@@ -184,32 +188,6 @@ class _ProfileScreenState extends State<ProfileScreen> with WidgetsBindingObserv
           context,
         ).showSnackBar(const SnackBar(content: Text('프로필 정보를 불러오는데 실패했습니다.')));
       }
-    }
-  }
-
-  //화현이: 본인 작성 게시글 로드
-  Future<void> _loadMyPosts() async {
-    setState(() => _loadingPosts = true);
-
-    try {
-      final postsData = await _authService.getMyPosts();
-      final posts = postsData
-          .whereType<Map>()
-          .map(
-            (item) => CommunityPost.fromPostJson(item.cast<String, dynamic>()),
-          )
-          .toList();
-
-      // createdAt 기준 최신순 정렬
-      posts.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-
-      setState(() {
-        _myPosts = posts;
-        _loadingPosts = false;
-      });
-    } catch (e) {
-      setState(() => _loadingPosts = false);
-      print('My Posts Load Error: $e');
     }
   }
 
@@ -303,15 +281,25 @@ class _ProfileScreenState extends State<ProfileScreen> with WidgetsBindingObserv
                   ),
 
                   // Profile Header
-                  SliverToBoxAdapter(child: _buildProfileHeader()),
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+                      child: _buildProfileHeader(),
+                    ),
+                  ),
 
                   // Stats Grid
-                  SliverToBoxAdapter(child: _buildStatsGrid()),
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.only(bottom: 32),
+                      child: _buildStatsGrid(),
+                    ),
+                  ),
 
                   // 화현이: 본인 게시글 그리드
                   SliverToBoxAdapter(
                     child: Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 32, 20, 16),
+                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
                       child: Text(
                         'MY POSTS',
                         style: TextStyle(
@@ -361,9 +349,27 @@ class _ProfileScreenState extends State<ProfileScreen> with WidgetsBindingObserv
                 BoxShadow(color: Colors.black, offset: Offset(4, 4)),
               ],
             ),
-            child: const Center(
-              child: PixelCharacter(size: 64, color: const Color(0xFF17C964)),
-            ),
+            child: _profileImage != null && _profileImage!.isNotEmpty
+                ? ClipRect(
+                    child: Image.network(
+                      _profileImage!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return const Center(
+                          child: PixelCharacter(
+                            size: 64,
+                            color: Color(0xFF17C964),
+                          ),
+                        );
+                      },
+                    ),
+                  )
+                : const Center(
+                    child: PixelCharacter(
+                      size: 64,
+                      color: Color(0xFF17C964),
+                    ),
+                  ),
           ),
 
           const SizedBox(height: 16),
@@ -598,9 +604,9 @@ class _ProfileScreenState extends State<ProfileScreen> with WidgetsBindingObserv
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 3,
-          crossAxisSpacing: 4,
-          mainAxisSpacing: 4,
+          crossAxisCount: 2,
+          crossAxisSpacing: 8,
+          mainAxisSpacing: 8,
           childAspectRatio: 1,
         ),
         itemCount: _myPosts.length,

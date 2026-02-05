@@ -185,7 +185,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             // Settings Grid Title
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 24, 20, 16),
+                padding: const EdgeInsets.fromLTRB(20, 32, 20, 20),
                 child: const Text(
                   'QUICK SETTINGS',
                   style: TextStyle(
@@ -223,7 +223,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         }
                       },
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 16),
                     // 앱 정보
                     _settingTileHorizontal(
                       context,
@@ -232,7 +232,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       color: const Color(0xFFFBBF24),
                       onTap: () => _showAppInfo(context),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 16),
                     // 회원 탈퇴
                     _settingTileHorizontal(
                       context,

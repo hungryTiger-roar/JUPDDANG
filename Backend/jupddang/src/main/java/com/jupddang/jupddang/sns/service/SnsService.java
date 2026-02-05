@@ -22,6 +22,7 @@ import org.springframework.transaction.event.TransactionalEventListener;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -54,7 +55,20 @@ public class SnsService {
 
     @Transactional(readOnly = true)
     public List<PostResponseDto> getAllPost() {
-        return postRepository.findAllByOrderByCreatedAtDesc().stream()
+        List<Post> allPosts = postRepository.findAllByOrderByCreatedAtDesc();
+        log.info("🔍 getAllPost: Total {} posts found", allPosts.size());
+        
+        // userId별로 카운트
+        Map<String, Long> userPostCount = allPosts.stream()
+            .filter(post -> post.getAccount() != null)
+            .collect(Collectors.groupingBy(
+                post -> post.getAccount().getUserId(),
+                Collectors.counting()
+            ));
+        
+        log.info("🔍 Posts per user: {}", userPostCount);
+        
+        return allPosts.stream()
                 .map(PostResponseDto::new)
                 .collect(Collectors.toList());
     }
@@ -159,7 +173,19 @@ public class SnsService {
     }
 
     public List<PostResponseDto> getMyPosts(String userId) {
-        return postRepository.findByAccount_UserId(userId).stream()
+        log.info("🔍 getMyPosts called for userId: {}", userId);
+        List<Post> posts = postRepository.findByAccount_UserId(userId);
+        log.info("🔍 Found {} posts for userId: {}", posts.size(), userId);
+        
+        // 각 포스트의 account 정보 로그
+        for (Post post : posts) {
+            log.info("  - Post ID: {}, Account: {}, Account.userId: {}", 
+                post.getPostId(), 
+                post.getAccount() != null ? "exists" : "null",
+                post.getAccount() != null ? post.getAccount().getUserId() : "null");
+        }
+        
+        return posts.stream()
                 .map(PostResponseDto::new)
                 .collect(Collectors.toList());
     }

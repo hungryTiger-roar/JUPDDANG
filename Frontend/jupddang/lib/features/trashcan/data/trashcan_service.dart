@@ -17,7 +17,7 @@ class TrashcanService {
   }) async {
     try {
       final response = await _apiClient.dio.get(
-        '/api/v1/trashcans',
+        '/v1/trashcans',
         queryParameters: {
           'minLatitude': minLat,
           'maxLatitude': maxLat,
@@ -47,7 +47,7 @@ class TrashcanService {
     try {
       print('Creating trashcan with data: ${request.toJson()}');
       final response = await _apiClient.dio.post(
-        '/api/v1/trashcans',
+        '/v1/trashcans',
         data: request.toJson(),
       );
 
@@ -65,7 +65,7 @@ class TrashcanService {
   Future<TrashcanDetailModel> verifyTrashcan(int trashcanId) async {
     try {
       final response = await _apiClient.dio.post(
-        '/api/v1/trashcans/$trashcanId/verify',
+        '/v1/trashcans/$trashcanId/verify',
       );
 
       return TrashcanDetailModel.fromJson(response.data);
@@ -85,7 +85,7 @@ class TrashcanService {
       }
 
       final response = await _apiClient.dio.get(
-        '/api/v1/trashcans/my',
+        '/v1/trashcans/my',
         queryParameters: queryParams,
       );
 

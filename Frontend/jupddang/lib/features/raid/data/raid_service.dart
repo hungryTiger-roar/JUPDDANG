@@ -16,7 +16,7 @@ class RaidService {
     print('📡 [RaidService] Fetching all raid bosses');
     try {
       // 토큰 없이 요청 (공개 API)
-      final response = await _apiClient.dio.get('/api/raids');
+      final response = await _apiClient.dio.get('/raids');
       print('✅ [RaidService] Raid bosses loaded: ${response.statusCode}');
 
       if (response.data is List) {
@@ -91,7 +91,7 @@ class RaidService {
     try {
       // 토큰 없이 요청 (공개 API)
       final response = await _apiClient.dio.get(
-        '/api/raids/$bossId/detail',
+        '/raids/$bossId/detail',
         queryParameters: {'userId': userId},
       );
       print('✅ [RaidService] Boss detail loaded: ${response.statusCode}');

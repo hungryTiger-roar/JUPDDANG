@@ -59,7 +59,7 @@ class TempPloggingRequest {
 }
 
 class PloggingTempDetailResponse {
-  final String ploggingId;
+  final int ploggingId;
   final String recordName;
   final double? distance;
   final int? times;
@@ -85,7 +85,7 @@ class PloggingTempDetailResponse {
 
   factory PloggingTempDetailResponse.fromJson(Map<String, dynamic> json) {
     return PloggingTempDetailResponse(
-      ploggingId: json['ploggingId']?.toString() ?? '',
+      ploggingId: json['ploggingId']?.toInt() ?? 0,
       recordName: json['recordName']?.toString() ?? '',
       distance: (json['distance'] as num?)?.toDouble(),
       times: (json['times'] as num?)?.toInt(),
@@ -97,4 +97,6 @@ class PloggingTempDetailResponse {
       createdAt: DateTime.tryParse(json['createdAt']?.toString() ?? ''),
     );
   }
+
+
 }

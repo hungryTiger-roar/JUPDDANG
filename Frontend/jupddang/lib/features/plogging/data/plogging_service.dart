@@ -99,7 +99,7 @@ class PloggingService {
 
   // 임시 저장 상세 조회 (게시글 폼에 채우기)
   Future<PloggingTempDetailResponse> getTempPloggingDetail(
-    String ploggingId,
+    int ploggingId,
   ) async {
     try {
       final response = await _apiClient.dio.get(
@@ -112,6 +112,7 @@ class PloggingService {
       print('Get Temp Plogging Detail Error: $e');
       rethrow;
     }
+
   }
 
   // [WebSocket] 관련 메서드는 추후 여기에 추가하거나 별도 SocketService로 분리

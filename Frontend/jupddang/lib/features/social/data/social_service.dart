@@ -97,6 +97,7 @@ class SocialService {
   // 게시글 생성
   Future<dynamic> createPost({
     required String content,
+    int? ploggingId,
     String? beforeImagePath,
     String? afterImagePath,
     String? mapImagePath,
@@ -106,6 +107,7 @@ class SocialService {
       final payload = {
         'content': content,
         // 다른 필드가 있다면 여기에 추가
+        if (ploggingId != null) 'ploggingId': ploggingId
       };
 
       // 2. FormData 구성

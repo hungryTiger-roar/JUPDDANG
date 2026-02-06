@@ -80,11 +80,13 @@ class AuthService {
       _socialService.toggleFollow(targetId);
   Future<dynamic> createPost({
     required String content,
+    int? ploggingId,
     String? beforeImagePath,
     String? afterImagePath,
     String? mapImagePath,
   }) => _socialService.createPost(
     content: content,
+    ploggingId: ploggingId,
     beforeImagePath: beforeImagePath,
     afterImagePath: afterImagePath,
     mapImagePath: mapImagePath,

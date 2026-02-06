@@ -1,12 +1,9 @@
-import 'dart:convert';
 import 'dart:io';
 
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter/foundation.dart'; // consolidateHttpClientResponseBytes를 위해 추가
 import 'package:jupddang/features/plogging/data/plogging_service.dart';
-import 'package:jupddang/features/social/data/social_service.dart';
 import 'package:jupddang/features/social/models/community_models.dart';
 import '../../../features/plogging/models/plogging_models.dart';
 import '../../../services/auth_service.dart';
@@ -32,12 +29,12 @@ class CommunityComposeScreen extends StatefulWidget {
 class _CommunityComposeScreenState extends State<CommunityComposeScreen> {
   static const Color _navAccent = Color(0xFF17C964);
   static const Color _borderColor = Colors.black;
+  static const String _recordPrefix = '기록:'; // content prefix
 
   final TextEditingController _contentController = TextEditingController();
   final ImagePicker _picker = ImagePicker();
   final AuthService _authService = AuthService();
   final PloggingService _ploggingService = PloggingService();
-  final SocialService _socialService = SocialService();
 
   AccountSummary? _selectedAccount;
   PloggingTempDetailResponse? _selectedRecord;
@@ -109,7 +106,7 @@ class _CommunityComposeScreenState extends State<CommunityComposeScreen> {
       final trimmed = line.trim();
       if (trimmed.isEmpty) continue;
 
-      if (trimmed.startsWith('기록:')) {
+      if (trimmed.startsWith(_recordPrefix)) {
         for (var record in _records) {
           if (trimmed.contains(record.recordName)) {
             _selectedRecord = record;
@@ -370,7 +367,7 @@ class _CommunityComposeScreenState extends State<CommunityComposeScreen> {
     );
   }
 
-  Future<void> _loadRecordDetail(String ploggingId) async {
+  Future<void> _loadRecordDetail(int ploggingId) async {
     // 로딩 표시
     showDialog(
       context: context,
@@ -379,6 +376,13 @@ class _CommunityComposeScreenState extends State<CommunityComposeScreen> {
         child: CircularProgressIndicator(color: _navAccent),
       ),
     );
+
+    // 새 기록 선택 시 기존 이미지 초기화
+    setState(() {
+      _beforeImage = null;
+      _afterImage = null;
+      _mapImage = null;
+    });
 
     try {
       final detail = await _ploggingService.getTempPloggingDetail(ploggingId);
@@ -393,7 +397,7 @@ class _CommunityComposeScreenState extends State<CommunityComposeScreen> {
 
         // 내용 채우기
         if (detail.content != null && detail.content!.isNotEmpty) {
-          _contentController.text = detail.content!;
+          _contentController.text = _stripRecordLine(detail.content!);
         }
       });
 
@@ -463,98 +467,72 @@ class _CommunityComposeScreenState extends State<CommunityComposeScreen> {
     return null;
   }
 
-  Future<void> _submit() async {
-    if (_submitting) return;
-    if (_selectedAccount == null) {
-      _showMessage('작성자를 확인해주세요');
-      return;
-    }
-    final body = _contentController.text.trim();
-    if (body.isEmpty) {
-      _showMessage('내용을 입력해주세요');
-      return;
-    }
-
-    setState(() {
-      _submitting = true;
-    });
-
-    try {
-      final content = _composeContent();
-
-      // ⭐ FormData 구성
-      final formData = FormData.fromMap({
-        // JSON 데이터를 문자열로 전달
-        'data': jsonEncode({
-          'content': content,
-          // 필요한 다른 필드들 추가
-        }),
-        // 이미지들은 개별 파라미터로
-        if (_beforeImage != null)
-          'beforeImage': await MultipartFile.fromFile(
-            _beforeImage!.path,
-            filename: 'before.jpg',
-          ),
-        if (_afterImage != null)
-          'afterImage': await MultipartFile.fromFile(
-            _afterImage!.path,
-            filename: 'after.jpg',
-          ),
-        if (_mapImage != null)
-          'mapImage': await MultipartFile.fromFile(
-            _mapImage!.path,
-            filename: 'map.jpg',
-          ),
-      });
-
-      // API 호출
-      await _socialService.createPost(
-        content: content,
-        beforeImagePath: _beforeImage?.path,
-        afterImagePath: _afterImage?.path,
-        mapImagePath: _mapImage?.path,
-      );
-
-      if (mounted) {
-        _showMessage('게시글이 작성되었습니다');
-        Navigator.pop(context, true);
-      }
-
-    } catch (e) {
-      print('게시글 작성 실패: $e');
-      if (mounted) {
-        _showMessage('게시글 작성 실패');
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _submitting = false;
-        });
-      }
-    }
-  }
-
   void _showMessage(String message) {
     ScaffoldMessenger.of(context)
         .showSnackBar(SnackBar(content: Text(message)));
   }
 
-  String _composeContent() {
-    final body = _contentController.text.trim();
-    final record = _selectedRecord;
-    final buffer = StringBuffer();
+  String _stripRecordLine(String content) {
+    final lines = content.split('\n');
+    final filtered =
+        lines.where((line) => !line.trim().startsWith(_recordPrefix)).toList();
+    return filtered.join('\n').trim();
+  }
 
-    if (body.isNotEmpty) {
-      buffer.write(body);
+  String _composeContent() {
+    return _contentController.text.trim();
+  }
+
+  Future<void> _submit() async {
+    if (_submitting) return;
+
+    final content = _composeContent();
+    final hasImages =
+        _beforeImage != null || _afterImage != null || _mapImage != null;
+
+    if (content.isEmpty && !hasImages) {
+      _showMessage('Please write something or add an image.');
+      return;
     }
-    if (record != null) {
-      buffer.writeln();
-      buffer.writeln();
-      buffer.write(
-        '기록: ${record.recordName} · ${_formatDate(record.createdAt)} · ${(record.distance ?? 0).toStringAsFixed(2)}km · ${_formatDuration(record.times)}',
+
+    setState(() => _submitting = true);
+
+    try {
+      final account =
+          _selectedAccount ??
+          (widget.accounts.isNotEmpty ? widget.accounts.first : null);
+
+      if (account == null) {
+        _showMessage('No account found.');
+        return;
+      }
+
+      final imagePaths = <String>[];
+      if (_beforeImage != null) {
+        imagePaths.add(_beforeImage!.path);
+      }
+      if (_afterImage != null) {
+        imagePaths.add(_afterImage!.path);
+      }
+      if (_mapImage != null) {
+        imagePaths.add(_mapImage!.path);
+      }
+
+      final draft = CommunityPostDraft(
+        userId: account.userId,
+        nickname: account.nickname,
+        content: content,
+        localImagePaths: imagePaths,
+        ploggingId: _selectedRecord?.ploggingId,
       );
+
+      if (!mounted) return;
+      Navigator.pop(context, draft);
+    } finally {
+      if (mounted) {
+        setState(() => _submitting = false);
+      }
     }
-    return buffer.toString().trim();
   }
 
   @override
@@ -835,7 +813,15 @@ class _CommunityComposeScreenState extends State<CommunityComposeScreen> {
                   ),
                 ),
                 IconButton(
-                  onPressed: () => setState(() => _selectedRecord = null),
+                  onPressed: () {
+                    setState(() {
+                      _selectedRecord = null;
+                      _beforeImage = null;
+                      _afterImage = null;
+                      _mapImage = null;
+                      _contentController.clear();
+                    });
+                  },
                   icon: const Icon(Pixel.close, color: Colors.black54),
                 ),
               ],

@@ -286,6 +286,7 @@ class _CommunityScreenState extends State<CommunityScreen> with RouteAware {
       nickname: post.nickname,
       content: post.content,
       localImagePaths: post.localImagePaths,
+      ploggingId: null,
     );
 
     final newDraft = await Navigator.push<CommunityPostDraft>(
@@ -380,15 +381,15 @@ class _CommunityScreenState extends State<CommunityScreen> with RouteAware {
         beforeImagePath: beforeImagePath,
         afterImagePath: afterImagePath,
         mapImagePath: mapImagePath,
+        ploggingId: draft.ploggingId,
       );
 
       if (response is Map) {
         final post = CommunityPost.fromPostJson(
           response.cast<String, dynamic>(),
         );
-        setState(() {
-          _remotePosts = [post, ..._remotePosts];
-        });
+        _pendingFocusPostId = post.id;
+        await _loadPosts();
       } else {
         await _loadPosts();
       }

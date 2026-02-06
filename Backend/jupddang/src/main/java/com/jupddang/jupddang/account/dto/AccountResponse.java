@@ -25,7 +25,7 @@ public class AccountResponse {
     private long followerCount;
     private long followingCount;
 
-    public static AccountResponse from(Account account, boolean isFollowing, long followers, long followings) {
+    public static AccountResponse from(Account account, boolean isFollowing, long followers, long followings, String tier) {
         String color = account.getColor();
         if (color == null || color.isBlank()) {
             color = "#111111";
@@ -38,14 +38,22 @@ public class AccountResponse {
                 account.getIntro(),
                 color,
                 account.getTotalScore(),
-                account.getTier(),
+                tier,
                 account.getCreatedAt(),
                 isFollowing,
                 followers,
                 followings);
     }
 
+    public static AccountResponse from(Account account, boolean isFollowing, long followers, long followings) {
+        return from(account, isFollowing, followers, followings, account.getTier());
+    }
+
+    public static AccountResponse from(Account account, String tier) {
+        return from(account, false, 0, 0, tier);
+    }
+
     public static AccountResponse from(Account account) {
-        return from(account, false, 0, 0);
+        return from(account, false, 0, 0, account.getTier());
     }
 }

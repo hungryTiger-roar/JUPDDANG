@@ -335,13 +335,13 @@ class _FollowListScreenState extends State<FollowListScreen>
                               children: [
                                 if (user.tier.isNotEmpty)
                                   Padding(
-                                    padding: const EdgeInsets.only(right: 6),
+                                    padding: const EdgeInsets.only(right: 4),
                                     child: Image.asset(
                                       TierUtils.getTierBadgePath(user.tier),
-                                      width: 14,
-                                      height: 14,
+                                      width: 24,
+                                      height: 24,
                                       errorBuilder: (context, error, stackTrace) {
-                                        return const SizedBox(width: 14, height: 14);
+                                        return const SizedBox(width: 24, height: 24);
                                       },
                                     ),
                                   ),

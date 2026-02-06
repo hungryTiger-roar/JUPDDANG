@@ -646,6 +646,9 @@ class _CommunityScreenState extends State<CommunityScreen> with RouteAware {
   }
 
   Widget _buildPostCard(CommunityPost post) {
+    // 디버그: tier 값 확인
+    print('🏆 Post ${post.id}: nickname=${post.nickname}, tier="${post.tier}", isEmpty=${post.tier.isEmpty}');
+
     // 임시 글 여부 확인
     final isLocalDraft = _localPosts.any((p) => p.id == post.id);
     final String currentUserId = AuthService.userId?.toString() ?? '';
@@ -725,13 +728,13 @@ class _CommunityScreenState extends State<CommunityScreen> with RouteAware {
                             // Tier 뱃지 이미지
                             if (post.tier.isNotEmpty)
                               Padding(
-                                padding: const EdgeInsets.only(right: 6),
+                                padding: const EdgeInsets.only(right: 4),
                                 child: Image.asset(
                                   TierUtils.getTierBadgePath(post.tier),
-                                  width: 16,
-                                  height: 16,
+                                  width: 28,
+                                  height: 28,
                                   errorBuilder: (context, error, stackTrace) {
-                                    return const SizedBox(width: 16, height: 16);
+                                    return const SizedBox(width: 28, height: 28);
                                   },
                                 ),
                               ),
@@ -1456,13 +1459,13 @@ class _CommentBottomSheetState extends State<_CommentBottomSheet> {
                                       // Tier 뱃지 이미지
                                       if (comment.tier.isNotEmpty)
                                         Padding(
-                                          padding: const EdgeInsets.only(right: 6),
+                                          padding: const EdgeInsets.only(right: 4),
                                           child: Image.asset(
                                             TierUtils.getTierBadgePath(comment.tier),
-                                            width: 14,
-                                            height: 14,
+                                            width: 24,
+                                            height: 24,
                                             errorBuilder: (context, error, stackTrace) {
-                                              return const SizedBox(width: 14, height: 14);
+                                              return const SizedBox(width: 24, height: 24);
                                             },
                                           ),
                                         ),

@@ -3,6 +3,7 @@ import 'package:h3_common/h3_common.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 // 아래 경로는 프로젝트 실제 경로에 맞춰주세요.
 import '../features/plogging/models/hexagon.dart';
 import 'auth_service.dart';
@@ -108,54 +109,81 @@ class LocationH3Service {
   }
 
   String? latLngToH3(LatLng point) {
-    if (!_isInitialized) return null;
-    try {
-      final double lat = point.latitude;
-      final double lon = point.longitude;
-      final double d = 0.002;
-
-      final polygon = [
-        GeoCoord(lat: lat + d, lon: lon),
-        GeoCoord(lat: lat - d, lon: lon + d),
-        GeoCoord(lat: lat - d, lon: lon - d),
-        GeoCoord(lat: lat + d, lon: lon),
-      ];
-
-      final hexagons = _h3.polygonToCells(
-        perimeter: polygon,
-        resolution: resolution,
-      );
-
-      if (hexagons.isEmpty) return null;
-
-      BigInt? bestHex;
-      double minDistance = double.infinity;
-
-      for (var hex in hexagons) {
-        BigInt h3Int = hex;
-        List<GeoCoord> boundary = _h3.cellToBoundary(h3Int);
-        if (boundary.isEmpty) continue;
-
-        double avgLat = 0, avgLon = 0;
-        for (var coord in boundary) {
-          avgLat += coord.lat;
-          avgLon += coord.lon;
-        }
-        avgLat /= boundary.length;
-        avgLon /= boundary.length;
-
-        double dLat = lat - avgLat;
-        double dLon = lon - avgLon;
-        double distSq = dLat * dLat + dLon * dLon;
-
-        if (distSq < minDistance) {
-          minDistance = distSq;
-          bestHex = hex;
-        }
-      }
-      return bestHex?.toRadixString(16);
-    } catch (e) {
+    if (!_isInitialized) {
+      debugPrint("⚠️ H3 Service not initialized!");
       return null;
+    }
+
+    try {
+      // 직접 좌표 → H3 셀 변환 (간단한 방식)
+      final coord = GeoCoord(lat: point.latitude, lon: point.longitude);
+      final h3Index = _h3.geoToCell(coord, resolution);
+      final hexString = h3Index.toRadixString(16);
+      debugPrint(
+        "📍 H3 변환: (${point.latitude}, ${point.longitude}) → $hexString",
+      );
+      return hexString;
+    } catch (e) {
+      debugPrint("❌ H3 변환 실패: $e");
+
+      // 폴백: 기존 polygon 방식 시도
+      try {
+        final double lat = point.latitude;
+        final double lon = point.longitude;
+        final double d = 0.002;
+
+        final polygon = [
+          GeoCoord(lat: lat + d, lon: lon),
+          GeoCoord(lat: lat - d, lon: lon + d),
+          GeoCoord(lat: lat - d, lon: lon - d),
+          GeoCoord(lat: lat + d, lon: lon),
+        ];
+
+        final hexagons = _h3.polygonToCells(
+          perimeter: polygon,
+          resolution: resolution,
+        );
+
+        if (hexagons.isEmpty) {
+          debugPrint("⚠️ polygonToCells 결과 비어있음");
+          return null;
+        }
+
+        BigInt? bestHex;
+        double minDistance = double.infinity;
+
+        for (var hex in hexagons) {
+          List<GeoCoord> boundary = _h3.cellToBoundary(hex);
+          if (boundary.isEmpty) continue;
+
+          double avgLat = 0, avgLon = 0;
+          for (var coord in boundary) {
+            avgLat += coord.lat;
+            avgLon += coord.lon;
+          }
+          avgLat /= boundary.length;
+          avgLon /= boundary.length;
+
+          double dLat = lat - avgLat;
+          double dLon = lon - avgLon;
+          double distSq = dLat * dLat + dLon * dLon;
+
+          if (distSq < minDistance) {
+            minDistance = distSq;
+            bestHex = hex;
+          }
+        }
+
+        if (bestHex != null) {
+          final hexString = bestHex.toRadixString(16);
+          debugPrint("📍 H3 폴백 변환 성공: $hexString");
+          return hexString;
+        }
+        return null;
+      } catch (e2) {
+        debugPrint("❌ H3 폴백도 실패: $e2");
+        return null;
+      }
     }
   }
 

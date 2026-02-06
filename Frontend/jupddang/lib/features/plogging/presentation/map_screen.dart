@@ -96,7 +96,8 @@ class _MapScreenState extends State<MapScreen> {
   File? _mapImage; // 맵 캡쳐 이미지
 
   // --- Map Customization ---
-  Color _selectedGridColor = const Color(0xFF46A140);
+  // 기본 색상은 AuthService.userColor를 사용 (DB에 저장된 내 색)
+  late Color _selectedGridColor;
   double _gridOpacity = 0.5;
   final List<Color> _paletteColors = [
     const Color(0xFF46A140),
@@ -154,9 +155,29 @@ class _MapScreenState extends State<MapScreen> {
   // ==========================================
 
   @override
+  @override
   void initState() {
     super.initState();
+    // 기본 색상을 DB에 저장된 사용자 색상으로 설정
+    _selectedGridColor = AuthService.userColor != null
+        ? Color(AuthService.userColor!)
+        : const Color(0xFF46A140); // 기본값: 초록색
+
+    // 색상 변경 리스너 등록 (프로필에서 변경 시 즉시 반영)
+    AuthService.userColorNotifier.addListener(_onUserColorChanged);
+
     _initializeServices();
+  }
+
+  void _onUserColorChanged() {
+    setState(() {
+      _selectedGridColor = Color(AuthService.userColor!);
+      debugPrint("🎨 지도 화면 색상 업데이트: $_selectedGridColor");
+    });
+    // 헥사곤 색상도 즉시 업데이트 (필요 시)
+    if (_currentPosition != null) {
+      _generatePolygons();
+    }
   }
 
   Future<void> _initializeServices() async {
@@ -177,6 +198,8 @@ class _MapScreenState extends State<MapScreen> {
     _debounceTimer?.cancel();
     _stayTimer?.cancel();
     _statsTimer?.cancel();
+    // 리스너 해제 (중요)
+    AuthService.userColorNotifier.removeListener(_onUserColorChanged);
     _mapController.dispose();
     _descriptionController.dispose();
     _recordTitleController.dispose();
@@ -913,12 +936,14 @@ class _MapScreenState extends State<MapScreen> {
 
           // 2. Overlays
           if (_isPlogging) _buildStatsOverlay(),
-          if (_showCustomizer) _buildCustomizerOverlay(),
+          // 컬러 팔레트는 프로필에서 설정하므로 제거
+          // if (_showCustomizer) _buildCustomizerOverlay(),
 
           // 3. Floating Buttons
           _buildReportButton(),
           _buildControlButtonsRight(),
-          if (_phase == PloggingPhase.idle) _buildPaletteButton(),
+          // 컬러 팔레트 버튼 제거 (프로필에서 색상 변경)
+          // if (_phase == PloggingPhase.idle) _buildPaletteButton(),
 
           // 4. Main Plogging Controls (Bottom)
           if (_isLeader) _buildBottomControls(),

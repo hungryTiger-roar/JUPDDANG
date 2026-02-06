@@ -22,7 +22,7 @@ import '../../../widgets/pixel_button.dart';
 import '../../../widgets/pixel_character.dart';
 import '../../party/models/party_models.dart';
 import '../../party/data/party_service.dart';
-import '../../party/data/party_socket_service.dart';
+import '../data/plogging_socket_service.dart';
 import '../../raid/models/raid_models.dart';
 import '../../raid/data/raid_service.dart';
 import '../../raid/presentation/boss_detail_screen.dart';
@@ -56,7 +56,7 @@ class _MapScreenState extends State<MapScreen> {
   final GlobalKey _mapRepaintKey = GlobalKey();
   final LocationH3Service _h3Service = LocationH3Service();
   final GpsSignalFilter _gpsFilter = GpsSignalFilter();
-  final PartySocketService _socketService = PartySocketService();
+  final PloggingSocketService _socketService = PloggingSocketService();
   final AuthService _authService = AuthService();
   final PartyService _partyService = PartyService();
   final RaidService _raidService = RaidService();
@@ -184,8 +184,9 @@ class _MapScreenState extends State<MapScreen> {
   Future<void> _initializeServices() async {
     await _initLocation();
     await _loadRaidBosses();
+    await _setupSocketLogic(); // Generalize setup
     if (widget.partyId != null) {
-      await _setupPartyLogic();
+      await _loadPartyInfo();
     }
   }
 
@@ -248,37 +249,79 @@ class _MapScreenState extends State<MapScreen> {
     }
   }
 
-  Future<void> _setupPartyLogic() async {
-    await _loadPartyInfo();
-
-    // WebSocket Event Listeners
-    _socketService.onStatusUpdated = (status) {
+  Future<void> _setupSocketLogic() async {
+    // 1. 공통 리스너 (에러/연결성공)
+    _socketService.onConnectionError = (message) {
       if (!mounted) return;
-      if (status == 'COMPLETED' && _phase != PloggingPhase.summary) {
-        _finishPlogging();
-      } else if (status == 'IN_PROGRESS' && _phase == PloggingPhase.idle) {
-        _startPlogging();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    };
+
+    _socketService.onConnected = () {
+      if (!mounted) return;
+      // 개인 모드일 때도 연결 성공 메시지 표시 (또는 스킵 가능하지만 사용자 피드백 위해 유지)
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('✅ 서버에 연결되었습니다.'),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 2),
+        ),
+      );
+      // 연결 후 현재 위치 전송 시작 (플로깅 중이라면)
+      if (_phase == PloggingPhase.plogging) {
+        _sendLocation();
       }
     };
 
-    _socketService.onLeaderLocationUpdated = (leaderLocation) {
-      if (!mounted) return;
-      setState(() {
-        _leaderLocation = leaderLocation;
-        if (!_isLeader) {
-          _occupyProgress = leaderLocation.occupyProgress;
-          _currentH3Index = leaderLocation.currentH3Index;
-          _updateHexagons(_mapController.camera.visibleBounds);
-        }
-      });
-    };
+    // 2. 파티 전용 리스너
+    if (widget.partyId != null) {
+      _socketService.onPartyActivityUpdate = (activity) {
+        if (!mounted) return;
+        // 활동 업데이트 처리 (종료/시작 등)
+        if (activity.isCompleted && _phase != PloggingPhase.summary) {
+          _finishPlogging();
+        } 
+        // 필요한 경우 activity.currentLatitude 등 활용
+      };
 
-    _socketService.connect(widget.partyId!);
-    // Polling fallback
-    _partyPollTimer = Timer.periodic(
-      const Duration(seconds: 2),
-      (_) => _pollPartyData(),
-    );
+      _socketService.onMemberLocationUpdate = (memberLocation) {
+        if (!mounted) return;
+        setState(() {
+          _leaderLocation = memberLocation;
+          if (!_isLeader) {
+            _occupyProgress = memberLocation.occupyProgress;
+            _currentH3Index = memberLocation.currentH3Index;
+            _updateHexagons(_mapController.camera.visibleBounds);
+          }
+        });
+      };
+    }
+
+    // 3. 연결 시작
+    // UserId 확보
+    String userId = AuthService.userId ?? 'unknown';
+    if (userId == 'unknown') {
+      try {
+        final profile = await _authService.getMyProfile();
+        userId = profile['userId'];
+        AuthService.userId = userId;
+      } catch (_) {}
+    }
+    
+    _socketService.connect(userId: userId, partyId: widget.partyId);
+
+    // 4. 파티 폴링 (파티 모드일 때만)
+    if (widget.partyId != null) {
+      _partyPollTimer = Timer.periodic(
+        const Duration(seconds: 2),
+        (_) => _pollPartyData(),
+      );
+    }
   }
 
   Future<void> _loadPartyInfo() async {
@@ -378,28 +421,29 @@ class _MapScreenState extends State<MapScreen> {
         _occupyProgress = 0.0;
       }
 
-      // Send Location if Party Leader
-      if (widget.partyId != null) {
-        _sendLeaderLocation();
-      }
+      // Send Location (Both Individual and Party Leader)
+      _sendLocation();
     }
 
     setState(() {});
   }
 
-  void _sendLeaderLocation() {
+  void _sendLocation() {
+    if (_currentPosition == null) return;
+    final userId = AuthService.userId ?? '';
+    
     final locationRequest = LocationRequest(
       lat: _currentPosition!.latitude,
       lon: _currentPosition!.longitude,
-      partyId: widget.partyId!,
+      partyId: widget.partyId ?? 0, // 0 for individual
       elapsedTime: _sessionStopwatch.elapsed.inSeconds,
       totalDistance: _totalDistance,
       score: _coinsGained,
       currentH3Index: _currentH3Index,
       occupyProgress: _occupyProgress,
-      userId: '',
+      userId: userId,
     );
-    _socketService.sendLocation(widget.partyId!, locationRequest);
+    _socketService.sendLocation(locationRequest);
   }
 
   void _onMapPositionChanged(MapCamera camera, bool hasGesture) {
@@ -556,7 +600,7 @@ class _MapScreenState extends State<MapScreen> {
       }
 
       _statsTimer = Timer.periodic(const Duration(seconds: 1), (t) {
-        if (_isLeader && widget.partyId != null) _sendLeaderLocation();
+        _sendLocation();
         setState(() {});
       });
     });
@@ -668,8 +712,8 @@ class _MapScreenState extends State<MapScreen> {
     // 100m 기준 점령 진행도 계산
     _occupyProgress = (_hexagonDistance / 100.0).clamp(0.0, 1.0);
 
-    // 파티장인 경우 위치 전송
-    if (widget.partyId != null) _sendLeaderLocation();
+    // 파티장/개인인 경우 위치 전송
+    _sendLocation();
 
     // 100m 달성 시 점령 처리
     if (_hexagonDistance >= 100.0) {
@@ -1647,7 +1691,13 @@ class _MapScreenState extends State<MapScreen> {
       child: Center(
         child: SingleChildScrollView(
           child: Padding(
-            padding: const EdgeInsets.all(32.0),
+            // [UX Fix] Add padding for keyboard
+            padding: EdgeInsets.fromLTRB(
+              32.0, 
+              32.0, 
+              32.0, 
+              32.0 + MediaQuery.of(context).viewInsets.bottom
+            ),
             child: NesContainer(
               padding: const EdgeInsets.all(24),
               child: Column(

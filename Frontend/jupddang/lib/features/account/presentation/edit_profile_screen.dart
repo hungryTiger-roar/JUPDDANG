@@ -116,7 +116,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               final rgbOnly = _selectedColor.value & 0x00FFFFFF;
               print('✅ 색상 파싱 성공:');
               print('   - 원본: #$hexColor');
-              print('   - Color: 0x${_selectedColor.value.toRadixString(16).toUpperCase()}');
+              print(
+                '   - Color: 0x${_selectedColor.value.toRadixString(16).toUpperCase()}',
+              );
               print('   - RGB만: 0x${rgbOnly.toRadixString(16).toUpperCase()}');
 
               // availableColors에서 매칭되는지 확인
@@ -125,7 +127,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 orElse: () => _selectedColor,
               );
               if (matchingColor != _selectedColor) {
-                print('   - 매칭된 색상: 0x${matchingColor.value.toRadixString(16).toUpperCase()}');
+                print(
+                  '   - 매칭된 색상: 0x${matchingColor.value.toRadixString(16).toUpperCase()}',
+                );
                 _selectedColor = matchingColor;
               }
             } else {
@@ -163,7 +167,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
       // ARGB에서 RGB만 추출
       final rgbValue = _selectedColor.value & 0x00FFFFFF;
-      final colorHex = '#${rgbValue.toRadixString(16).padLeft(6, '0').toUpperCase()}';
+      final colorHex =
+          '#${rgbValue.toRadixString(16).padLeft(6, '0').toUpperCase()}';
 
       print('🎨 저장할 색상: $_selectedColor');
       print('🎨 색상 value: 0x${_selectedColor.value.toRadixString(16)}');
@@ -185,7 +190,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       // 3. 사진만 바꾸더라도 updates에 위 데이터들이 들어있으므로
       // if (updates.isEmpty) 체크에 걸리지 않고 정상 진행됩니다.
 
-      final response = await _authService.updateMyProfile(updates, _selectedImage);
+      final response = await _authService.updateMyProfile(
+        updates,
+        _selectedImage,
+      );
 
       // AuthService 정적 변수 업데이트 (즉시 반영)
       if (response is Map<String, dynamic>) {
@@ -197,6 +205,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       if (_selectedImage != null && response is Map<String, dynamic>) {
         AuthService.profileImage = response['profileImage']?.toString();
       }
+
+      // 선택한 색상을 AuthService에 즉시 반영 (지도 화면에서 사용)
+      AuthService.userColor = _selectedColor.value;
+      print(
+        '✅ AuthService.userColor 업데이트: 0x${_selectedColor.value.toRadixString(16)}',
+      );
 
       if (mounted) {
         ScaffoldMessenger.of(
@@ -582,11 +596,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     : null,
               ),
               child: isSelected
-                  ? const Icon(
-                      Icons.check,
-                      color: Colors.white,
-                      size: 28,
-                    )
+                  ? const Icon(Icons.check, color: Colors.white, size: 28)
                   : null,
             ),
           );

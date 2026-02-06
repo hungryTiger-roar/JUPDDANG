@@ -83,6 +83,9 @@ dependencies {
     // 이미지 최적화 라이브러리
     implementation 'com.sksamuel.scrimage:scrimage-core:4.1.1'
     implementation 'com.sksamuel.scrimage:scrimage-webp:4.1.1'
+
+    // HTTP 클라이언트 (Gemini API 호출용)
+    implementation 'org.springframework.boot:spring-boot-starter-webflux'
 }
 
 // 컴파일 인코딩 설정

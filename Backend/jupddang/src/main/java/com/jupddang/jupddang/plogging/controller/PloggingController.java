@@ -88,6 +88,7 @@ public class PloggingController {
      * 임시 저장 목록 조회
      */
     @GetMapping("/temp")
+    @Operation(summary = "플로깅 결과 임시 저장 목록 조회", description = "플로깅 결과 임시 저장 목록을 조회합니다.")
     public ResponseEntity<List<PloggingTempDetailResponse>> getTempPloggings(
             @AuthenticationPrincipal Account account) {
 
@@ -99,6 +100,7 @@ public class PloggingController {
      * 임시 저장 상세 조회 (게시글 폼에 채우기)
      */
     @GetMapping("/temp/{ploggingId}")
+    @Operation(summary = "플로깅 결과 임시 저장 상세 조회", description = "일반 작성 게시글 폼에 임시 저장한 플로깅 결과를 채웁니다.")
     public ResponseEntity<PloggingTempDetailResponse> getTempPloggingDetail(
             @AuthenticationPrincipal Account account,
             @PathVariable Long ploggingId) {

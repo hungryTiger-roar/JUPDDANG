@@ -103,9 +103,7 @@ class CommunityPost {
             .toList() ??
         [];
     
-    // 디버깅: profileImage 확인
     final profileImage = json['profileImage']?.toString();
-    print('🖼️ Post ${json['postId']}: profileImage = $profileImage');
     
     return CommunityPost(
       id: json['postId']?.toString() ?? '',

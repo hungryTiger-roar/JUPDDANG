@@ -92,7 +92,7 @@ class _SignupScreenState extends State<SignupScreen> {
       backgroundColor: Theme.of(context).colorScheme.background,
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 28.0, vertical: 32.0),
+          padding: const EdgeInsets.symmetric(horizontal: 28.0, vertical: 20.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -100,50 +100,50 @@ class _SignupScreenState extends State<SignupScreen> {
                 icon: const Icon(Pixel.arrowleft, color: Colors.black),
                 onPressed: () => Navigator.pop(context),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 12),
               const Text(
                 'JOIN JUPDDANG',
                 style: TextStyle(
-                  fontSize: 28,
+                  fontSize: 26,
                   fontWeight: FontWeight.w900,
                   letterSpacing: 2,
                   color: Colors.black,
                 ),
               ),
-              const SizedBox(height: 40),
+              const SizedBox(height: 24),
               NesInputField(
                 controller: _idController,
                 label: '아이디',
                 prefixIcon: Pixel.user,
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 14),
               NesInputField(
                 controller: _emailController,
                 label: '이메일',
                 prefixIcon: Pixel.mail,
                 keyboardType: TextInputType.emailAddress,
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 14),
               NesInputField(
                 controller: _nicknameController,
                 label: '닉네임',
                 prefixIcon: Pixel.moodhappy,
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 14),
               NesInputField(
                 controller: _pwController,
                 label: '비밀번호',
                 prefixIcon: Pixel.lock,
                 obscureText: true,
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 14),
               NesInputField(
                 controller: _pwConfirmController,
                 label: '비밀번호 확인',
                 prefixIcon: Icons.lock_reset_outlined,
                 obscureText: true,
               ),
-              const SizedBox(height: 48),
+              const SizedBox(height: 32),
               PixelButton(
                 text: 'JOIN NOW',
                 isPulse: true,

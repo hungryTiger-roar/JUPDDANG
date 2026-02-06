@@ -2,9 +2,11 @@ package com.jupddang.jupddang.sns.service;
 
 import com.jupddang.jupddang.common.infrastructure.storage.GcsImageService;
 import com.jupddang.jupddang.follow.repository.FollowRepository;
+import com.jupddang.jupddang.plogging.domain.Plogging;
 import com.jupddang.jupddang.plogging.domain.event.PloggingCompletedEvent;
 import com.jupddang.jupddang.account.entity.Account;
 import com.jupddang.jupddang.account.repository.AccountRepository;
+import com.jupddang.jupddang.plogging.repository.PloggingRepository;
 import com.jupddang.jupddang.sns.dto.CommentRequestDto;
 import com.jupddang.jupddang.sns.dto.MyCommentResponseDto;
 import com.jupddang.jupddang.sns.dto.PostCreateRequest;
@@ -29,11 +31,13 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Slf4j
 public class SnsService {
+
     private final PostRepository postRepository;
     private final CommentRepository commentRepository;
     private final GcsImageService gcsImageService;
     private final AccountRepository accountRepository;
     private final FollowRepository followRepository;
+    private final PloggingRepository ploggingRepository;
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handlePloggingCompleted(PloggingCompletedEvent event) {
@@ -133,13 +137,19 @@ public class SnsService {
         Post post = Post.builder()
                 .account(account)
                 .content(request.getContent())
-                .ploggingId(null)
+                .ploggingId(request.getPloggingId())
                 .build();
 
         Post savedPost = postRepository.save(post);
         Long postId = savedPost.getPostId();
 
         log.info("게시글 생성 완료 - postId: {}, userId: {}", postId, account.getUserId());
+
+        // 1-2 플러깅 상태 변경 TEMP -> USED
+        Plogging plogging = ploggingRepository.findById(request.getPloggingId())
+                .orElseThrow(() -> new IllegalArgumentException("플로깅 기록을 찾을 수 없습니다: " + request.getPloggingId()));
+
+        plogging.markAsUsed();
 
         // 2. 폴더 경로 생성: plogging/{userId}/{postId}/
         String folderPath = String.format("plogging/%s/%d", account.getUserId(), postId);

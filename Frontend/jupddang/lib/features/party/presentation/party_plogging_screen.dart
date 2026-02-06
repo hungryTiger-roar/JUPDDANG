@@ -411,7 +411,7 @@ class _PartyPloggingScreenState extends State<PartyPloggingScreen> {
                       ),
                     ),
 
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 40),
 
                     // 안내 메시지
                     Container(

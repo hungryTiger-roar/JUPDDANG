@@ -53,7 +53,23 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     return MaterialApp(
       title: 'Jupddang',
       theme: flutterNesTheme(brightness: Brightness.light).copyWith(
-        textTheme: const TextTheme().apply(fontFamily: 'NeoDunggeunmo'),
+        textTheme: const TextTheme(
+          displayLarge: TextStyle(fontFamily: 'NeoDunggeunmo'),
+          displayMedium: TextStyle(fontFamily: 'NeoDunggeunmo'),
+          displaySmall: TextStyle(fontFamily: 'NeoDunggeunmo'),
+          headlineLarge: TextStyle(fontFamily: 'NeoDunggeunmo'),
+          headlineMedium: TextStyle(fontFamily: 'NeoDunggeunmo'),
+          headlineSmall: TextStyle(fontFamily: 'NeoDunggeunmo'),
+          titleLarge: TextStyle(fontFamily: 'NeoDunggeunmo'),
+          titleMedium: TextStyle(fontFamily: 'NeoDunggeunmo'),
+          titleSmall: TextStyle(fontFamily: 'NeoDunggeunmo'),
+          bodyLarge: TextStyle(fontFamily: 'NeoDunggeunmo'),
+          bodyMedium: TextStyle(fontFamily: 'NeoDunggeunmo'),
+          bodySmall: TextStyle(fontFamily: 'NeoDunggeunmo'),
+          labelLarge: TextStyle(fontFamily: 'NeoDunggeunmo'),
+          labelMedium: TextStyle(fontFamily: 'NeoDunggeunmo'),
+          labelSmall: TextStyle(fontFamily: 'NeoDunggeunmo'),
+        ),
         dialogTheme: const DialogThemeData(
           backgroundColor: Colors.white,
           titleTextStyle: TextStyle(
@@ -66,6 +82,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         textButtonTheme: TextButtonThemeData(
           style: TextButton.styleFrom(foregroundColor: Colors.black),
         ),
+        scaffoldBackgroundColor: Colors.white,
       ),
       // darkTheme: flutterNesTheme(brightness: Brightness.dark),
       themeMode: ThemeMode.light,

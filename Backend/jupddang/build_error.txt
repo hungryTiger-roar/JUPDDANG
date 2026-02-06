@@ -1,0 +1,820 @@
+﻿To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.14.3/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+> Task :compileJava UP-TO-DATE
+> Task :processResources UP-TO-DATE
+> Task :classes UP-TO-DATE
+
+> Task :compileTestJava
+./gradlew : C:\Users\a
+kake\Desktop\common\S1
+4P11D208\Backend\jupdd
+ang\src\test\java\com\
+jupddang\jupddang\part
+y\PartyIntegrationTest
+.java:406: error: cons
+tructor PloggingEndReq
+uest in record Ploggin
+gEndRequest cannot be 
+applied to given types
+;
+At line:1 char:1
++ ./gradlew compileTes
+tJava --no-daemon --st
+acktrace 2>&1 | Out-Fi
+le -F ...
++ ~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~
+    + CategoryInfo    
+          : NotSpeci  
+  fied: (C:\Users\a   
+ kake\...to given     
+types;:String) []    ,
+ RemoteException
+    + FullyQualifiedE 
+   rrorId : NativeCo  
+  mmandError
+ 
+                Ploggi
+ngEndRequest ploggingR
+equest = new PloggingE
+ndRequest(
+                      
+                      
+         ^
+  required: Long,Strin
+g,Double,Integer,Strin
+g,Long,Integer,LocalDa
+teTime
+  found:    <null>,Str
+ing,double,int,LocalDa
+teTime
+  reason: actual and f
+ormal argument lists d
+iffer in length
+C:\Users\akake\Desktop
+\common\S14P11D208\Bac
+kend\jupddang\src\test
+\java\com\jupddang\jup
+ddang\plogging\Ploggin
+gIntegrationTest.java:
+151: error: constructo
+r PloggingEndRequest i
+n record PloggingEndRe
+quest cannot be applie
+d to given types;
+        PloggingEndReq
+uest requestDto = new 
+PloggingEndRequest(
+                      
+                  ^
+  required: Long,Strin
+g,Double,Integer,Strin
+g,Long,Integer,LocalDa
+teTime
+  found:    <null>,Str
+ing,double,int,LocalDa
+teTime
+  reason: actual and f
+ormal argument lists d
+iffer in length
+C:\Users\akake\Desktop
+\common\S14P11D208\Bac
+kend\jupddang\src\test
+\java\com\jupddang\jup
+ddang\plogging\Ploggin
+gIntegrationTest.java:
+190: error: constructo
+r PloggingEndRequest i
+n record PloggingEndRe
+quest cannot be applie
+d to given types;
+        PloggingEndReq
+uest requestDto = new 
+PloggingEndRequest(nul
+l, "�׽�Ʈ", 1.0, 100, j
+ava.time.LocalDateTime
+.now());
+                      
+                  ^
+  required: Long,Strin
+g,Double,Integer,Strin
+g,Long,Integer,LocalDa
+teTime
+  found:    <null>,Str
+ing,double,int,LocalDa
+teTime
+  reason: actual and f
+ormal argument lists d
+iffer in length
+C:\Users\akake\Desktop
+\common\S14P11D208\Bac
+kend\jupddang\src\test
+\java\com\jupddang\jup
+ddang\plogging\Ploggin
+gIntegrationTest.java:
+238: error: constructo
+r PloggingEndRequest i
+n record PloggingEndRe
+quest cannot be applie
+d to given types;
+                    Pl
+oggingEndRequest reqDt
+o = new PloggingEndReq
+uest(null, "�����׽�Ʈ",
+ 10.0, 100,
+                      
+                      
+    ^
+  required: Long,Strin
+g,Double,Integer,Strin
+g,Long,Integer,LocalDa
+teTime
+  found:    <null>,Str
+ing,double,int,LocalDa
+teTime
+  reason: actual and f
+ormal argument lists d
+iffer in length
+C:\Users\akake\Desktop
+\common\S14P11D208\Bac
+kend\jupddang\src\test
+\java\com\jupddang\jup
+ddang\plogging\Ploggin
+gWebSocketTest.java:94
+: error: no suitable c
+onstructor found for L
+ocationRequest(double,
+double,<null>)
+        LocationReques
+t request = new Locati
+onRequest(37.5, 127.0,
+ null);
+                      
+            ^
+    constructor Locati
+onRequest.LocationRequ
+est(Double,Double,Long
+,Integer,Double,Intege
+r,String,Double) is no
+t applicable
+      (actual and form
+al argument lists diff
+er in length)
+    constructor Locati
+onRequest.LocationRequ
+est() is not applicabl
+e
+      (actual and form
+al argument lists diff
+er in length)
+C:\Users\akake\Desktop
+\common\S14P11D208\Bac
+kend\jupddang\src\test
+\java\com\jupddang\jup
+ddang\plogging\Ploggin
+gWebSocketTest.java:12
+8: error: no suitable 
+constructor found for 
+LocationRequest(double
+,double,<null>)
+        LocationReques
+t invalidRequest = new
+ LocationRequest(200.0
+, 127.0, null);
+                      
+                   ^
+    constructor Locati
+onRequest.LocationRequ
+est(Double,Double,Long
+,Integer,Double,Intege
+r,String,Double) is no
+t applicable
+      (actual and form
+al argument lists diff
+er in length)
+    constructor Locati
+onRequest.LocationRequ
+est() is not applicabl
+e
+      (actual and form
+al argument lists diff
+er in length)
+C:\Users\akake\Desktop
+\common\S14P11D208\Bac
+kend\jupddang\src\test
+\java\com\jupddang\jup
+ddang\plogging\Ploggin
+gWebSocketTest.java:17
+7: error: no suitable 
+constructor found for 
+LocationRequest(double
+,double,<null>)
+                    Lo
+cationRequest req = ne
+w LocationRequest(37.5
+ + (index * 0.0001), 1
+27.0, null);
+                      
+                    ^
+    constructor Locati
+onRequest.LocationRequ
+est(Double,Double,Long
+,Integer,Double,Intege
+r,String,Double) is no
+t applicable
+      (actual and form
+al argument lists diff
+er in length)
+    constructor Locati
+onRequest.LocationRequ
+est() is not applicabl
+e
+      (actual and form
+al argument lists diff
+er in length)
+7 errors
+
+> Task :compileTestJava FAILED
+
+[Incubating] Problems report is available at: file:///C:/Users/akake/Desktop/common/S14P11D208/Backend/jupddang/build/reports/problems/problems-report.html
+
+FAILURE: Build failed 
+with an exception.
+
+* What went wrong:
+Execution failed for t
+ask ':compileTestJava'
+.
+> Compilation failed; 
+see the compiler outpu
+t below.
+  C:\Users\akake\Deskt
+op\common\S14P11D208\B
+ackend\jupddang\src\te
+st\java\com\jupddang\j
+upddang\party\PartyInt
+egrationTest.java:406:
+ error: constructor Pl
+oggingEndRequest in re
+cord PloggingEndReques
+t cannot be applied to
+ given types;
+                  Plog
+gingEndRequest ploggin
+gRequest = new Ploggin
+gEndRequest(
+                      
+                      
+           ^
+    required: Long,Str
+ing,Double,Integer,Str
+ing,Long,Integer,Local
+DateTime
+    found:    <null>,S
+tring,double,int,Local
+DateTime
+    reason: actual and
+ formal argument lists
+ differ in length
+  7 errors
+
+* Try:
+> Check your code and 
+dependencies to fix th
+e compilation error(s)
+> Run with --scan to g
+et full insights.
+
+* Exception is:
+org.gradle.api.tasks.T
+askExecutionException:
+ Execution failed for 
+task ':compileTestJava
+'.
+	at org.gradle.api.int
+ernal.tasks.execution.
+ExecuteActionsTaskExec
+uter.lambda$executeIfV
+alid$1(ExecuteActionsT
+askExecuter.java:130)
+	at org.gradle.interna
+l.Try$Failure.ifSucces
+sfulOrElse(Try.java:29
+3)
+	at org.gradle.api.int
+ernal.tasks.execution.
+ExecuteActionsTaskExec
+uter.executeIfValid(Ex
+ecuteActionsTaskExecut
+er.java:128)
+	at org.gradle.api.int
+ernal.tasks.execution.
+ExecuteActionsTaskExec
+uter.execute(ExecuteAc
+tionsTaskExecuter.java
+:116)
+	at org.gradle.api.int
+ernal.tasks.execution.
+ProblemsTaskPathTracki
+ngTaskExecuter.execute
+(ProblemsTaskPathTrack
+ingTaskExecuter.java:4
+1)
+	at org.gradle.api.int
+ernal.tasks.execution.
+FinalizePropertiesTask
+Executer.execute(Final
+izePropertiesTaskExecu
+ter.java:46)
+	at org.gradle.api.int
+ernal.tasks.execution.
+ResolveTaskExecutionMo
+deExecuter.execute(Res
+olveTaskExecutionModeE
+xecuter.java:51)
+	at org.gradle.api.int
+ernal.tasks.execution.
+SkipTaskWithNoActionsE
+xecuter.execute(SkipTa
+skWithNoActionsExecute
+r.java:57)
+	at org.gradle.api.int
+ernal.tasks.execution.
+SkipOnlyIfTaskExecuter
+.execute(SkipOnlyIfTas
+kExecuter.java:74)
+	at org.gradle.api.int
+ernal.tasks.execution.
+CatchExceptionTaskExec
+uter.execute(CatchExce
+ptionTaskExecuter.java
+:36)
+	at org.gradle.api.int
+ernal.tasks.execution.
+EventFiringTaskExecute
+r$1.executeTask(EventF
+iringTaskExecuter.java
+:77)
+	at org.gradle.api.int
+ernal.tasks.execution.
+EventFiringTaskExecute
+r$1.call(EventFiringTa
+skExecuter.java:55)
+	at org.gradle.api.int
+ernal.tasks.execution.
+EventFiringTaskExecute
+r$1.call(EventFiringTa
+skExecuter.java:52)
+	at org.gradle.interna
+l.operations.DefaultBu
+ildOperationRunner$Cal
+lableBuildOperationWor
+ker.execute(DefaultBui
+ldOperationRunner.java
+:210)
+	at org.gradle.interna
+l.operations.DefaultBu
+ildOperationRunner$Cal
+lableBuildOperationWor
+ker.execute(DefaultBui
+ldOperationRunner.java
+:205)
+	at org.gradle.interna
+l.operations.DefaultBu
+ildOperationRunner$2.e
+xecute(DefaultBuildOpe
+rationRunner.java:67)
+	at org.gradle.interna
+l.operations.DefaultBu
+ildOperationRunner$2.e
+xecute(DefaultBuildOpe
+rationRunner.java:60)
+	at org.gradle.interna
+l.operations.DefaultBu
+ildOperationRunner.exe
+cute(DefaultBuildOpera
+tionRunner.java:167)
+	at org.gradle.interna
+l.operations.DefaultBu
+ildOperationRunner.exe
+cute(DefaultBuildOpera
+tionRunner.java:60)
+	at org.gradle.interna
+l.operations.DefaultBu
+ildOperationRunner.cal
+l(DefaultBuildOperatio
+nRunner.java:54)
+	at org.gradle.api.int
+ernal.tasks.execution.
+EventFiringTaskExecute
+r.execute(EventFiringT
+askExecuter.java:52)
+	at org.gradle.executi
+on.plan.LocalTaskNodeE
+xecutor.execute(LocalT
+askNodeExecutor.java:4
+2)
+	at org.gradle.executi
+on.taskgraph.DefaultTa
+skExecutionGraph$Invok
+eNodeExecutorsAction.e
+xecute(DefaultTaskExec
+utionGraph.java:331)
+	at org.gradle.executi
+on.taskgraph.DefaultTa
+skExecutionGraph$Invok
+eNodeExecutorsAction.e
+xecute(DefaultTaskExec
+utionGraph.java:318)
+	at org.gradle.executi
+on.taskgraph.DefaultTa
+skExecutionGraph$Build
+OperationAwareExecutio
+nAction.lambda$execute
+$0(DefaultTaskExecutio
+nGraph.java:314)
+	at org.gradle.interna
+l.operations.CurrentBu
+ildOperationRef.with(C
+urrentBuildOperationRe
+f.java:85)
+	at org.gradle.executi
+on.taskgraph.DefaultTa
+skExecutionGraph$Build
+OperationAwareExecutio
+nAction.execute(Defaul
+tTaskExecutionGraph.ja
+va:314)
+	at org.gradle.executi
+on.taskgraph.DefaultTa
+skExecutionGraph$Build
+OperationAwareExecutio
+nAction.execute(Defaul
+tTaskExecutionGraph.ja
+va:303)
+	at org.gradle.executi
+on.plan.DefaultPlanExe
+cutor$ExecutorWorker.e
+xecute(DefaultPlanExec
+utor.java:459)
+	at org.gradle.executi
+on.plan.DefaultPlanExe
+cutor$ExecutorWorker.r
+un(DefaultPlanExecutor
+.java:376)
+	at org.gradle.interna
+l.concurrent.ExecutorP
+olicy$CatchAndRecordFa
+ilures.onExecute(Execu
+torPolicy.java:64)
+	at org.gradle.interna
+l.concurrent.AbstractM
+anagedExecutor$1.run(A
+bstractManagedExecutor
+.java:48)
+Caused by: org.gradle.
+api.internal.tasks.com
+pile.CompilationFailed
+Exception: Compilation
+ failed; see the compi
+ler output below.
+C:\Users\akake\Desktop
+\common\S14P11D208\Bac
+kend\jupddang\src\test
+\java\com\jupddang\jup
+ddang\party\PartyInteg
+rationTest.java:406: e
+rror: constructor Plog
+gingEndRequest in reco
+rd PloggingEndRequest 
+cannot be applied to g
+iven types;
+                Ploggi
+ngEndRequest ploggingR
+equest = new PloggingE
+ndRequest(
+                      
+                      
+         ^
+  required: Long,Strin
+g,Double,Integer,Strin
+g,Long,Integer,LocalDa
+teTime
+  found:    <null>,Str
+ing,double,int,LocalDa
+teTime
+  reason: actual and f
+ormal argument lists d
+iffer in length
+C:\Users\akake\Desktop
+\common\S14P11D208\Bac
+kend\jupddang\src\test
+\java\com\jupddang\jup
+ddang\plogging\Ploggin
+gIntegrationTest.java:
+151: error: constructo
+r PloggingEndRequest i
+n record PloggingEndRe
+quest cannot be applie
+d to given types;
+        PloggingEndReq
+uest requestDto = new 
+PloggingEndRequest(
+                      
+                  ^
+  required: Long,Strin
+g,Double,Integer,Strin
+g,Long,Integer,LocalDa
+teTime
+  found:    <null>,Str
+ing,double,int,LocalDa
+teTime
+  reason: actual and f
+ormal argument lists d
+iffer in length
+C:\Users\akake\Desktop
+\common\S14P11D208\Bac
+kend\jupddang\src\test
+\java\com\jupddang\jup
+ddang\plogging\Ploggin
+gIntegrationTest.java:
+190: error: constructo
+r PloggingEndRequest i
+n record PloggingEndRe
+quest cannot be applie
+d to given types;
+        PloggingEndReq
+uest requestDto = new 
+PloggingEndRequest(nul
+l, "�׽�Ʈ", 1.0, 100, j
+ava.time.LocalDateTime
+.now());
+                      
+                  ^
+  required: Long,Strin
+g,Double,Integer,Strin
+g,Long,Integer,LocalDa
+teTime
+  found:    <null>,Str
+ing,double,int,LocalDa
+teTime
+  reason: actual and f
+ormal argument lists d
+iffer in length
+C:\Users\akake\Desktop
+\common\S14P11D208\Bac
+kend\jupddang\src\test
+\java\com\jupddang\jup
+ddang\plogging\Ploggin
+gIntegrationTest.java:
+238: error: constructo
+r PloggingEndRequest i
+n record PloggingEndRe
+quest cannot be applie
+d to given types;
+                    Pl
+oggingEndRequest reqDt
+o = new PloggingEndReq
+uest(null, "�����׽�Ʈ",
+ 10.0, 100,
+                      
+                      
+    ^
+  required: Long,Strin
+g,Double,Integer,Strin
+g,Long,Integer,LocalDa
+teTime
+  found:    <null>,Str
+ing,double,int,LocalDa
+teTime
+  reason: actual and f
+ormal argument lists d
+iffer in length
+C:\Users\akake\Desktop
+\common\S14P11D208\Bac
+kend\jupddang\src\test
+\java\com\jupddang\jup
+ddang\plogging\Ploggin
+gWebSocketTest.java:94
+: error: no suitable c
+onstructor found for L
+ocationRequest(double,
+double,<null>)
+        LocationReques
+t request = new Locati
+onRequest(37.5, 127.0,
+ null);
+                      
+            ^
+    constructor Locati
+onRequest.LocationRequ
+est(Double,Double,Long
+,Integer,Double,Intege
+r,String,Double) is no
+t applicable
+      (actual and form
+al argument lists diff
+er in length)
+    constructor Locati
+onRequest.LocationRequ
+est() is not applicabl
+e
+      (actual and form
+al argument lists diff
+er in length)
+C:\Users\akake\Desktop
+\common\S14P11D208\Bac
+kend\jupddang\src\test
+\java\com\jupddang\jup
+ddang\plogging\Ploggin
+gWebSocketTest.java:12
+8: error: no suitable 
+constructor found for 
+LocationRequest(double
+,double,<null>)
+        LocationReques
+t invalidRequest = new
+ LocationRequest(200.0
+, 127.0, null);
+                      
+                   ^
+    constructor Locati
+onRequest.LocationRequ
+est(Double,Double,Long
+,Integer,Double,Intege
+r,String,Double) is no
+t applicable
+      (actual and form
+al argument lists diff
+er in length)
+    constructor Locati
+onRequest.LocationRequ
+est() is not applicabl
+e
+      (actual and form
+al argument lists diff
+er in length)
+C:\Users\akake\Desktop
+\common\S14P11D208\Bac
+kend\jupddang\src\test
+\java\com\jupddang\jup
+ddang\plogging\Ploggin
+gWebSocketTest.java:17
+7: error: no suitable 
+constructor found for 
+LocationRequest(double
+,double,<null>)
+                    Lo
+cationRequest req = ne
+w LocationRequest(37.5
+ + (index * 0.0001), 1
+27.0, null);
+                      
+                    ^
+    constructor Locati
+onRequest.LocationRequ
+est(Double,Double,Long
+,Integer,Double,Intege
+r,String,Double) is no
+t applicable
+      (actual and form
+al argument lists diff
+er in length)
+    constructor Locati
+onRequest.LocationRequ
+est() is not applicabl
+e
+      (actual and form
+al argument lists diff
+er in length)
+7 errors
+	at org.gradle.api.int
+ernal.tasks.compile.Jd
+kJavaCompiler.execute(
+JdkJavaCompiler.java:8
+9)
+	at org.gradle.api.int
+ernal.tasks.compile.Jd
+kJavaCompiler.execute(
+JdkJavaCompiler.java:5
+0)
+	at org.gradle.api.int
+ernal.tasks.compile.da
+emon.AbstractIsolatedC
+ompilerWorkerExecutor$
+CompilerWorkAction.exe
+cute(AbstractIsolatedC
+ompilerWorkerExecutor.
+java:78)
+	at org.gradle.workers
+.internal.DefaultWorke
+rServer.execute(Defaul
+tWorkerServer.java:63)
+	at org.gradle.workers
+.internal.AbstractClas
+sLoaderWorker$1.create
+(AbstractClassLoaderWo
+rker.java:54)
+	at org.gradle.workers
+.internal.AbstractClas
+sLoaderWorker$1.create
+(AbstractClassLoaderWo
+rker.java:48)
+	at org.gradle.interna
+l.classloader.ClassLoa
+derUtils.executeInClas
+sloader(ClassLoaderUti
+ls.java:100)
+	at org.gradle.workers
+.internal.AbstractClas
+sLoaderWorker.executeI
+nClassLoader(AbstractC
+lassLoaderWorker.java:
+48)
+	at org.gradle.workers
+.internal.FlatClassLoa
+derWorker.run(FlatClas
+sLoaderWorker.java:32)
+	at org.gradle.workers
+.internal.FlatClassLoa
+derWorker.run(FlatClas
+sLoaderWorker.java:22)
+	at org.gradle.workers
+.internal.WorkerDaemon
+Server.run(WorkerDaemo
+nServer.java:108)
+	at org.gradle.workers
+.internal.WorkerDaemon
+Server.run(WorkerDaemo
+nServer.java:77)
+	at org.gradle.process
+.internal.worker.reque
+st.WorkerAction.lambda
+$run$1(WorkerAction.ja
+va:150)
+	at org.gradle.process
+.internal.worker.child
+.WorkerLogEventListene
+r.withWorkerLoggingPro
+tocol(WorkerLogEventLi
+stener.java:41)
+	at org.gradle.process
+.internal.worker.reque
+st.WorkerAction.lambda
+$run$2(WorkerAction.ja
+va:150)
+	at org.gradle.interna
+l.operations.CurrentBu
+ildOperationRef.with(C
+urrentBuildOperationRe
+f.java:85)
+	at org.gradle.process
+.internal.worker.reque
+st.WorkerAction.run(Wo
+rkerAction.java:142)
+	at java.base/jdk.inte
+rnal.reflect.DirectMet
+hodHandleAccessor.invo
+ke(DirectMethodHandleA
+ccessor.java:103)
+	at org.gradle.interna
+l.dispatch.ReflectionD
+ispatch.dispatch(Refle
+ctionDispatch.java:36)
+	at org.gradle.interna
+l.dispatch.ReflectionD
+ispatch.dispatch(Refle
+ctionDispatch.java:24)
+	at org.gradle.interna
+l.remote.internal.hub.
+MessageHubBackedObject
+Connection$DispatchWra
+pper.dispatch(MessageH
+ubBackedObjectConnecti
+on.java:182)
+	at org.gradle.interna
+l.remote.internal.hub.
+MessageHubBackedObject
+Connection$DispatchWra
+pper.dispatch(MessageH
+ubBackedObjectConnecti
+on.java:164)
+	at org.gradle.interna
+l.remote.internal.hub.
+MessageHub$Handler.run
+(MessageHub.java:414)
+	at org.gradle.interna
+l.concurrent.ExecutorP
+olicy$CatchAndRecordFa
+ilures.onExecute(Execu
+torPolicy.java:64)
+	at org.gradle.interna
+l.concurrent.AbstractM
+anagedExecutor$1.run(A
+bstractManagedExecutor
+.java:48)
+
+
+BUILD FAILED in 15s
+3 actionable tasks: 1 executed, 2 up-to-date

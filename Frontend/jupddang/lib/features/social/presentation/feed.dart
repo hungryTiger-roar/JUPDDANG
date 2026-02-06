@@ -987,6 +987,10 @@ class _CommunityScreenState extends State<CommunityScreen> with RouteAware {
                 _recordStat(Pixel.clock, parts[3]),
                 const SizedBox(width: 16),
               ],
+              if (parts.length > 4) ...[
+                _recordStat(Icons.star, parts[4]),
+                const SizedBox(width: 16),
+              ],
               if (parts.length > 1) _recordStat(Pixel.calendar, parts[1]),
             ],
           ),
@@ -1517,11 +1521,21 @@ class _CommentBottomSheetState extends State<_CommentBottomSheet> {
                                             items: const [
                                               DropdownMenuItem(
                                                 value: 'delete',
-                                                child: Text(
-                                                  '삭제',
-                                                  style: TextStyle(
-                                                    color: Colors.black,
-                                                  ),
+                                                child: Row(
+                                                  children: [
+                                                    Icon(
+                                                      Pixel.trash,
+                                                      color: Colors.redAccent,
+                                                      size: 18,
+                                                    ),
+                                                    SizedBox(width: 8),
+                                                    Text(
+                                                      '삭제',
+                                                      style: TextStyle(
+                                                        color: Colors.black,
+                                                      ),
+                                                    ),
+                                                  ],
                                                 ),
                                               ),
                                             ],

@@ -7,4 +7,5 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class PostCreateRequest {
     private String content; // 게시글 내용
+    private long ploggingId;
 }

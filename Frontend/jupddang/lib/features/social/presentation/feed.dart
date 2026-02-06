@@ -1310,8 +1310,8 @@ class _CommentBottomSheetState extends State<_CommentBottomSheet> {
     setState(() => _isSubmitting = true);
 
     try {
-      // 1. 서버에 댓글 전송, 응답으로 새 댓글 ID (또는 객체)를 받음
-      final response = await widget.authService.addComment(
+      // 1. 서버에 댓글 전송
+      await widget.authService.addComment(
         widget.post.id,
         AuthService.userId ?? 'guest',
         text,
@@ -1319,25 +1319,26 @@ class _CommentBottomSheetState extends State<_CommentBottomSheet> {
 
       _controller.clear();
 
-      // 2. 받은 응답으로 새 댓글 객체 생성
-      // 서버가 ID만 반환한다고 가정하고 로컬에서 객체를 생성합니다.
-      final newComment = CommunityComment(
-        id: response.toString(), // 서버가 ID를 반환한다고 가정
-        nickname: AuthService.nickname ?? 'You',
-        content: text,
-        createdAt: DateTime.now(),
-      );
-
-      // 3. 로컬 상태에 새 댓글 추가하고 UI 갱신 (맨 위에 추가)
-      setState(() {
-        _comments.insert(0, newComment);
-      });
-
-      // 4. 부모 위젯(피드)에 알려 전체 목록도 갱신하도록 함
+      // 2. 부모 위젯(피드)에 알려 전체 목록 갱신 (서버에서 최신 댓글 데이터 받아옴)
       widget.onCommentAdded();
 
+      // 3. 현재 게시글의 최신 댓글 목록 다시 불러오기
+      final updatedPosts = await widget.authService.getPosts(allPosts: true);
+      final updatedPost = updatedPosts
+          .whereType<Map>()
+          .map((item) => CommunityPost.fromPostJson(item.cast<String, dynamic>()))
+          .firstWhere(
+            (p) => p.id == widget.post.id,
+            orElse: () => widget.post,
+          );
+
+      // 4. 최신 댓글 목록으로 UI 갱신
+      setState(() {
+        _comments = List<CommunityComment>.from(updatedPost.comments);
+        _comments.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      });
+
       // 5. 댓글이 맨 위에 추가되므로, 스크롤을 맨 위로 이동 (선택 사항)
-      // 또는 아무것도 하지 않아 현재 스크롤 위치를 유지
       if (mounted && _scrollController.hasClients) {
         _scrollController.animateTo(
           0.0,
@@ -1424,12 +1425,27 @@ class _CommentBottomSheetState extends State<_CommentBottomSheet> {
                                   width: 2.0,
                                 ),
                               ),
-                              child: Center(
-                                child: PixelCharacter(
-                                  size: 35,
-                                  color: _getColorForNickname(comment.nickname),
-                                ),
-                              ),
+                              child: comment.profileImage != null && comment.profileImage!.isNotEmpty
+                                ? ClipRect(
+                                    child: Image.network(
+                                      comment.profileImage!,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (context, error, stackTrace) {
+                                        return Center(
+                                          child: PixelCharacter(
+                                            size: 35,
+                                            color: _getColorForNickname(comment.nickname),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  )
+                                : Center(
+                                    child: PixelCharacter(
+                                      size: 35,
+                                      color: _getColorForNickname(comment.nickname),
+                                    ),
+                                  ),
                             ),
                             const SizedBox(width: 12),
                             Expanded(
@@ -1516,7 +1532,10 @@ class _CommentBottomSheetState extends State<_CommentBottomSheet> {
           Expanded(
             child: TextField(
               controller: _controller,
-              style: Theme.of(context).textTheme.bodyMedium,
+              style: const TextStyle(
+                color: Colors.black,
+                fontSize: 14,
+              ),
               decoration: const InputDecoration(
                 hintText: '댓글을 입력하세요...',
                 border: InputBorder.none,

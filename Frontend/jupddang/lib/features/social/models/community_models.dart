@@ -25,13 +25,17 @@ class AccountSummary {
 
 class CommunityComment {
   final String id;
+  final String? userId; // userId 추가
   final String nickname;
+  final String? profileImage; // 프로필 사진 URL 추가
   final String content;
   final DateTime createdAt;
 
   CommunityComment({
     required this.id,
+    this.userId,
     required this.nickname,
+    this.profileImage,
     required this.content,
     required this.createdAt,
   });
@@ -39,7 +43,9 @@ class CommunityComment {
   factory CommunityComment.fromJson(Map<String, dynamic> json) {
     return CommunityComment(
       id: json['commentId']?.toString() ?? '',
+      userId: json['userId']?.toString(),
       nickname: json['nickname']?.toString() ?? 'unknown',
+      profileImage: json['profileImage']?.toString(),
       content: json['content']?.toString() ?? '',
       createdAt:
           DateTime.tryParse(json['createdAt']?.toString() ?? '') ??

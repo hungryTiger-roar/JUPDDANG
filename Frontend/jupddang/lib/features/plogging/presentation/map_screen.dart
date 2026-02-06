@@ -280,13 +280,16 @@ class _MapScreenState extends State<MapScreen> {
 
     // 2. 파티 전용 리스너
     if (widget.partyId != null) {
-      _socketService.onPartyActivityUpdate = (activity) {
+      _socketService.onActivitiesUpdated = (activities) {
         if (!mounted) return;
         // 활동 업데이트 처리 (종료/시작 등)
-        if (activity.isCompleted && _phase != PloggingPhase.summary) {
-          _finishPlogging();
-        } 
-        // 필요한 경우 activity.currentLatitude 등 활용
+        // activities는 List<PartyActivity>이므로 각 멤버의 활동 확인
+        for (var activity in activities) {
+          if (activity.isCompleted && _phase != PloggingPhase.summary) {
+            _finishPlogging();
+            break;
+          }
+        }
       };
 
       _socketService.onMemberLocationUpdate = (memberLocation) {

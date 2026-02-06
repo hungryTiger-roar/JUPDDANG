@@ -1,20 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // SystemChrome imports
 import 'package:nes_ui/nes_ui.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart'; // import 추가
 import 'features/auth/presentation/splash_screen.dart';
 
 // RouteObserver를 글로벌로 선언하여 화면 간 이동 감지
 final RouteObserver<PageRoute> routeObserver = RouteObserver<PageRoute>();
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+  await dotenv.load(fileName: ".env");
+
   // 가로 모드 방지 및 풀스크린 설정
   SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
   ]);
-  
+
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
 
   runApp(const MyApp());
@@ -53,7 +55,36 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     return MaterialApp(
       title: 'Jupddang',
       theme: flutterNesTheme(brightness: Brightness.light).copyWith(
-        textTheme: const TextTheme().apply(fontFamily: 'NeoDunggeunmo'),
+        textTheme: const TextTheme(
+          displayLarge: TextStyle(fontFamily: 'NeoDunggeunmo'),
+          displayMedium: TextStyle(fontFamily: 'NeoDunggeunmo'),
+          displaySmall: TextStyle(fontFamily: 'NeoDunggeunmo'),
+          headlineLarge: TextStyle(fontFamily: 'NeoDunggeunmo'),
+          headlineMedium: TextStyle(fontFamily: 'NeoDunggeunmo'),
+          headlineSmall: TextStyle(fontFamily: 'NeoDunggeunmo'),
+          titleLarge: TextStyle(fontFamily: 'NeoDunggeunmo'),
+          titleMedium: TextStyle(fontFamily: 'NeoDunggeunmo'),
+          titleSmall: TextStyle(fontFamily: 'NeoDunggeunmo'),
+          bodyLarge: TextStyle(fontFamily: 'NeoDunggeunmo'),
+          bodyMedium: TextStyle(fontFamily: 'NeoDunggeunmo'),
+          bodySmall: TextStyle(fontFamily: 'NeoDunggeunmo'),
+          labelLarge: TextStyle(fontFamily: 'NeoDunggeunmo'),
+          labelMedium: TextStyle(fontFamily: 'NeoDunggeunmo'),
+          labelSmall: TextStyle(fontFamily: 'NeoDunggeunmo'),
+        ),
+        dialogTheme: const DialogThemeData(
+          backgroundColor: Colors.white,
+          titleTextStyle: TextStyle(
+            color: Colors.black,
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
+          contentTextStyle: TextStyle(color: Colors.black),
+        ),
+        textButtonTheme: TextButtonThemeData(
+          style: TextButton.styleFrom(foregroundColor: Colors.black),
+        ),
+        scaffoldBackgroundColor: Colors.white,
       ),
       // darkTheme: flutterNesTheme(brightness: Brightness.dark),
       themeMode: ThemeMode.light,

@@ -5,6 +5,7 @@ import 'package:pixelarticons/pixelarticons.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../services/auth_service.dart';
 import '../../../widgets/pixel_character.dart';
+import '../../auth/presentation/splash_screen.dart';
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
@@ -116,7 +117,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               final rgbOnly = _selectedColor.value & 0x00FFFFFF;
               print('✅ 색상 파싱 성공:');
               print('   - 원본: #$hexColor');
-              print('   - Color: 0x${_selectedColor.value.toRadixString(16).toUpperCase()}');
+              print(
+                '   - Color: 0x${_selectedColor.value.toRadixString(16).toUpperCase()}',
+              );
               print('   - RGB만: 0x${rgbOnly.toRadixString(16).toUpperCase()}');
 
               // availableColors에서 매칭되는지 확인
@@ -125,7 +128,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 orElse: () => _selectedColor,
               );
               if (matchingColor != _selectedColor) {
-                print('   - 매칭된 색상: 0x${matchingColor.value.toRadixString(16).toUpperCase()}');
+                print(
+                  '   - 매칭된 색상: 0x${matchingColor.value.toRadixString(16).toUpperCase()}',
+                );
                 _selectedColor = matchingColor;
               }
             } else {
@@ -163,7 +168,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
       // ARGB에서 RGB만 추출
       final rgbValue = _selectedColor.value & 0x00FFFFFF;
-      final colorHex = '#${rgbValue.toRadixString(16).padLeft(6, '0').toUpperCase()}';
+      final colorHex =
+          '#${rgbValue.toRadixString(16).padLeft(6, '0').toUpperCase()}';
 
       print('🎨 저장할 색상: $_selectedColor');
       print('🎨 색상 value: 0x${_selectedColor.value.toRadixString(16)}');
@@ -185,7 +191,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       // 3. 사진만 바꾸더라도 updates에 위 데이터들이 들어있으므로
       // if (updates.isEmpty) 체크에 걸리지 않고 정상 진행됩니다.
 
-      final response = await _authService.updateMyProfile(updates, _selectedImage);
+      final response = await _authService.updateMyProfile(
+        updates,
+        _selectedImage,
+      );
 
       // AuthService 정적 변수 업데이트 (즉시 반영)
       if (response is Map<String, dynamic>) {
@@ -197,6 +206,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       if (_selectedImage != null && response is Map<String, dynamic>) {
         AuthService.profileImage = response['profileImage']?.toString();
       }
+
+      // 선택한 색상을 AuthService에 즉시 반영 (지도 화면에서 사용)
+      AuthService.userColor = _selectedColor.value;
+      print(
+        '✅ AuthService.userColor 업데이트: 0x${_selectedColor.value.toRadixString(16)}',
+      );
 
       if (mounted) {
         ScaffoldMessenger.of(
@@ -422,6 +437,24 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                 ),
                               ),
                             ),
+
+                            const SizedBox(height: 20),
+
+                            // 회원 탈퇴 버튼
+                            SizedBox(
+                              width: double.infinity,
+                              child: NesButton(
+                                type: NesButtonType.error,
+                                onPressed: _showDeleteDialog,
+                                child: const Text(
+                                  'DELETE ACCOUNT',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -582,15 +615,97 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     : null,
               ),
               child: isSelected
-                  ? const Icon(
-                      Icons.check,
-                      color: Colors.white,
-                      size: 28,
-                    )
+                  ? const Icon(Icons.check, color: Colors.white, size: 28)
                   : null,
             ),
           );
         }).toList(),
+      ),
+    );
+  }
+
+  void _showDeleteDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => NesDialog(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Account Deletion',
+              style: TextStyle(
+                color: Color(0xFFEF4444),
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              '정말로 회원 탈퇴를 진행하시겠습니까?\n\n모든 데이터가 삭제되며 복구할 수 없습니다.',
+              style: TextStyle(color: Colors.black87),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                NesButton(
+                  type: NesButtonType.normal,
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancel'),
+                ),
+                const SizedBox(width: 16),
+                NesButton(
+                  type: NesButtonType.error,
+                  onPressed: () async {
+                    final originalContext = context;
+                    Navigator.pop(context);
+
+                    showDialog(
+                      context: originalContext,
+                      barrierDismissible: false,
+                      builder: (dialogContext) => const Center(
+                        child: CircularProgressIndicator(
+                          color: Color(0xFF17C964),
+                        ),
+                      ),
+                    );
+
+                    final authService = AuthService();
+                    final success = await authService.deleteAccount();
+
+                    if (originalContext.mounted) {
+                      Navigator.of(originalContext).pop(); // 로딩 닫기
+                    }
+
+                    if (success) {
+                      if (originalContext.mounted) {
+                        // EditProfileScreen을 닫고 로그인 화면으로
+                        Navigator.of(originalContext).pushAndRemoveUntil(
+                          MaterialPageRoute(
+                            builder: (context) => const SplashScreen(),
+                          ),
+                              (route) => false,
+                        );
+                      }
+                    } else {
+                      if (originalContext.mounted) {
+                        NesSnackbar.show(
+                          originalContext,
+                          text: '회원 탈퇴에 실패했습니다. 다시 시도해주세요',
+                          type: NesSnackbarType.error,
+                        );
+                      }
+                    }
+                  },
+                  child: const Text(
+                    'Delete',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -173,10 +173,8 @@ class _CommunityScreenState extends State<CommunityScreen> with RouteAware {
   void _focusPostIfNeeded() {
     final targetId = _pendingFocusPostId;
     if (targetId == null) return;
-    final key = _postKeys[targetId];
-    final targetContext = key?.currentContext;
-    if (targetContext == null) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      final key = _postKeys[targetId];
       final ctx = key?.currentContext;
       if (ctx == null) return;
       Scrollable.ensureVisible(
@@ -287,6 +285,7 @@ class _CommunityScreenState extends State<CommunityScreen> with RouteAware {
       nickname: post.nickname,
       content: post.content,
       localImagePaths: post.localImagePaths,
+      ploggingId: null,
     );
 
     final newDraft = await Navigator.push<CommunityPostDraft>(
@@ -361,18 +360,35 @@ class _CommunityScreenState extends State<CommunityScreen> with RouteAware {
 
   Future<void> _submitPost(CommunityPostDraft draft) async {
     try {
+      // 이미지 경로를 개별 변수로 분리
+      String? beforeImagePath;
+      String? afterImagePath;
+      String? mapImagePath;
+
+      if (draft.localImagePaths.isNotEmpty) {
+        beforeImagePath = draft.localImagePaths[0];
+      }
+      if (draft.localImagePaths.length > 1) {
+        afterImagePath = draft.localImagePaths[1];
+      }
+      if (draft.localImagePaths.length > 2) {
+        mapImagePath = draft.localImagePaths[2];
+      }
+
       final response = await _authService.createPost(
-        userId: draft.userId,
         content: draft.content,
-        imagePaths: draft.localImagePaths,
+        beforeImagePath: beforeImagePath,
+        afterImagePath: afterImagePath,
+        mapImagePath: mapImagePath,
+        ploggingId: draft.ploggingId,
       );
+
       if (response is Map) {
         final post = CommunityPost.fromPostJson(
           response.cast<String, dynamic>(),
         );
-        setState(() {
-          _remotePosts = [post, ..._remotePosts];
-        });
+        _pendingFocusPostId = post.id;
+        await _loadPosts();
       } else {
         await _loadPosts();
       }
@@ -657,11 +673,15 @@ class _CommunityScreenState extends State<CommunityScreen> with RouteAware {
                 children: [
                   GestureDetector(
                     onTap: () {
+                      // userId가 있으면 userId로, 없으면 nickname으로 프로필 이동
+                      final targetId = post.userId?.isNotEmpty == true 
+                          ? post.userId! 
+                          : post.nickname;
                       Navigator.push(
                         context,
                         MaterialPageRoute(
                           builder: (context) =>
-                              ProfileScreen(userId: post.nickname),
+                              ProfileScreen(userId: targetId),
                         ),
                       );
                     },
@@ -744,8 +764,45 @@ class _CommunityScreenState extends State<CommunityScreen> with RouteAware {
                             color: Colors.black38,
                             fontSize: 10,
                           ),
-                        ),
-                      ],
+                        );
+                      },
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Flexible(
+                                // 닉네임이 길어질 경우를 대비해 Flexible 사용
+                                child: Text(
+                                  post.nickname.toUpperCase(),
+                                  style: const TextStyle(
+                                    color: Colors.black,
+                                    fontWeight: FontWeight.w900,
+                                    fontSize: 14,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+
+                              // 임시 저장 글 태그 (내 글이고 임시글일 때)
+                              if (isMine && isLocalDraft)
+                                Padding(
+                                  padding: const EdgeInsets.only(left: 8),
+                                  child: _myPostTag(),
+                                ),
+                            ],
+                          ),
+                          const SizedBox(height: 2), // 간격 미세 조정
+                          Text(
+                            _formatTime(post.createdAt).toUpperCase(),
+                            style: const TextStyle(
+                              color: Colors.black38,
+                              fontSize: 10,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                   // ★ 삼선 메뉴 (통일 및 정렬 수정) ★
@@ -1289,8 +1346,8 @@ class _CommentBottomSheetState extends State<_CommentBottomSheet> {
     setState(() => _isSubmitting = true);
 
     try {
-      // 1. 서버에 댓글 전송, 응답으로 새 댓글 ID (또는 객체)를 받음
-      final response = await widget.authService.addComment(
+      // 1. 서버에 댓글 전송
+      await widget.authService.addComment(
         widget.post.id,
         AuthService.userId ?? 'guest',
         text,
@@ -1298,25 +1355,26 @@ class _CommentBottomSheetState extends State<_CommentBottomSheet> {
 
       _controller.clear();
 
-      // 2. 받은 응답으로 새 댓글 객체 생성
-      // 서버가 ID만 반환한다고 가정하고 로컬에서 객체를 생성합니다.
-      final newComment = CommunityComment(
-        id: response.toString(), // 서버가 ID를 반환한다고 가정
-        nickname: AuthService.nickname ?? 'You',
-        content: text,
-        createdAt: DateTime.now(),
-      );
-
-      // 3. 로컬 상태에 새 댓글 추가하고 UI 갱신 (맨 위에 추가)
-      setState(() {
-        _comments.insert(0, newComment);
-      });
-
-      // 4. 부모 위젯(피드)에 알려 전체 목록도 갱신하도록 함
+      // 2. 부모 위젯(피드)에 알려 전체 목록 갱신 (서버에서 최신 댓글 데이터 받아옴)
       widget.onCommentAdded();
 
+      // 3. 현재 게시글의 최신 댓글 목록 다시 불러오기
+      final updatedPosts = await widget.authService.getPosts(allPosts: true);
+      final updatedPost = updatedPosts
+          .whereType<Map>()
+          .map((item) => CommunityPost.fromPostJson(item.cast<String, dynamic>()))
+          .firstWhere(
+            (p) => p.id == widget.post.id,
+            orElse: () => widget.post,
+          );
+
+      // 4. 최신 댓글 목록으로 UI 갱신
+      setState(() {
+        _comments = List<CommunityComment>.from(updatedPost.comments);
+        _comments.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      });
+
       // 5. 댓글이 맨 위에 추가되므로, 스크롤을 맨 위로 이동 (선택 사항)
-      // 또는 아무것도 하지 않아 현재 스크롤 위치를 유지
       if (mounted && _scrollController.hasClients) {
         _scrollController.animateTo(
           0.0,
@@ -1403,12 +1461,27 @@ class _CommentBottomSheetState extends State<_CommentBottomSheet> {
                                   width: 2.0,
                                 ),
                               ),
-                              child: Center(
-                                child: PixelCharacter(
-                                  size: 35,
-                                  color: _getColorForNickname(comment.nickname),
-                                ),
-                              ),
+                              child: comment.profileImage != null && comment.profileImage!.isNotEmpty
+                                ? ClipRect(
+                                    child: Image.network(
+                                      comment.profileImage!,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (context, error, stackTrace) {
+                                        return Center(
+                                          child: PixelCharacter(
+                                            size: 35,
+                                            color: _getColorForNickname(comment.nickname),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  )
+                                : Center(
+                                    child: PixelCharacter(
+                                      size: 35,
+                                      color: _getColorForNickname(comment.nickname),
+                                    ),
+                                  ),
                             ),
                             const SizedBox(width: 12),
                             Expanded(
@@ -1508,7 +1581,10 @@ class _CommentBottomSheetState extends State<_CommentBottomSheet> {
           Expanded(
             child: TextField(
               controller: _controller,
-              style: Theme.of(context).textTheme.bodyMedium,
+              style: const TextStyle(
+                color: Colors.black,
+                fontSize: 14,
+              ),
               decoration: const InputDecoration(
                 hintText: '댓글을 입력하세요...',
                 border: InputBorder.none,

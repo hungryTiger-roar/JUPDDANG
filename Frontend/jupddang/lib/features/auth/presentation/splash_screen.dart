@@ -75,20 +75,19 @@ class _SplashScreenState extends State<SplashScreen>
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Logo with white background container (matching intro screen)
+              // Logo with white background container (테두리 제거, 크기 증가)
               Container(
-                width: 320,
-                height: 320,
-                decoration: BoxDecoration(
+                width: 380,
+                height: 380,
+                decoration: const BoxDecoration(
                   color: Colors.white,
-                  border: Border.all(color: const Color(0xFF17C964), width: 5),
                 ),
-                padding: const EdgeInsets.all(30),
+                padding: const EdgeInsets.all(20),
                 child: Center(
                   child: Image.asset(
                     'assets/images/splash_logo.png',
-                    width: 260,
-                    height: 260,
+                    width: 340,
+                    height: 340,
                     fit: BoxFit.contain,
                   ),
                 ),

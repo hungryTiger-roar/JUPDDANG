@@ -8,6 +8,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:pixelarticons/pixelarticons.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart'; // dotenv import 추가
 import 'package:image_picker/image_picker.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:gal/gal.dart';
@@ -21,7 +22,7 @@ import '../../../widgets/pixel_button.dart';
 import '../../../widgets/pixel_character.dart';
 import '../../party/models/party_models.dart';
 import '../../party/data/party_service.dart';
-import '../../party/data/party_socket_service.dart';
+import '../data/plogging_socket_service.dart';
 import '../../raid/models/raid_models.dart';
 import '../../raid/data/raid_service.dart';
 import '../../raid/presentation/boss_detail_screen.dart';
@@ -55,7 +56,7 @@ class _MapScreenState extends State<MapScreen> {
   final GlobalKey _mapRepaintKey = GlobalKey();
   final LocationH3Service _h3Service = LocationH3Service();
   final GpsSignalFilter _gpsFilter = GpsSignalFilter();
-  final PartySocketService _socketService = PartySocketService();
+  final PloggingSocketService _socketService = PloggingSocketService();
   final AuthService _authService = AuthService();
   final PartyService _partyService = PartyService();
   final RaidService _raidService = RaidService();
@@ -96,7 +97,8 @@ class _MapScreenState extends State<MapScreen> {
   File? _mapImage; // 맵 캡쳐 이미지
 
   // --- Map Customization ---
-  Color _selectedGridColor = const Color(0xFF46A140);
+  // 기본 색상은 AuthService.userColor를 사용 (DB에 저장된 내 색)
+  late Color _selectedGridColor;
   double _gridOpacity = 0.5;
   final List<Color> _paletteColors = [
     const Color(0xFF46A140),
@@ -154,16 +156,37 @@ class _MapScreenState extends State<MapScreen> {
   // ==========================================
 
   @override
+  @override
   void initState() {
     super.initState();
+    // 기본 색상을 DB에 저장된 사용자 색상으로 설정
+    _selectedGridColor = AuthService.userColor != null
+        ? Color(AuthService.userColor!)
+        : const Color(0xFF46A140); // 기본값: 초록색
+
+    // 색상 변경 리스너 등록 (프로필에서 변경 시 즉시 반영)
+    AuthService.userColorNotifier.addListener(_onUserColorChanged);
+
     _initializeServices();
+  }
+
+  void _onUserColorChanged() {
+    setState(() {
+      _selectedGridColor = Color(AuthService.userColor!);
+      debugPrint("🎨 지도 화면 색상 업데이트: $_selectedGridColor");
+    });
+    // 헥사곤 색상도 즉시 업데이트 (필요 시)
+    if (_currentPosition != null) {
+      _generatePolygons();
+    }
   }
 
   Future<void> _initializeServices() async {
     await _initLocation();
     await _loadRaidBosses();
+    await _setupSocketLogic(); // Generalize setup
     if (widget.partyId != null) {
-      await _setupPartyLogic();
+      await _loadPartyInfo();
     }
   }
 
@@ -177,6 +200,8 @@ class _MapScreenState extends State<MapScreen> {
     _debounceTimer?.cancel();
     _stayTimer?.cancel();
     _statsTimer?.cancel();
+    // 리스너 해제 (중요)
+    AuthService.userColorNotifier.removeListener(_onUserColorChanged);
     _mapController.dispose();
     _descriptionController.dispose();
     _recordTitleController.dispose();
@@ -224,37 +249,79 @@ class _MapScreenState extends State<MapScreen> {
     }
   }
 
-  Future<void> _setupPartyLogic() async {
-    await _loadPartyInfo();
-
-    // WebSocket Event Listeners
-    _socketService.onStatusUpdated = (status) {
+  Future<void> _setupSocketLogic() async {
+    // 1. 공통 리스너 (에러/연결성공)
+    _socketService.onConnectionError = (message) {
       if (!mounted) return;
-      if (status == 'COMPLETED' && _phase != PloggingPhase.summary) {
-        _finishPlogging();
-      } else if (status == 'IN_PROGRESS' && _phase == PloggingPhase.idle) {
-        _startPlogging();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    };
+
+    _socketService.onConnected = () {
+      if (!mounted) return;
+      // 개인 모드일 때도 연결 성공 메시지 표시 (또는 스킵 가능하지만 사용자 피드백 위해 유지)
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('✅ 서버에 연결되었습니다.'),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 2),
+        ),
+      );
+      // 연결 후 현재 위치 전송 시작 (플로깅 중이라면)
+      if (_phase == PloggingPhase.plogging) {
+        _sendLocation();
       }
     };
 
-    _socketService.onLeaderLocationUpdated = (leaderLocation) {
-      if (!mounted) return;
-      setState(() {
-        _leaderLocation = leaderLocation;
-        if (!_isLeader) {
-          _occupyProgress = leaderLocation.occupyProgress;
-          _currentH3Index = leaderLocation.currentH3Index;
-          _updateHexagons(_mapController.camera.visibleBounds);
-        }
-      });
-    };
+    // 2. 파티 전용 리스너
+    if (widget.partyId != null) {
+      _socketService.onPartyActivityUpdate = (activity) {
+        if (!mounted) return;
+        // 활동 업데이트 처리 (종료/시작 등)
+        if (activity.isCompleted && _phase != PloggingPhase.summary) {
+          _finishPlogging();
+        } 
+        // 필요한 경우 activity.currentLatitude 등 활용
+      };
 
-    _socketService.connect(widget.partyId!);
-    // Polling fallback
-    _partyPollTimer = Timer.periodic(
-      const Duration(seconds: 2),
-      (_) => _pollPartyData(),
-    );
+      _socketService.onMemberLocationUpdate = (memberLocation) {
+        if (!mounted) return;
+        setState(() {
+          _leaderLocation = memberLocation;
+          if (!_isLeader) {
+            _occupyProgress = memberLocation.occupyProgress;
+            _currentH3Index = memberLocation.currentH3Index;
+            _updateHexagons(_mapController.camera.visibleBounds);
+          }
+        });
+      };
+    }
+
+    // 3. 연결 시작
+    // UserId 확보
+    String userId = AuthService.userId ?? 'unknown';
+    if (userId == 'unknown') {
+      try {
+        final profile = await _authService.getMyProfile();
+        userId = profile['userId'];
+        AuthService.userId = userId;
+      } catch (_) {}
+    }
+    
+    _socketService.connect(userId: userId, partyId: widget.partyId);
+
+    // 4. 파티 폴링 (파티 모드일 때만)
+    if (widget.partyId != null) {
+      _partyPollTimer = Timer.periodic(
+        const Duration(seconds: 2),
+        (_) => _pollPartyData(),
+      );
+    }
   }
 
   Future<void> _loadPartyInfo() async {
@@ -304,20 +371,16 @@ class _MapScreenState extends State<MapScreen> {
   void _updateCurrentPosition(LatLng newPos) {
     if (!mounted) return;
 
-    // Linear Interpolation for smoothness
-    if (_currentPosition != null) {
-      const double lerpFactor = 0.2;
-      newPos = LatLng(
-        _currentPosition!.latitude +
-            (newPos.latitude - _currentPosition!.latitude) * lerpFactor,
-        _currentPosition!.longitude +
-            (newPos.longitude - _currentPosition!.longitude) * lerpFactor,
-      );
+    // [이중 보정 제거] GpsSignalFilter에서 이미 스무딩이 적용되므로
+    // 여기서 추가 Lerp를 하면 위치가 너무 느리게 따라옴
+    // 따라서 거리 기반 필터링만 수행
 
+    if (_currentPosition != null) {
       final double distance = const Distance().distance(
         _currentPosition!,
         newPos,
       );
+      // 플로깅 중이 아닐 때만 작은 움직임 무시 (0.5m 미만)
       if (distance < 0.5 && _phase != PloggingPhase.plogging) return;
     }
 
@@ -325,7 +388,7 @@ class _MapScreenState extends State<MapScreen> {
       final distance = const Distance().distance(_currentPosition!, newPos);
       _totalDistance += distance;
       _pathPoints.add(newPos);
-      
+
       // 100m 거리 기반 점령 로직: 헥사곤 내 이동 거리 누적
       if (_isLeader && distance < 100.0) {
         _hexagonDistance += distance;
@@ -358,28 +421,29 @@ class _MapScreenState extends State<MapScreen> {
         _occupyProgress = 0.0;
       }
 
-      // Send Location if Party Leader
-      if (widget.partyId != null) {
-        _sendLeaderLocation();
-      }
+      // Send Location (Both Individual and Party Leader)
+      _sendLocation();
     }
 
     setState(() {});
   }
 
-  void _sendLeaderLocation() {
+  void _sendLocation() {
+    if (_currentPosition == null) return;
+    final userId = AuthService.userId ?? '';
+    
     final locationRequest = LocationRequest(
       lat: _currentPosition!.latitude,
       lon: _currentPosition!.longitude,
-      partyId: widget.partyId!,
+      partyId: widget.partyId ?? 0, // 0 for individual
       elapsedTime: _sessionStopwatch.elapsed.inSeconds,
       totalDistance: _totalDistance,
       score: _coinsGained,
       currentH3Index: _currentH3Index,
       occupyProgress: _occupyProgress,
-      userId: '',
+      userId: userId,
     );
-    _socketService.sendLocation(widget.partyId!, locationRequest);
+    _socketService.sendLocation(locationRequest);
   }
 
   void _onMapPositionChanged(MapCamera camera, bool hasGesture) {
@@ -437,7 +501,21 @@ class _MapScreenState extends State<MapScreen> {
     String? targetH3Index = _displayCurrentH3Index;
     double targetProgress = _displayOccupyProgress;
 
-    final newPolygons = _visibleHexagonModels
+    // [수정] 현재 헥사곤이 visibleHexagonModels에 없으면 추가
+    List<HexagonModel> hexagonsToRender = List.from(_visibleHexagonModels);
+
+    if (targetH3Index != null) {
+      bool currentExists = hexagonsToRender.any(
+        (m) => m.h3Index == targetH3Index,
+      );
+      if (!currentExists) {
+        // 현재 헥사곤을 리스트에 추가 (투명 색상으로)
+        hexagonsToRender.add(HexagonModel(h3Index: targetH3Index, color: 0));
+        debugPrint("🔷 현재 헥사곤 추가: $targetH3Index");
+      }
+    }
+
+    final newPolygons = hexagonsToRender
         .map((model) {
           final boundary = _h3Service.getHexagonBoundary(model.h3Index);
           if (boundary.isEmpty) return null;
@@ -450,7 +528,10 @@ class _MapScreenState extends State<MapScreen> {
               ? Colors.transparent
               : Color(model.color).withOpacity(_gridOpacity);
 
-          if (model.h3Index == targetH3Index && targetProgress > 0) {
+          // 현재 점령 중인 헥사곤 하이라이트
+          bool isCurrentHexagon = model.h3Index == targetH3Index;
+          if (isCurrentHexagon) {
+            // 점령 진행도에 따라 색상 변화 (0%라도 테두리는 표시)
             final targetColor = _selectedGridColor
                 .withOpacity(_gridOpacity * 1.5)
                 .withAlpha((_gridOpacity * 1.5 * 255).toInt().clamp(0, 255));
@@ -461,10 +542,10 @@ class _MapScreenState extends State<MapScreen> {
           return Polygon(
             points: points,
             color: fillColor,
-            borderColor: model.h3Index == targetH3Index
-                ? Colors.white.withOpacity(0.8)
+            borderColor: isCurrentHexagon
+                ? Colors.white.withOpacity(0.9) // 현재 헥사곤: 흰색 테두리
                 : Colors.black.withOpacity(0.4 * _gridOpacity),
-            borderStrokeWidth: model.h3Index == targetH3Index ? 3.0 : 2.0,
+            borderStrokeWidth: isCurrentHexagon ? 4.0 : 2.0, // 현재 헥사곤: 더 굵은 테두리
           );
         })
         .whereType<Polygon>()
@@ -478,6 +559,13 @@ class _MapScreenState extends State<MapScreen> {
   // ==========================================
 
   void _startPlogging() {
+    // 1. 현재 GPS 위치에서 H3 헥사곤 인덱스 먼저 계산
+    String? startH3Index;
+    if (_currentPosition != null && _isLeader) {
+      startH3Index = _h3Service.latLngToH3(_currentPosition!);
+      debugPrint("🎯 START: 현재 위치 $_currentPosition → 헥사곤 $startH3Index");
+    }
+
     setState(() {
       _phase = PloggingPhase.plogging;
       _showCustomizer = false;
@@ -498,16 +586,34 @@ class _MapScreenState extends State<MapScreen> {
       _afterTrashCount = null;
       _showQuestTutorial = true;
 
+      // 헥사곤 점령 상태 즉시 초기화
+      if (startH3Index != null) {
+        _currentH3Index = startH3Index;
+        _hexagonDistance = 0.0;
+        _occupyProgress = 0.0;
+        debugPrint("✅ 헥사곤 점령 시작: $_currentH3Index (0%)");
+      } else {
+        _currentH3Index = null;
+        _hexagonDistance = 0.0;
+        _occupyProgress = 0.0;
+        debugPrint("⚠️ 헥사곤을 찾을 수 없음 (위치: $_currentPosition)");
+      }
+
       _statsTimer = Timer.periodic(const Duration(seconds: 1), (t) {
-        if (_isLeader && widget.partyId != null) _sendLeaderLocation();
+        _sendLocation();
         setState(() {});
       });
-
-      if (_currentH3Index != null) _startOccupationTimer();
     });
-    _fetchStartAddress();
 
-    // 5초 후 튜토리얼 자동 닫기 제거 (사용자 수동 닫기 유도)
+    // 2. UI 즉시 업데이트 (헥사곤 렌더링)
+    _generatePolygons();
+
+    // 3. 헥사곤 데이터 새로고침 (서버에서 가져오기)
+    if (_currentPosition != null) {
+      _updateHexagons(_mapController.camera.visibleBounds);
+    }
+
+    _fetchStartAddress();
   }
 
   Future<void> _fetchStartAddress() async {
@@ -606,15 +712,15 @@ class _MapScreenState extends State<MapScreen> {
     // 100m 기준 점령 진행도 계산
     _occupyProgress = (_hexagonDistance / 100.0).clamp(0.0, 1.0);
 
-    // 파티장인 경우 위치 전송
-    if (widget.partyId != null) _sendLeaderLocation();
+    // 파티장/개인인 경우 위치 전송
+    _sendLocation();
 
     // 100m 달성 시 점령 처리
     if (_hexagonDistance >= 100.0) {
       _occupyProgress = 1.0;
       if (_currentH3Index != null) _conquerHexagon(_currentH3Index!);
     }
-    
+
     _generatePolygons();
   }
 
@@ -675,9 +781,9 @@ class _MapScreenState extends State<MapScreen> {
     if (closest != null) {
       if (closest.status == TrashcanStatus.VERIFIED ||
           closest.status == TrashcanStatus.OFFICIAL) {
-        _showAlertDialog("알림", "이미 근처에 등록된 쓰레기통이 있습니다.");
+        _showNesAlertDialog("알림", "이미 근처에 등록된 쓰레기통이 있습니다.");
       } else {
-        _showConfirmDialog(
+        _showNesConfirmDialog(
           "쓰레기통 인증",
           "근처에 제보된 쓰레기통이 있습니다.\n이 쓰레기통이 맞나요?",
           () async {
@@ -686,7 +792,7 @@ class _MapScreenState extends State<MapScreen> {
         );
       }
     } else {
-      _showConfirmDialog("쓰레기통 제보", "현재 위치에 새로운 쓰레기통을 제보하시겠습니까?", () async {
+      _showNesConfirmDialog("쓰레기통 제보", "현재 위치에 새로운 쓰레기통을 제보하시겠습니까?", () async {
         await _createTrashcan(_currentPosition!);
       }, confirmText: "제보하기");
     }
@@ -797,16 +903,180 @@ class _MapScreenState extends State<MapScreen> {
     return file;
   }
 
+  void _showNesAlertDialog(String title, String content) {
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: NesContainer(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                title.toUpperCase(),
+                style: const TextStyle(
+                  color: Colors.black,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1.5,
+                ),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                content,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: Colors.black87,
+                  fontSize: 14,
+                ),
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: NesButton(
+                  type: NesButtonType.success,
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Padding(
+                    padding: EdgeInsets.only(bottom: 4.0),
+                    child: Text(
+                      "확인",
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showNesConfirmDialog(
+    String title,
+    String content,
+    VoidCallback onConfirm, {
+    String confirmText = "확인",
+  }) {
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: NesContainer(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  const Icon(
+                    Pixel.trash,
+                    color: Color(0xFF17C964),
+                    size: 24,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      title.toUpperCase(),
+                      style: const TextStyle(
+                        color: Colors.black,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1.2,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              Text(
+                content,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: Colors.black87,
+                  fontSize: 14,
+                  height: 1.5,
+                ),
+              ),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: NesButton(
+                      type: NesButtonType.success,
+                      onPressed: () {
+                        Navigator.pop(ctx);
+                        onConfirm();
+                      },
+                      child: Center(
+                        child: Padding(
+                          padding: const EdgeInsets.only(bottom: 4.0),
+                          child: Text(
+                            confirmText,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: NesButton(
+                      type: NesButtonType.normal,
+                      onPressed: () => Navigator.pop(ctx),
+                      child: const Center(
+                        child: Padding(
+                          padding: EdgeInsets.only(bottom: 4.0),
+                          child: Text(
+                            "취소",
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   void _showAlertDialog(String title, String content) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(title),
-        content: Text(content),
+        backgroundColor: Colors.white,
+        title: Text(
+          title,
+          style: const TextStyle(
+            color: Colors.black,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        content: Text(
+          content,
+          style: const TextStyle(color: Colors.black),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text("확인"),
+            child: const Text(
+              "확인",
+              style: TextStyle(color: Colors.black),
+            ),
           ),
         ],
       ),
@@ -822,19 +1092,35 @@ class _MapScreenState extends State<MapScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(title),
-        content: Text(content),
+        backgroundColor: Colors.white,
+        title: Text(
+          title,
+          style: const TextStyle(
+            color: Colors.black,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        content: Text(
+          content,
+          style: const TextStyle(color: Colors.black),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text("취소"),
+            child: const Text(
+              "취소",
+              style: TextStyle(color: Colors.black),
+            ),
           ),
           TextButton(
             onPressed: () {
               Navigator.pop(ctx);
               onConfirm();
             },
-            child: Text(confirmText),
+            child: Text(
+              confirmText,
+              style: const TextStyle(color: Colors.black),
+            ),
           ),
         ],
       ),
@@ -875,12 +1161,14 @@ class _MapScreenState extends State<MapScreen> {
 
           // 2. Overlays
           if (_isPlogging) _buildStatsOverlay(),
-          if (_showCustomizer) _buildCustomizerOverlay(),
+          // 컬러 팔레트는 프로필에서 설정하므로 제거
+          // if (_showCustomizer) _buildCustomizerOverlay(),
 
           // 3. Floating Buttons
           _buildReportButton(),
           _buildControlButtonsRight(),
-          if (_phase == PloggingPhase.idle) _buildPaletteButton(),
+          // 컬러 팔레트 버튼 제거 (프로필에서 색상 변경)
+          // if (_phase == PloggingPhase.idle) _buildPaletteButton(),
 
           // 4. Main Plogging Controls (Bottom)
           if (_isLeader) _buildBottomControls(),
@@ -928,9 +1216,12 @@ class _MapScreenState extends State<MapScreen> {
         ),
         children: [
           TileLayer(
-            urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-            userAgentPackageName:
-                'com.ssafy.jupddang.app', // Updated to avoid OSM block
+            urlTemplate:
+                'https://api.mapbox.com/styles/v1/mapbox/light-v10/tiles/256/{z}/{x}/{y}@2x?access_token={accessToken}',
+            additionalOptions: {
+              'accessToken': dotenv.env['MAPBOX_ACCESS_TOKEN'] ?? '',
+            },
+            userAgentPackageName: 'com.ssafy.jupddang.app',
           ),
           if (_pathPoints.isNotEmpty)
             PolylineLayer(
@@ -1296,10 +1587,6 @@ class _MapScreenState extends State<MapScreen> {
           _manualMoveButton(Pixel.minus, "zoom_out", _zoomOut),
           const SizedBox(height: 24),
           _manualMoveButton(Pixel.gps, "my_location", _centerToCurrentLocation),
-          if (_isPlogging) ...[
-            const SizedBox(height: 24),
-            _manualMoveButton(Pixel.camera, "take_photo", _takePhoto),
-          ],
         ],
       ),
     );
@@ -1404,7 +1691,13 @@ class _MapScreenState extends State<MapScreen> {
       child: Center(
         child: SingleChildScrollView(
           child: Padding(
-            padding: const EdgeInsets.all(32.0),
+            // [UX Fix] Add padding for keyboard
+            padding: EdgeInsets.fromLTRB(
+              32.0, 
+              32.0, 
+              32.0, 
+              32.0 + MediaQuery.of(context).viewInsets.bottom
+            ),
             child: NesContainer(
               padding: const EdgeInsets.all(24),
               child: Column(
@@ -1640,7 +1933,7 @@ class _MapScreenState extends State<MapScreen> {
         Navigator.of(context).popUntil((route) => route.isFirst);
     } catch (e) {
       if (mounted) Navigator.pop(context);
-      _snack("임시 저장 실패: $e");
+      _showAlertDialog("임시 저장 실패", "$e");
     }
   }
 
@@ -1674,11 +1967,7 @@ class _MapScreenState extends State<MapScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(
-                Pixel.coin,
-                color: const Color(0xFFFBBF24),
-                size: 16,
-              ),
+              Icon(Pixel.coin, color: const Color(0xFFFBBF24), size: 16),
               const SizedBox(width: 8),
               Text(
                 'PARTY BONUS (${memberCount}명 x${multiplier.toStringAsFixed(1)})',
@@ -1696,9 +1985,21 @@ class _MapScreenState extends State<MapScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
               _bonusStatItem('BASE', '$_coinsGained'),
-              const Text('+', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+              const Text(
+                '+',
+                style: TextStyle(
+                  color: Colors.black,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
               _bonusStatItem('BONUS', '+$bonusPoints'),
-              const Text('=', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+              const Text(
+                '=',
+                style: TextStyle(
+                  color: Colors.black,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
               _bonusStatItem('TOTAL', '$finalScore', isHighlight: true),
             ],
           ),
@@ -1707,7 +2008,11 @@ class _MapScreenState extends State<MapScreen> {
     );
   }
 
-  Widget _bonusStatItem(String label, String value, {bool isHighlight = false}) {
+  Widget _bonusStatItem(
+    String label,
+    String value, {
+    bool isHighlight = false,
+  }) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: isHighlight

@@ -38,8 +38,9 @@ class GpsSignalFilter {
     );
 
     // 시간차 (milliseconds)
-    final int timeDiffMs =
-        newPos.timestamp.difference(_lastApprovedTime!).inMilliseconds;
+    final int timeDiffMs = newPos.timestamp
+        .difference(_lastApprovedTime!)
+        .inMilliseconds;
 
     // 시간이 너무 짧으면(0.5초 미만) 튀는 값일 확률 높음 -> 버림
     // (GPS 갱신 주기가 보통 1초인데, 그 사이에 들어오는 건 노이즈일 가능성)
@@ -57,16 +58,25 @@ class GpsSignalFilter {
     // 3. 적응형 스무딩 (Adaptive Smoothing / Kalman-like)
     // -------------------------------------------------------------------------
     // 정확도가 높을수록(값이 작을수록) 새 데이터를 더 많이 신뢰
-    // 공식: alpha = (1.0 - (accuracy / 40.0))
-    // - accuracy 5m -> alpha 0.875 (새 위치 87% 반영, 빠릿함)
-    // - accuracy 20m -> alpha 0.5 (새 위치 50% 반영, 반반 섞기)
-    // - accuracy 35m -> (이미 단계 1에서 걸러짐)
-    // 최소 0.1, 최대 0.9로 제한하여 완전 정지나 완전 점프 방지
-    double alpha = (1.0 - (newPos.accuracy / 40.0)).clamp(0.1, 0.9);
+    // [수정] 스무딩을 약하게 조정: 정확도 좋으면 새 위치를 거의 100% 반영
+    // - accuracy 5m 이하 -> 새 위치 100% 반영 (필터링 없음)
+    // - accuracy 5~20m -> alpha 0.8~1.0 (새 위치 80~100% 반영)
+    // - accuracy 20~30m -> alpha 0.5~0.8 (새 위치 50~80% 반영)
 
-    double newLat = _lastApprovedPosition!.latitude +
+    // 정확도가 5m 이하면 필터링 없이 그대로 사용
+    if (newPos.accuracy <= 5.0) {
+      _lastApprovedPosition = newPos;
+      _lastApprovedTime = newPos.timestamp;
+      return newPos;
+    }
+
+    double alpha = (1.0 - ((newPos.accuracy - 5.0) / 50.0)).clamp(0.5, 1.0);
+
+    double newLat =
+        _lastApprovedPosition!.latitude +
         (newPos.latitude - _lastApprovedPosition!.latitude) * alpha;
-    double newLng = _lastApprovedPosition!.longitude +
+    double newLng =
+        _lastApprovedPosition!.longitude +
         (newPos.longitude - _lastApprovedPosition!.longitude) * alpha;
 
     // 보정된 값을 새 Position 객체로 생성 (Return 타입 유지)

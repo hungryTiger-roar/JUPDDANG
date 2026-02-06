@@ -102,38 +102,6 @@ class _JoinPartyScreenState extends State<JoinPartyScreen> {
                 ],
               ),
 
-              const SizedBox(height: 60),
-
-              // 안내 메시지
-              Center(
-                child: Column(
-                  children: [
-                    NesContainer(
-                      padding: const EdgeInsets.all(20),
-                      child: const Icon(
-                        Pixel.lock,
-                        color: Color(0xFF17C964),
-                        size: 64,
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    const Text(
-                      'Enter Invite Code',
-                      style: TextStyle(
-                        color: Colors.black,
-                        fontSize: 24,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      '친구에게 받은 6자리 코드를 입력하세요',
-                      style: TextStyle(color: Colors.black54, fontSize: 14),
-                    ),
-                  ],
-                ),
-              ),
-
               const SizedBox(height: 40),
 
               // 초대 코드 입력
@@ -177,6 +145,29 @@ class _JoinPartyScreenState extends State<JoinPartyScreen> {
                       selection: TextSelection.collapsed(offset: value.length),
                     );
                   },
+                ),
+              ),
+
+              const SizedBox(height: 24),
+
+              // 안내 메시지
+              Center(
+                child: Column(
+                  children: [
+                    const Text(
+                      'Enter Invite Code',
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      '친구에게 받은 6자리 코드를 입력하세요',
+                      style: TextStyle(color: Colors.black54, fontSize: 14),
+                    ),
+                  ],
                 ),
               ),
 

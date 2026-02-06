@@ -25,15 +25,19 @@ class AccountSummary {
 
 class CommunityComment {
   final String id;
+  final String? userId; // userId 추가
   final String nickname;
   final String tier;
+  final String? profileImage; // 프로필 사진 URL 추가
   final String content;
   final DateTime createdAt;
 
   CommunityComment({
     required this.id,
+    this.userId,
     required this.nickname,
     this.tier = '',
+    this.profileImage,
     required this.content,
     required this.createdAt,
   });
@@ -41,8 +45,10 @@ class CommunityComment {
   factory CommunityComment.fromJson(Map<String, dynamic> json) {
     return CommunityComment(
       id: json['commentId']?.toString() ?? '',
+      userId: json['userId']?.toString(),
       nickname: json['nickname']?.toString() ?? 'unknown',
       tier: json['tier']?.toString() ?? '',
+      profileImage: json['profileImage']?.toString(),
       content: json['content']?.toString() ?? '',
       createdAt:
           DateTime.tryParse(json['createdAt']?.toString() ?? '') ??
@@ -56,12 +62,14 @@ class CommunityPostDraft {
   final String nickname;
   final String content;
   final List<String> localImagePaths;
+  final int? ploggingId;
 
   CommunityPostDraft({
     required this.userId,
     required this.nickname,
     required this.content,
     List<String>? localImagePaths,
+    this.ploggingId,
   }) : localImagePaths = localImagePaths ?? const [];
 }
 
@@ -106,9 +114,7 @@ class CommunityPost {
             .toList() ??
         [];
     
-    // 디버깅: profileImage 확인
     final profileImage = json['profileImage']?.toString();
-    print('🖼️ Post ${json['postId']}: profileImage = $profileImage');
     
     return CommunityPost(
       id: json['postId']?.toString() ?? '',

@@ -5,7 +5,7 @@ import 'package:pixelarticons/pixelarticons.dart';
 import '../../../services/auth_service.dart';
 import '../../../widgets/pixel_character.dart';
 import '../data/party_service.dart';
-import '../data/party_socket_service.dart';
+import '../../plogging/data/plogging_socket_service.dart';
 import 'package:jupddang/features/party/models/party_models.dart';
 
 class PartyPloggingScreen extends StatefulWidget {
@@ -19,7 +19,7 @@ class PartyPloggingScreen extends StatefulWidget {
 
 class _PartyPloggingScreenState extends State<PartyPloggingScreen> {
   final PartyService _partyService = PartyService();
-  final PartySocketService _socketService = PartySocketService();
+  final PloggingSocketService _socketService = PloggingSocketService();
 
   Party? _party;
   List<PartyActivity> _activities = [];
@@ -56,7 +56,8 @@ class _PartyPloggingScreenState extends State<PartyPloggingScreen> {
         });
       }
     };
-    _socketService.connect(widget.partyId);
+    final userId = AuthService.userId ?? 'unknown';
+    _socketService.connect(partyId: widget.partyId, userId: userId);
   }
 
   @override

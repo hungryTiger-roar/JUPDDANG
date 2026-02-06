@@ -1,13 +1,14 @@
 import 'package:dio/dio.dart';
 import '../../core/logger/log_service.dart';
 import '../../services/auth_service.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class ApiClient {
   static final ApiClient _instance = ApiClient._internal();
   late final Dio dio;
 
   // [TODO] 환경 변수나 설정 파일로 분리 추천
-  static const String baseUrl = 'https://i14d208.p.ssafy.io/dev-api/api';
+  static final String baseUrl = dotenv.env['API_URL'] ?? 'https://i14d208.p.ssafy.io/dev-api/api';
 
   String? _accessToken;
 

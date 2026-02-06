@@ -86,6 +86,7 @@ class _MapScreenState extends State<MapScreen> {
   bool _showCustomizer = false;
   double _occupyProgress = 0.0; // 0.0 ~ 1.0
   List<HexagonModel> _visibleHexagonModels = [];
+  double _hexagonDistance = 0.0; // 현재 헥사곤 내 이동 거리 (100m 기준)
 
   // --- Session Data ---
   XFile? _beforeImage;
@@ -325,6 +326,12 @@ class _MapScreenState extends State<MapScreen> {
       final distance = const Distance().distance(_currentPosition!, newPos);
       _totalDistance += distance;
       _pathPoints.add(newPos);
+      
+      // 100m 거리 기반 점령 로직: 헥사곤 내 이동 거리 누적
+      if (_isLeader && distance < 100.0) {
+        _hexagonDistance += distance;
+        _updateOccupyProgress();
+      }
     }
 
     _currentPosition = newPos;
@@ -341,13 +348,14 @@ class _MapScreenState extends State<MapScreen> {
       final h3Index = _h3Service.latLngToH3(newPos);
       if (h3Index != null) {
         if (_currentH3Index != h3Index) {
+          // 새로운 헥사곤 진입: 거리 및 진행도 초기화
           _currentH3Index = h3Index;
+          _hexagonDistance = 0.0;
           _occupyProgress = 0.0;
-          if (_phase == PloggingPhase.plogging) _startOccupationTimer();
         }
       } else {
-        _stopOccupationTimer();
         _currentH3Index = null;
+        _hexagonDistance = 0.0;
         _occupyProgress = 0.0;
       }
 
@@ -572,43 +580,49 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   // ==========================================
-  // Occupation Logic
+  // Occupation Logic (100m 거리 기반)
   // ==========================================
 
-  void _startOccupationTimer() {
+  /// 100m 거리 기반 점령 진행도 업데이트
+  void _updateOccupyProgress() {
     if (!_isLeader) return;
-    _stopOccupationTimer();
+    if (!mounted) return;
+    if (_phase != PloggingPhase.plogging) return;
+    if (_currentH3Index == null) return;
 
-    _stayTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (!mounted) {
-        timer.cancel();
-        return;
-      }
-      if (_phase != PloggingPhase.plogging) return;
-      if (_currentH3Index == null) return;
+    // 이미 점령된 땅인지 확인
+    final currentModel = _visibleHexagonModels.firstWhere(
+      (m) => m.h3Index == _currentH3Index,
+      orElse: () => HexagonModel(h3Index: _currentH3Index!, color: 0),
+    );
 
-      final currentModel = _visibleHexagonModels.firstWhere(
-        (m) => m.h3Index == _currentH3Index,
-        orElse: () => HexagonModel(h3Index: _currentH3Index!, color: 0),
-      );
-
-      if (currentModel.ownerId != null) {
-        _occupyProgress = 0.0;
-        _generatePolygons();
-        return;
-      }
-
-      _occupyProgress += (1.0 / 60.0); // 1 minute to occupy
-
-      if (widget.partyId != null) _sendLeaderLocation();
-
-      if (_occupyProgress >= 1.0) {
-        _occupyProgress = 1.0;
-        _stopOccupationTimer();
-        if (_currentH3Index != null) _conquerHexagon(_currentH3Index!);
-      }
+    if (currentModel.ownerId != null) {
+      // 이미 점령된 땅: 진행도 초기화
+      _occupyProgress = 0.0;
+      _hexagonDistance = 0.0;
       _generatePolygons();
-    });
+      return;
+    }
+
+    // 100m 기준 점령 진행도 계산
+    _occupyProgress = (_hexagonDistance / 100.0).clamp(0.0, 1.0);
+
+    // 파티장인 경우 위치 전송
+    if (widget.partyId != null) _sendLeaderLocation();
+
+    // 100m 달성 시 점령 처리
+    if (_hexagonDistance >= 100.0) {
+      _occupyProgress = 1.0;
+      if (_currentH3Index != null) _conquerHexagon(_currentH3Index!);
+    }
+    
+    _generatePolygons();
+  }
+
+  /// 레거시 타이머 호환용 (파티원 동기화 목적)
+  void _startOccupationTimer() {
+    // 100m 거리 기반으로 변경되어 타이머 불필요
+    // 위치 업데이트 시 _updateOccupyProgress()가 호출됨
   }
 
   void _stopOccupationTimer() {
@@ -618,13 +632,16 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   void _conquerHexagon(String h3Index) {
-    _h3Service.occupyHexagon(h3Index, "my_user_id", 0x990000FF);
+    final userId = AuthService.userId ?? "my_user_id";
+    final userColor = AuthService.userColor ?? 0x990000FF;
+    _h3Service.occupyHexagon(h3Index, userId, userColor);
+    _hexagonDistance = 0.0;
     _occupyProgress = 0.0;
     _coinsGained += 5;
     _updateHexagons(_mapController.camera.visibleBounds);
     ScaffoldMessenger.of(
       context,
-    ).showSnackBar(const SnackBar(content: Text("땅을 점령했습니다! (1분 체류 달성)")));
+    ).showSnackBar(const SnackBar(content: Text("땅을 점령했습니다! (100m 이동 달성)")));
   }
 
   // ==========================================

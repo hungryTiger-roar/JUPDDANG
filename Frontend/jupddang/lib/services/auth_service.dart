@@ -31,9 +31,28 @@ class AuthService {
          if (account is Map) {
             userId = account['userId']?.toString();
             nickname = account['nickname']?.toString();
+            // 사용자 색상 파싱 (#RRGGBB 형식 -> int 변환)
+            final colorStr = account['color']?.toString();
+            if (colorStr != null && colorStr.isNotEmpty) {
+              userColor = _parseColorString(colorStr);
+            }
          }
     }
     return data;
+  }
+
+  /// 색상 문자열(#RRGGBB 또는 #AARRGGBB)을 int로 변환
+  static int? _parseColorString(String colorStr) {
+    try {
+      String hex = colorStr.replaceFirst('#', '');
+      if (hex.length == 6) {
+        hex = 'FF$hex'; // alpha 추가
+      }
+      return int.parse(hex, radix: 16);
+    } catch (e) {
+      print('Color parsing error: $e');
+      return null;
+    }
   }
 
   Future<dynamic> signup({

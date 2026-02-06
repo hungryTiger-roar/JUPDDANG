@@ -1415,37 +1415,58 @@ class _CommentBottomSheetState extends State<_CommentBottomSheet> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             // 프로필사진
-                            Container(
-                              width: 50,
-                              height: 50,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF1F1F1F),
-                                border: Border.all(
-                                  color: Colors.black,
-                                  width: 2.0,
-                                ),
-                              ),
-                              child: comment.profileImage != null && comment.profileImage!.isNotEmpty
-                                ? ClipRect(
-                                    child: Image.network(
-                                      comment.profileImage!,
-                                      fit: BoxFit.cover,
-                                      errorBuilder: (context, error, stackTrace) {
-                                        return Center(
-                                          child: PixelCharacter(
-                                            size: 35,
-                                            color: _getColorForNickname(comment.nickname),
-                                          ),
-                                        );
-                                      },
-                                    ),
-                                  )
-                                : Center(
-                                    child: PixelCharacter(
-                                      size: 35,
-                                      color: _getColorForNickname(comment.nickname),
-                                    ),
+                            GestureDetector(
+                              onTap: () {
+                                final targetId =
+                                    comment.userId?.isNotEmpty == true
+                                        ? comment.userId!
+                                        : comment.nickname;
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        ProfileScreen(userId: targetId),
                                   ),
+                                );
+                              },
+                              child: Container(
+                                width: 50,
+                                height: 50,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF1F1F1F),
+                                  border: Border.all(
+                                    color: Colors.black,
+                                    width: 2.0,
+                                  ),
+                                ),
+                                child: comment.profileImage != null &&
+                                        comment.profileImage!.isNotEmpty
+                                    ? ClipRect(
+                                        child: Image.network(
+                                          comment.profileImage!,
+                                          fit: BoxFit.cover,
+                                          errorBuilder:
+                                              (context, error, stackTrace) {
+                                            return Center(
+                                              child: PixelCharacter(
+                                                size: 35,
+                                                color: _getColorForNickname(
+                                                  comment.nickname,
+                                                ),
+                                              ),
+                                            );
+                                          },
+                                        ),
+                                      )
+                                    : Center(
+                                        child: PixelCharacter(
+                                          size: 35,
+                                          color: _getColorForNickname(
+                                            comment.nickname,
+                                          ),
+                                        ),
+                                      ),
+                              ),
                             ),
                             const SizedBox(width: 12),
                             Expanded(
@@ -1456,12 +1477,30 @@ class _CommentBottomSheetState extends State<_CommentBottomSheet> {
                                     children: [
                                       Expanded(
                                         // 닉네임
-                                        child: Text(
-                                          comment.nickname.toUpperCase(),
-                                          style: const TextStyle(
-                                            color: Colors.black54,
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 14,
+                                        child: GestureDetector(
+                                          onTap: () {
+                                            final targetId =
+                                                comment.userId?.isNotEmpty ==
+                                                        true
+                                                    ? comment.userId!
+                                                    : comment.nickname;
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (context) =>
+                                                    ProfileScreen(
+                                                  userId: targetId,
+                                                ),
+                                              ),
+                                            );
+                                          },
+                                          child: Text(
+                                            comment.nickname.toUpperCase(),
+                                            style: const TextStyle(
+                                              color: Colors.black54,
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 14,
+                                            ),
                                           ),
                                         ),
                                       ),

@@ -5,6 +5,7 @@ import 'package:pixelarticons/pixelarticons.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../services/auth_service.dart';
 import '../../../widgets/pixel_character.dart';
+import '../../auth/presentation/splash_screen.dart';
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
@@ -422,6 +423,24 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                 ),
                               ),
                             ),
+
+                            const SizedBox(height: 20),
+
+                            // 회원 탈퇴 버튼
+                            SizedBox(
+                              width: double.infinity,
+                              child: NesButton(
+                                type: NesButtonType.error,
+                                onPressed: _showDeleteDialog,
+                                child: const Text(
+                                  'DELETE ACCOUNT',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -591,6 +610,92 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             ),
           );
         }).toList(),
+      ),
+    );
+  }
+
+  void _showDeleteDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => NesDialog(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Account Deletion',
+              style: TextStyle(
+                color: Color(0xFFEF4444),
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              '정말로 회원 탈퇴를 진행하시겠습니까?\n\n모든 데이터가 삭제되며 복구할 수 없습니다.',
+              style: TextStyle(color: Colors.black87),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                NesButton(
+                  type: NesButtonType.normal,
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancel'),
+                ),
+                const SizedBox(width: 16),
+                NesButton(
+                  type: NesButtonType.error,
+                  onPressed: () async {
+                    final originalContext = context;
+                    Navigator.pop(context);
+
+                    showDialog(
+                      context: originalContext,
+                      barrierDismissible: false,
+                      builder: (dialogContext) => const Center(
+                        child: CircularProgressIndicator(
+                          color: Color(0xFF17C964),
+                        ),
+                      ),
+                    );
+
+                    final authService = AuthService();
+                    final success = await authService.deleteAccount();
+
+                    if (originalContext.mounted) {
+                      Navigator.of(originalContext).pop(); // 로딩 닫기
+                    }
+
+                    if (success) {
+                      if (originalContext.mounted) {
+                        // EditProfileScreen을 닫고 로그인 화면으로
+                        Navigator.of(originalContext).pushAndRemoveUntil(
+                          MaterialPageRoute(
+                            builder: (context) => const SplashScreen(),
+                          ),
+                              (route) => false,
+                        );
+                      }
+                    } else {
+                      if (originalContext.mounted) {
+                        NesSnackbar.show(
+                          originalContext,
+                          text: '회원 탈퇴에 실패했습니다. 다시 시도해주세요',
+                          type: NesSnackbarType.error,
+                        );
+                      }
+                    }
+                  },
+                  child: const Text(
+                    'Delete',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

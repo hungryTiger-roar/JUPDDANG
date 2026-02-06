@@ -20,6 +20,7 @@ public class AccountResponse {
     private String color;
     private long totalScore;
     private String tier;
+    private String color; // 사용자 개인 색상 추가
     private LocalDateTime createdAt;
     private boolean isFollowing;
     private long followerCount;
@@ -39,6 +40,7 @@ public class AccountResponse {
                 color,
                 account.getTotalScore(),
                 account.getTier(),
+                account.getColor(), // color 매핑 추가
                 account.getCreatedAt(),
                 isFollowing,
                 followers,

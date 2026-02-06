@@ -26,12 +26,14 @@ class AccountSummary {
 class CommunityComment {
   final String id;
   final String nickname;
+  final String tier;
   final String content;
   final DateTime createdAt;
 
   CommunityComment({
     required this.id,
     required this.nickname,
+    this.tier = '',
     required this.content,
     required this.createdAt,
   });
@@ -40,6 +42,7 @@ class CommunityComment {
     return CommunityComment(
       id: json['commentId']?.toString() ?? '',
       nickname: json['nickname']?.toString() ?? 'unknown',
+      tier: json['tier']?.toString() ?? '',
       content: json['content']?.toString() ?? '',
       createdAt:
           DateTime.tryParse(json['createdAt']?.toString() ?? '') ??
@@ -66,6 +69,7 @@ class CommunityPost {
   final String id;
   final String? userId;
   final String nickname;
+  final String tier; // 티어
   final String? profileImage; // 프로필 사진 URL
   final String content;
   final DateTime createdAt;
@@ -79,6 +83,7 @@ class CommunityPost {
     required this.id,
     this.userId,
     required this.nickname,
+    this.tier = '',
     this.profileImage,
     required this.content,
     required this.createdAt,
@@ -109,6 +114,7 @@ class CommunityPost {
       id: json['postId']?.toString() ?? '',
       userId: json['userId']?.toString(),
       nickname: json['nickname']?.toString() ?? 'unknown',
+      tier: json['tier']?.toString() ?? '',
       profileImage: profileImage,
       content: json['content']?.toString() ?? '',
       createdAt: createdAt,
@@ -149,6 +155,7 @@ class CommunityPost {
 
   CommunityPost copyWith({
     String? id,
+    String? tier,
     String? userId,
     String? nickname,
     String? profileImage,
@@ -162,6 +169,7 @@ class CommunityPost {
   }) {
     return CommunityPost(
       id: id ?? this.id,
+      tier: tier ?? this.tier,
       userId: userId ?? this.userId,
       nickname: nickname ?? this.nickname,
       profileImage: profileImage ?? this.profileImage,

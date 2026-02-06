@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import '../core/network/api_client.dart';
 import '../features/auth/data/auth_service.dart' as AuthFeature;
 import '../features/account/data/account_service.dart';
@@ -21,7 +22,20 @@ class AuthService {
   static String? userId; // [Warning] 상태 관리(Provider 등)로 이관 필요
   static String? nickname;
   static String? profileImage; // 프로필 이미지 URL
-  static int? userColor = 0xFF46A140; // Default Green
+
+  // 색상 변경 알림을 위한 ValueNotifier
+  static final ValueNotifier<int> userColorNotifier = ValueNotifier<int>(
+    0xFF46A140,
+  );
+
+  // userColor getter/setter (기존 코드 호환성 유지)
+  static int? get userColor => userColorNotifier.value;
+  static set userColor(int? color) {
+    if (color != null) {
+      userColorNotifier.value = color;
+      debugPrint('🎨 AuthService.userColor 변경됨: 0x${color.toRadixString(16)}');
+    }
+  }
 
   // --- Auth ---
   Future<dynamic> login(String id, String pw) async {

@@ -96,7 +96,8 @@ class _MapScreenState extends State<MapScreen> {
   File? _mapImage; // 맵 캡쳐 이미지
 
   // --- Map Customization ---
-  Color _selectedGridColor = const Color(0xFF46A140);
+  // 기본 색상은 AuthService.userColor를 사용 (DB에 저장된 내 색)
+  late Color _selectedGridColor;
   double _gridOpacity = 0.5;
   final List<Color> _paletteColors = [
     const Color(0xFF46A140),
@@ -154,9 +155,29 @@ class _MapScreenState extends State<MapScreen> {
   // ==========================================
 
   @override
+  @override
   void initState() {
     super.initState();
+    // 기본 색상을 DB에 저장된 사용자 색상으로 설정
+    _selectedGridColor = AuthService.userColor != null
+        ? Color(AuthService.userColor!)
+        : const Color(0xFF46A140); // 기본값: 초록색
+
+    // 색상 변경 리스너 등록 (프로필에서 변경 시 즉시 반영)
+    AuthService.userColorNotifier.addListener(_onUserColorChanged);
+
     _initializeServices();
+  }
+
+  void _onUserColorChanged() {
+    setState(() {
+      _selectedGridColor = Color(AuthService.userColor!);
+      debugPrint("🎨 지도 화면 색상 업데이트: $_selectedGridColor");
+    });
+    // 헥사곤 색상도 즉시 업데이트 (필요 시)
+    if (_currentPosition != null) {
+      _generatePolygons();
+    }
   }
 
   Future<void> _initializeServices() async {
@@ -177,6 +198,8 @@ class _MapScreenState extends State<MapScreen> {
     _debounceTimer?.cancel();
     _stayTimer?.cancel();
     _statsTimer?.cancel();
+    // 리스너 해제 (중요)
+    AuthService.userColorNotifier.removeListener(_onUserColorChanged);
     _mapController.dispose();
     _descriptionController.dispose();
     _recordTitleController.dispose();
@@ -304,20 +327,16 @@ class _MapScreenState extends State<MapScreen> {
   void _updateCurrentPosition(LatLng newPos) {
     if (!mounted) return;
 
-    // Linear Interpolation for smoothness
-    if (_currentPosition != null) {
-      const double lerpFactor = 0.2;
-      newPos = LatLng(
-        _currentPosition!.latitude +
-            (newPos.latitude - _currentPosition!.latitude) * lerpFactor,
-        _currentPosition!.longitude +
-            (newPos.longitude - _currentPosition!.longitude) * lerpFactor,
-      );
+    // [이중 보정 제거] GpsSignalFilter에서 이미 스무딩이 적용되므로
+    // 여기서 추가 Lerp를 하면 위치가 너무 느리게 따라옴
+    // 따라서 거리 기반 필터링만 수행
 
+    if (_currentPosition != null) {
       final double distance = const Distance().distance(
         _currentPosition!,
         newPos,
       );
+      // 플로깅 중이 아닐 때만 작은 움직임 무시 (0.5m 미만)
       if (distance < 0.5 && _phase != PloggingPhase.plogging) return;
     }
 
@@ -325,7 +344,7 @@ class _MapScreenState extends State<MapScreen> {
       final distance = const Distance().distance(_currentPosition!, newPos);
       _totalDistance += distance;
       _pathPoints.add(newPos);
-      
+
       // 100m 거리 기반 점령 로직: 헥사곤 내 이동 거리 누적
       if (_isLeader && distance < 100.0) {
         _hexagonDistance += distance;
@@ -437,7 +456,21 @@ class _MapScreenState extends State<MapScreen> {
     String? targetH3Index = _displayCurrentH3Index;
     double targetProgress = _displayOccupyProgress;
 
-    final newPolygons = _visibleHexagonModels
+    // [수정] 현재 헥사곤이 visibleHexagonModels에 없으면 추가
+    List<HexagonModel> hexagonsToRender = List.from(_visibleHexagonModels);
+
+    if (targetH3Index != null) {
+      bool currentExists = hexagonsToRender.any(
+        (m) => m.h3Index == targetH3Index,
+      );
+      if (!currentExists) {
+        // 현재 헥사곤을 리스트에 추가 (투명 색상으로)
+        hexagonsToRender.add(HexagonModel(h3Index: targetH3Index, color: 0));
+        debugPrint("🔷 현재 헥사곤 추가: $targetH3Index");
+      }
+    }
+
+    final newPolygons = hexagonsToRender
         .map((model) {
           final boundary = _h3Service.getHexagonBoundary(model.h3Index);
           if (boundary.isEmpty) return null;
@@ -450,7 +483,10 @@ class _MapScreenState extends State<MapScreen> {
               ? Colors.transparent
               : Color(model.color).withOpacity(_gridOpacity);
 
-          if (model.h3Index == targetH3Index && targetProgress > 0) {
+          // 현재 점령 중인 헥사곤 하이라이트
+          bool isCurrentHexagon = model.h3Index == targetH3Index;
+          if (isCurrentHexagon) {
+            // 점령 진행도에 따라 색상 변화 (0%라도 테두리는 표시)
             final targetColor = _selectedGridColor
                 .withOpacity(_gridOpacity * 1.5)
                 .withAlpha((_gridOpacity * 1.5 * 255).toInt().clamp(0, 255));
@@ -461,10 +497,10 @@ class _MapScreenState extends State<MapScreen> {
           return Polygon(
             points: points,
             color: fillColor,
-            borderColor: model.h3Index == targetH3Index
-                ? Colors.white.withOpacity(0.8)
+            borderColor: isCurrentHexagon
+                ? Colors.white.withOpacity(0.9) // 현재 헥사곤: 흰색 테두리
                 : Colors.black.withOpacity(0.4 * _gridOpacity),
-            borderStrokeWidth: model.h3Index == targetH3Index ? 3.0 : 2.0,
+            borderStrokeWidth: isCurrentHexagon ? 4.0 : 2.0, // 현재 헥사곤: 더 굵은 테두리
           );
         })
         .whereType<Polygon>()
@@ -478,6 +514,13 @@ class _MapScreenState extends State<MapScreen> {
   // ==========================================
 
   void _startPlogging() {
+    // 1. 현재 GPS 위치에서 H3 헥사곤 인덱스 먼저 계산
+    String? startH3Index;
+    if (_currentPosition != null && _isLeader) {
+      startH3Index = _h3Service.latLngToH3(_currentPosition!);
+      debugPrint("🎯 START: 현재 위치 $_currentPosition → 헥사곤 $startH3Index");
+    }
+
     setState(() {
       _phase = PloggingPhase.plogging;
       _showCustomizer = false;
@@ -498,16 +541,34 @@ class _MapScreenState extends State<MapScreen> {
       _afterTrashCount = null;
       _showQuestTutorial = true;
 
+      // 헥사곤 점령 상태 즉시 초기화
+      if (startH3Index != null) {
+        _currentH3Index = startH3Index;
+        _hexagonDistance = 0.0;
+        _occupyProgress = 0.0;
+        debugPrint("✅ 헥사곤 점령 시작: $_currentH3Index (0%)");
+      } else {
+        _currentH3Index = null;
+        _hexagonDistance = 0.0;
+        _occupyProgress = 0.0;
+        debugPrint("⚠️ 헥사곤을 찾을 수 없음 (위치: $_currentPosition)");
+      }
+
       _statsTimer = Timer.periodic(const Duration(seconds: 1), (t) {
         if (_isLeader && widget.partyId != null) _sendLeaderLocation();
         setState(() {});
       });
-
-      if (_currentH3Index != null) _startOccupationTimer();
     });
-    _fetchStartAddress();
 
-    // 5초 후 튜토리얼 자동 닫기 제거 (사용자 수동 닫기 유도)
+    // 2. UI 즉시 업데이트 (헥사곤 렌더링)
+    _generatePolygons();
+
+    // 3. 헥사곤 데이터 새로고침 (서버에서 가져오기)
+    if (_currentPosition != null) {
+      _updateHexagons(_mapController.camera.visibleBounds);
+    }
+
+    _fetchStartAddress();
   }
 
   Future<void> _fetchStartAddress() async {
@@ -614,7 +675,7 @@ class _MapScreenState extends State<MapScreen> {
       _occupyProgress = 1.0;
       if (_currentH3Index != null) _conquerHexagon(_currentH3Index!);
     }
-    
+
     _generatePolygons();
   }
 
@@ -1055,12 +1116,14 @@ class _MapScreenState extends State<MapScreen> {
 
           // 2. Overlays
           if (_isPlogging) _buildStatsOverlay(),
-          if (_showCustomizer) _buildCustomizerOverlay(),
+          // 컬러 팔레트는 프로필에서 설정하므로 제거
+          // if (_showCustomizer) _buildCustomizerOverlay(),
 
           // 3. Floating Buttons
           _buildReportButton(),
           _buildControlButtonsRight(),
-          if (_phase == PloggingPhase.idle) _buildPaletteButton(),
+          // 컬러 팔레트 버튼 제거 (프로필에서 색상 변경)
+          // if (_phase == PloggingPhase.idle) _buildPaletteButton(),
 
           // 4. Main Plogging Controls (Bottom)
           if (_isLeader) _buildBottomControls(),
@@ -1108,9 +1171,13 @@ class _MapScreenState extends State<MapScreen> {
         ),
         children: [
           TileLayer(
-            urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-            userAgentPackageName:
-                'com.ssafy.jupddang.app', // Updated to avoid OSM block
+            urlTemplate:
+                'https://api.mapbox.com/styles/v1/mapbox/light-v10/tiles/256/{z}/{x}/{y}@2x?access_token={accessToken}',
+            additionalOptions: const {
+              'accessToken':
+                  'pk.eyJ1IjoiZG1kbTA2MDEiLCJhIjoiY21sYThjaTM3MGJ1OTNlczc4eGdsY3htOCJ9.7Fe99m7u1Voirekm6pVxLQ',
+            },
+            userAgentPackageName: 'com.ssafy.jupddang.app',
           ),
           if (_pathPoints.isNotEmpty)
             PolylineLayer(
@@ -1854,11 +1921,7 @@ class _MapScreenState extends State<MapScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(
-                Pixel.coin,
-                color: const Color(0xFFFBBF24),
-                size: 16,
-              ),
+              Icon(Pixel.coin, color: const Color(0xFFFBBF24), size: 16),
               const SizedBox(width: 8),
               Text(
                 'PARTY BONUS (${memberCount}명 x${multiplier.toStringAsFixed(1)})',
@@ -1876,9 +1939,21 @@ class _MapScreenState extends State<MapScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
               _bonusStatItem('BASE', '$_coinsGained'),
-              const Text('+', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+              const Text(
+                '+',
+                style: TextStyle(
+                  color: Colors.black,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
               _bonusStatItem('BONUS', '+$bonusPoints'),
-              const Text('=', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+              const Text(
+                '=',
+                style: TextStyle(
+                  color: Colors.black,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
               _bonusStatItem('TOTAL', '$finalScore', isHighlight: true),
             ],
           ),
@@ -1887,7 +1962,11 @@ class _MapScreenState extends State<MapScreen> {
     );
   }
 
-  Widget _bonusStatItem(String label, String value, {bool isHighlight = false}) {
+  Widget _bonusStatItem(
+    String label,
+    String value, {
+    bool isHighlight = false,
+  }) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: isHighlight

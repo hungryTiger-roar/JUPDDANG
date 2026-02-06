@@ -333,7 +333,7 @@ class _FollowListScreenState extends State<FollowListScreen>
                             Text(
                               user.nickname.toUpperCase(),
                               style: const TextStyle(
-                                color: Colors.white,
+                                color: Colors.black,
                                 fontSize: 14,
                                 fontWeight: FontWeight.w900,
                               ),
@@ -343,7 +343,7 @@ class _FollowListScreenState extends State<FollowListScreen>
                               Text(
                                 user.intro,
                                 style: const TextStyle(
-                                  color: Colors.white54,
+                                  color: Colors.black54,
                                   fontSize: 12,
                                 ),
                                 maxLines: 1,

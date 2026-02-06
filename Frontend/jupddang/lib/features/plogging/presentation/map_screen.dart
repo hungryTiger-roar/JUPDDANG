@@ -658,9 +658,9 @@ class _MapScreenState extends State<MapScreen> {
     if (closest != null) {
       if (closest.status == TrashcanStatus.VERIFIED ||
           closest.status == TrashcanStatus.OFFICIAL) {
-        _showAlertDialog("알림", "이미 근처에 등록된 쓰레기통이 있습니다.");
+        _showNesAlertDialog("알림", "이미 근처에 등록된 쓰레기통이 있습니다.");
       } else {
-        _showConfirmDialog(
+        _showNesConfirmDialog(
           "쓰레기통 인증",
           "근처에 제보된 쓰레기통이 있습니다.\n이 쓰레기통이 맞나요?",
           () async {
@@ -669,7 +669,7 @@ class _MapScreenState extends State<MapScreen> {
         );
       }
     } else {
-      _showConfirmDialog("쓰레기통 제보", "현재 위치에 새로운 쓰레기통을 제보하시겠습니까?", () async {
+      _showNesConfirmDialog("쓰레기통 제보", "현재 위치에 새로운 쓰레기통을 제보하시겠습니까?", () async {
         await _createTrashcan(_currentPosition!);
       }, confirmText: "제보하기");
     }
@@ -778,6 +778,157 @@ class _MapScreenState extends State<MapScreen> {
 
     _mapController.move(prevCenter, prevZoom);
     return file;
+  }
+
+  void _showNesAlertDialog(String title, String content) {
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: NesContainer(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                title.toUpperCase(),
+                style: const TextStyle(
+                  color: Colors.black,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1.5,
+                ),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                content,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: Colors.black87,
+                  fontSize: 14,
+                ),
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: NesButton(
+                  type: NesButtonType.success,
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Padding(
+                    padding: EdgeInsets.only(bottom: 4.0),
+                    child: Text(
+                      "확인",
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showNesConfirmDialog(
+    String title,
+    String content,
+    VoidCallback onConfirm, {
+    String confirmText = "확인",
+  }) {
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: NesContainer(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  const Icon(
+                    Pixel.trash,
+                    color: Color(0xFF17C964),
+                    size: 24,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      title.toUpperCase(),
+                      style: const TextStyle(
+                        color: Colors.black,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1.2,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              Text(
+                content,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: Colors.black87,
+                  fontSize: 14,
+                  height: 1.5,
+                ),
+              ),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: NesButton(
+                      type: NesButtonType.success,
+                      onPressed: () {
+                        Navigator.pop(ctx);
+                        onConfirm();
+                      },
+                      child: Center(
+                        child: Padding(
+                          padding: const EdgeInsets.only(bottom: 4.0),
+                          child: Text(
+                            confirmText,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: NesButton(
+                      type: NesButtonType.normal,
+                      onPressed: () => Navigator.pop(ctx),
+                      child: const Center(
+                        child: Padding(
+                          padding: EdgeInsets.only(bottom: 4.0),
+                          child: Text(
+                            "취소",
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   void _showAlertDialog(String title, String content) {

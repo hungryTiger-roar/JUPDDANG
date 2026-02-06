@@ -656,11 +656,15 @@ class _CommunityScreenState extends State<CommunityScreen> with RouteAware {
                 children: [
                   GestureDetector(
                     onTap: () {
+                      // userId가 있으면 userId로, 없으면 nickname으로 프로필 이동
+                      final targetId = post.userId?.isNotEmpty == true 
+                          ? post.userId! 
+                          : post.nickname;
                       Navigator.push(
                         context,
                         MaterialPageRoute(
                           builder: (context) =>
-                              ProfileScreen(userId: post.nickname),
+                              ProfileScreen(userId: targetId),
                         ),
                       );
                     },
@@ -696,42 +700,57 @@ class _CommunityScreenState extends State<CommunityScreen> with RouteAware {
                   ),
                   const SizedBox(width: 10),
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Flexible(
-                              // 닉네임이 길어질 경우를 대비해 Flexible 사용
-                              child: Text(
-                                post.nickname.toUpperCase(),
-                                style: const TextStyle(
-                                  color: Colors.black,
-                                  fontWeight: FontWeight.w900,
-                                  fontSize: 14,
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-
-                            // 임시 저장 글 태그 (내 글이고 임시글일 때)
-                            if (isMine && isLocalDraft)
-                              Padding(
-                                padding: const EdgeInsets.only(left: 8),
-                                child: _myPostTag(),
-                              ),
-                          ],
-                        ),
-                        const SizedBox(height: 2), // 간격 미세 조정
-                        Text(
-                          _formatTime(post.createdAt).toUpperCase(),
-                          style: const TextStyle(
-                            color: Colors.black38,
-                            fontSize: 10,
+                    child: GestureDetector(
+                      onTap: () {
+                        // userId가 있으면 userId로, 없으면 nickname으로 프로필 이동
+                        final targetId = post.userId?.isNotEmpty == true 
+                            ? post.userId! 
+                            : post.nickname;
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                ProfileScreen(userId: targetId),
                           ),
-                        ),
-                      ],
+                        );
+                      },
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Flexible(
+                                // 닉네임이 길어질 경우를 대비해 Flexible 사용
+                                child: Text(
+                                  post.nickname.toUpperCase(),
+                                  style: const TextStyle(
+                                    color: Colors.black,
+                                    fontWeight: FontWeight.w900,
+                                    fontSize: 14,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+
+                              // 임시 저장 글 태그 (내 글이고 임시글일 때)
+                              if (isMine && isLocalDraft)
+                                Padding(
+                                  padding: const EdgeInsets.only(left: 8),
+                                  child: _myPostTag(),
+                                ),
+                            ],
+                          ),
+                          const SizedBox(height: 2), // 간격 미세 조정
+                          Text(
+                            _formatTime(post.createdAt).toUpperCase(),
+                            style: const TextStyle(
+                              color: Colors.black38,
+                              fontSize: 10,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                   // ★ 삼선 메뉴 (통일 및 정렬 수정) ★

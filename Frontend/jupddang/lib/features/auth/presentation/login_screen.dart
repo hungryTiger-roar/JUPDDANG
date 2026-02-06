@@ -70,7 +70,7 @@ class _LoginScreenState extends State<LoginScreen> {
       backgroundColor: Theme.of(context).colorScheme.background,
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 28.0, vertical: 40.0),
+          padding: const EdgeInsets.symmetric(horizontal: 28.0, vertical: 24.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -78,17 +78,17 @@ class _LoginScreenState extends State<LoginScreen> {
                 icon: const Icon(Pixel.arrowleft, color: Colors.black),
                 onPressed: () => Navigator.pop(context),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 12),
               const Text(
                 'WELCOME BACK!',
                 style: TextStyle(
-                  fontSize: 28,
+                  fontSize: 26,
                   fontWeight: FontWeight.w900,
                   letterSpacing: 2,
                   color: Colors.black,
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 8),
               Text(
                 'Please sign in to continue.',
                 style: TextStyle(
@@ -97,7 +97,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   letterSpacing: 1.0,
                 ),
               ),
-              const SizedBox(height: 56),
+              const SizedBox(height: 32),
 
               // ID 입력
               NesInputField(
@@ -107,7 +107,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 keyboardType: TextInputType.emailAddress,
                 textInputAction: TextInputAction.next,
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 20),
 
               // PW 입력
               NesInputField(
@@ -118,7 +118,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 textInputAction: TextInputAction.done,
                 onSubmitted: (_) => _login(),
               ),
-              const SizedBox(height: 48),
+              const SizedBox(height: 32),
 
               // 로그인 버튼
               PixelButton(

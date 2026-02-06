@@ -23,6 +23,7 @@ class _ProfileScreenState extends State<ProfileScreen> with WidgetsBindingObserv
   String _profileNickname = '';
   String? _profileImage; // 프로필 이미지 URL
   String _intro = ''; // 한줄 소개
+  String _realUserId = ''; // 실제 userId
   bool _isFollowing = false;
 
   // Mock stats - replace with actual API calls
@@ -154,6 +155,7 @@ class _ProfileScreenState extends State<ProfileScreen> with WidgetsBindingObserv
       final followerCount = profileData['followerCount'] ?? 0;
       final followingCount = profileData['followingCount'] ?? 0;
       final fetchedNickname = profileData['nickname'] ?? widget.userId;
+      final fetchedUserId = profileData['userId'] ?? widget.userId; // 실제 userId
       final profileImageUrl = profileData['profileImage'] as String?; // 프로필 이미지 URL
       final introText = profileData['intro'] ?? ''; // 한줄 소개
 
@@ -163,6 +165,7 @@ class _ProfileScreenState extends State<ProfileScreen> with WidgetsBindingObserv
 
       setState(() {
         _profileNickname = fetchedNickname;
+        _realUserId = fetchedUserId; // 실제 userId 저장
         _profileImage = profileImageUrl; // 프로필 이미지 저장
         _intro = introText; // 한줄 소개 저장
         _isFollowing = realIsFollowing;
@@ -213,7 +216,10 @@ class _ProfileScreenState extends State<ProfileScreen> with WidgetsBindingObserv
     });
 
     try {
-      final success = await _authService.toggleFollow(widget.userId);
+      // 실제 userId를 사용하여 팔로우 요청
+      final targetId = _realUserId.isNotEmpty ? _realUserId : widget.userId;
+      print('팔로우 요청: targetId=$targetId, widget.userId=${widget.userId}');
+      final success = await _authService.toggleFollow(targetId);
 
       // 요청 실패 시 롤백
       if (!success) {

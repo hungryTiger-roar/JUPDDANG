@@ -33,17 +33,17 @@ class NesInputField extends StatelessWidget {
             style: Theme.of(context).textTheme.labelLarge?.copyWith(
               fontWeight: FontWeight.bold,
               color: Colors.black,
-              fontSize: 18,
+              fontSize: 20,
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
         ],
         NesContainer(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
           child: Row(
             children: [
               if (prefixIcon != null) ...[
-                Icon(prefixIcon, size: 32),
+                Icon(prefixIcon, size: 36),
                 const SizedBox(width: 20),
               ],
               Expanded(
@@ -56,7 +56,7 @@ class NesInputField extends StatelessWidget {
                   onSubmitted: onSubmitted,
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: Colors.black,
-                    fontSize: 20,
+                    fontSize: 26,
                     fontWeight: FontWeight.bold,
                     fontFamily: 'NeoDunggeunmo',
                   ),

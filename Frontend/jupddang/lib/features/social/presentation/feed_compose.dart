@@ -346,7 +346,7 @@ class _CommunityComposeScreenState extends State<CommunityComposeScreen> {
                   style: const TextStyle(color: Colors.black),
                 ),
                 subtitle: Text(
-                  '${_formatDate(record.createdAt)} · ${(record.distance ?? 0).toStringAsFixed(2)}km · ${_formatDuration(record.times)}',
+                  '${_formatDate(record.createdAt)} \u00B7 ${(record.distance ?? 0).toStringAsFixed(2)}km \u00B7 ${_formatDuration(record.times)} \u00B7 ${record.score ?? 0}\uC810',
                   style: const TextStyle(color: Colors.black54),
                 ),
                 trailing: selected
@@ -497,8 +497,11 @@ class _CommunityComposeScreenState extends State<CommunityComposeScreen> {
       buffer.writeln();
     }
     buffer.write(
-      '기록: ${record.recordName} · ${_formatDate(record.createdAt)} · ${(record.distance ?? 0).toStringAsFixed(2)}km · ${_formatDuration(record.times)}',
+      '\uAE30\uB85D: ${record.recordName} \u00B7 ${_formatDate(record.createdAt)} \u00B7 ${(record.distance ?? 0).toStringAsFixed(2)}km \u00B7 ${_formatDuration(record.times)}',
     );
+    if (record.score != null) {
+      buffer.write(' \u00B7 ${record.score}\uC810');
+    }
     return buffer.toString().trim();
   }
 
@@ -825,7 +828,7 @@ class _CommunityComposeScreenState extends State<CommunityComposeScreen> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        '${_formatDate(_selectedRecord!.createdAt)} · ${(_selectedRecord!.distance ?? 0).toStringAsFixed(2)}km · ${_formatDuration(_selectedRecord!.times)}',
+                        '${_formatDate(_selectedRecord!.createdAt)} \u00B7 ${(_selectedRecord!.distance ?? 0).toStringAsFixed(2)}km \u00B7 ${_formatDuration(_selectedRecord!.times)} \u00B7 ${_selectedRecord!.score ?? 0}\uC810',
                         style: const TextStyle(color: Colors.black87),
                       ),
                     ],

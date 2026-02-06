@@ -146,8 +146,8 @@ class CommunityPost {
   static List<String> _pickImageUrls(Map<String, dynamic> json) {
     final urls = <String>[];
     final candidates = [
-      json['afterImageUrl'],
       json['beforeImageUrl'],
+      json['afterImageUrl'],
       json['mapImageUrl'],
     ];
     for (final candidate in candidates) {

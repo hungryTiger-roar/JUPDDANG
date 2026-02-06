@@ -986,6 +986,10 @@ class _CommunityScreenState extends State<CommunityScreen> with RouteAware {
                 _recordStat(Pixel.clock, parts[3]),
                 const SizedBox(width: 16),
               ],
+              if (parts.length > 4) ...[
+                _recordStat(Icons.star, parts[4]),
+                const SizedBox(width: 16),
+              ],
               if (parts.length > 1) _recordStat(Pixel.calendar, parts[1]),
             ],
           ),
@@ -1414,37 +1418,58 @@ class _CommentBottomSheetState extends State<_CommentBottomSheet> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             // 프로필사진
-                            Container(
-                              width: 50,
-                              height: 50,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF1F1F1F),
-                                border: Border.all(
-                                  color: Colors.black,
-                                  width: 2.0,
-                                ),
-                              ),
-                              child: comment.profileImage != null && comment.profileImage!.isNotEmpty
-                                ? ClipRect(
-                                    child: Image.network(
-                                      comment.profileImage!,
-                                      fit: BoxFit.cover,
-                                      errorBuilder: (context, error, stackTrace) {
-                                        return Center(
-                                          child: PixelCharacter(
-                                            size: 35,
-                                            color: _getColorForNickname(comment.nickname),
-                                          ),
-                                        );
-                                      },
-                                    ),
-                                  )
-                                : Center(
-                                    child: PixelCharacter(
-                                      size: 35,
-                                      color: _getColorForNickname(comment.nickname),
-                                    ),
+                            GestureDetector(
+                              onTap: () {
+                                final targetId =
+                                    comment.userId?.isNotEmpty == true
+                                        ? comment.userId!
+                                        : comment.nickname;
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        ProfileScreen(userId: targetId),
                                   ),
+                                );
+                              },
+                              child: Container(
+                                width: 50,
+                                height: 50,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF1F1F1F),
+                                  border: Border.all(
+                                    color: Colors.black,
+                                    width: 2.0,
+                                  ),
+                                ),
+                                child: comment.profileImage != null &&
+                                        comment.profileImage!.isNotEmpty
+                                    ? ClipRect(
+                                        child: Image.network(
+                                          comment.profileImage!,
+                                          fit: BoxFit.cover,
+                                          errorBuilder:
+                                              (context, error, stackTrace) {
+                                            return Center(
+                                              child: PixelCharacter(
+                                                size: 35,
+                                                color: _getColorForNickname(
+                                                  comment.nickname,
+                                                ),
+                                              ),
+                                            );
+                                          },
+                                        ),
+                                      )
+                                    : Center(
+                                        child: PixelCharacter(
+                                          size: 35,
+                                          color: _getColorForNickname(
+                                            comment.nickname,
+                                          ),
+                                        ),
+                                      ),
+                              ),
                             ),
                             const SizedBox(width: 12),
                             Expanded(
@@ -1468,12 +1493,30 @@ class _CommentBottomSheetState extends State<_CommentBottomSheet> {
                                         ),
                                       Expanded(
                                         // 닉네임
-                                        child: Text(
-                                          comment.nickname.toUpperCase(),
-                                          style: const TextStyle(
-                                            color: Colors.black54,
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 14,
+                                        child: GestureDetector(
+                                          onTap: () {
+                                            final targetId =
+                                                comment.userId?.isNotEmpty ==
+                                                        true
+                                                    ? comment.userId!
+                                                    : comment.nickname;
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (context) =>
+                                                    ProfileScreen(
+                                                  userId: targetId,
+                                                ),
+                                              ),
+                                            );
+                                          },
+                                          child: Text(
+                                            comment.nickname.toUpperCase(),
+                                            style: const TextStyle(
+                                              color: Colors.black54,
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 14,
+                                            ),
                                           ),
                                         ),
                                       ),
@@ -1490,11 +1533,21 @@ class _CommentBottomSheetState extends State<_CommentBottomSheet> {
                                             items: const [
                                               DropdownMenuItem(
                                                 value: 'delete',
-                                                child: Text(
-                                                  '삭제',
-                                                  style: TextStyle(
-                                                    color: Colors.black,
-                                                  ),
+                                                child: Row(
+                                                  children: [
+                                                    Icon(
+                                                      Pixel.trash,
+                                                      color: Colors.redAccent,
+                                                      size: 18,
+                                                    ),
+                                                    SizedBox(width: 8),
+                                                    Text(
+                                                      '삭제',
+                                                      style: TextStyle(
+                                                        color: Colors.black,
+                                                      ),
+                                                    ),
+                                                  ],
                                                 ),
                                               ),
                                             ],

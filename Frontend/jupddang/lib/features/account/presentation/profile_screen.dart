@@ -22,6 +22,7 @@ class _ProfileScreenState extends State<ProfileScreen> with WidgetsBindingObserv
   bool _loading = true;
   String _profileNickname = '';
   String? _profileImage; // 프로필 이미지 URL
+  String _intro = ''; // 한줄 소개
   bool _isFollowing = false;
 
   // Mock stats - replace with actual API calls
@@ -154,6 +155,7 @@ class _ProfileScreenState extends State<ProfileScreen> with WidgetsBindingObserv
       final followingCount = profileData['followingCount'] ?? 0;
       final fetchedNickname = profileData['nickname'] ?? widget.userId;
       final profileImageUrl = profileData['profileImage'] as String?; // 프로필 이미지 URL
+      final introText = profileData['intro'] ?? ''; // 한줄 소개
 
       print(
         '서버 isFollowing: ${profileData['isFollowing']} / 내 검증 결과: $realIsFollowing',
@@ -162,6 +164,7 @@ class _ProfileScreenState extends State<ProfileScreen> with WidgetsBindingObserv
       setState(() {
         _profileNickname = fetchedNickname;
         _profileImage = profileImageUrl; // 프로필 이미지 저장
+        _intro = introText; // 한줄 소개 저장
         _isFollowing = realIsFollowing;
         _stats['posts'] = userPosts.length;
         _stats['comments'] = commentCount;
@@ -283,25 +286,17 @@ class _ProfileScreenState extends State<ProfileScreen> with WidgetsBindingObserv
                   // Profile Header
                   SliverToBoxAdapter(
                     child: Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
                       child: _buildProfileHeader(),
-                    ),
-                  ),
-
-                  // Stats Grid
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.only(bottom: 32),
-                      child: _buildStatsGrid(),
                     ),
                   ),
 
                   // 화현이: 본인 게시글 그리드
                   SliverToBoxAdapter(
                     child: Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
                       child: Text(
-                        'MY POSTS',
+                        '내 게시물',
                         style: TextStyle(
                           color: Colors.black54,
                           fontSize: 14,
@@ -326,7 +321,7 @@ class _ProfileScreenState extends State<ProfileScreen> with WidgetsBindingObserv
                         : _buildPostsGrid(),
                   ),
 
-                  const SliverToBoxAdapter(child: SizedBox(height: 100)),
+                  const SliverToBoxAdapter(child: SizedBox(height: 60)),
                 ],
               ),
             ),
@@ -335,80 +330,137 @@ class _ProfileScreenState extends State<ProfileScreen> with WidgetsBindingObserv
 
   Widget _buildProfileHeader() {
     return NesContainer(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(20),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Avatar
-          Container(
-            width: 100,
-            height: 100,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              border: Border.all(color: Colors.black, width: 3),
-              boxShadow: const [
-                BoxShadow(color: Colors.black, offset: Offset(4, 4)),
-              ],
-            ),
-            child: _profileImage != null && _profileImage!.isNotEmpty
-                ? ClipRect(
-                    child: Image.network(
-                      _profileImage!,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return const Center(
-                          child: PixelCharacter(
-                            size: 64,
-                            color: Color(0xFF17C964),
-                          ),
-                        );
-                      },
+          // 인스타그램 스타일: 왼쪽 프로필 사진, 오른쪽 통계
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // Avatar (왼쪽)
+              Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  border: Border.all(color: Colors.black, width: 3),
+                  boxShadow: const [
+                    BoxShadow(color: Colors.black, offset: Offset(4, 4)),
+                  ],
+                ),
+                child: _profileImage != null && _profileImage!.isNotEmpty
+                    ? ClipRect(
+                        child: Image.network(
+                          _profileImage!,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return const Center(
+                              child: PixelCharacter(
+                                size: 48,
+                                color: Color(0xFF17C964),
+                              ),
+                            );
+                          },
+                        ),
+                      )
+                    : const Center(
+                        child: PixelCharacter(
+                          size: 48,
+                          color: Color(0xFF17C964),
+                        ),
+                      ),
+              ),
+
+              const SizedBox(width: 20),
+
+              // Stats (오른쪽)
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: 8),
+                    Padding(
+                      padding: const EdgeInsets.only(left: 8.0),
+                      child: Text(
+                        (_profileNickname.isEmpty ? widget.userId : _profileNickname)
+                            .toUpperCase(),
+                        style: const TextStyle(
+                          color: Colors.black,
+                          fontSize: 24,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 1.0,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
-                  )
-                : const Center(
-                    child: PixelCharacter(
-                      size: 64,
-                      color: Color(0xFF17C964),
+                    const SizedBox(height: 14),
+                    // 게시글, 팔로워, 팔로잉 수
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        _buildStatColumn('게시물', _stats['posts']!),
+                        GestureDetector(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => FollowListScreen(
+                                  userId: widget.userId,
+                                  initialTab: 1, // 팔로워 탭으로 시작
+                                ),
+                              ),
+                            );
+                          },
+                          child: _buildStatColumn('팔로워', _stats['followers']!),
+                        ),
+                        GestureDetector(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => FollowListScreen(
+                                  userId: widget.userId,
+                                  initialTab: 0, // 팔로잉 탭으로 시작
+                                ),
+                              ),
+                            );
+                          },
+                          child: _buildStatColumn('팔로잉', _stats['following']!),
+                        ),
+                      ],
                     ),
-                  ),
+                  ],
+                ),
+              ),
+            ],
           ),
 
           const SizedBox(height: 16),
 
-          // Nickname
-          Text(
-            (_profileNickname.isEmpty ? widget.userId : _profileNickname)
-                .toUpperCase(),
-            style: const TextStyle(
-              color: Colors.black,
-              fontSize: 24,
-              fontWeight: FontWeight.w900,
-              letterSpacing: 1.5,
+          // 한줄 소개 (intro)
+          if (_intro.isNotEmpty)
+            Text(
+              _intro,
+              style: const TextStyle(
+                color: Colors.black87,
+                fontSize: 17,
+                fontWeight: FontWeight.w500,
+              ),
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
             ),
-          ),
 
-          const SizedBox(height: 8),
-
-          // Tier Badge
-          // Container(
-          //   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          //   decoration: BoxDecoration(
-          //     color: const Color(0xFFFFD700),
-          //     border: Border.all(color: Colors.black, width: 2),
-          //   ),
-          //   child: const Text(
-          //     'BRONZE 5',
-          //     style: TextStyle(
-          //       color: Colors.black,
-          //       fontSize: 12,
-          //       fontWeight: FontWeight.w900,
-          //     ),
-          //   ),
-          // ),
-          const SizedBox(height: 16),
-
+          // 팔로우/언팔로우 버튼 (다른 사용자 프로필일 때만)
           if (widget.userId != AuthService.userId)
+            const SizedBox(height: 16),
+          if (widget.userId == AuthService.userId && _intro.isNotEmpty)
+            const SizedBox(height: 16),
+          if (widget.userId != AuthService.userId) ...[
+            const SizedBox(height: 16),
             SizedBox(
-              width: 140,
+              width: double.infinity,
               child: NesButton(
                 type: _isFollowing
                     ? NesButtonType.normal
@@ -418,86 +470,37 @@ class _ProfileScreenState extends State<ProfileScreen> with WidgetsBindingObserv
                   child: Text(
                     _isFollowing ? 'UNFOLLOW' : 'FOLLOW',
                     style: const TextStyle(
-                      fontSize: 14,
+                      fontSize: 17,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                 ),
               ),
             ),
-
-          const SizedBox(height: 12), //화현이: 간격 조정
-          //화현이: Score 표시 추가
-          Text(
-            'SCORE: ${_formatNumber(_stats['score']!)}',
-            style: const TextStyle(
-              color: Color(0xFF17C964),
-              fontSize: 16,
-              fontWeight: FontWeight.w900,
-              letterSpacing: 1.0,
-            ),
-          ),
-
-          const SizedBox(height: 20),
-
-          //화현: 팔로워/팔로잉 클릭 시 목록 화면으로 이동
-          // Follow Row
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              GestureDetector(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => FollowListScreen(
-                        userId: widget.userId,
-                        initialTab: 1, // 팔로워 탭으로 시작
-                      ),
-                    ),
-                  );
-                },
-                child: _statBadge('FOLLOWERS', _stats['followers']!),
-              ),
-              Container(width: 2, height: 30, color: Colors.black12),
-              GestureDetector(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => FollowListScreen(
-                        userId: widget.userId,
-                        initialTab: 0, // 팔로잉 탭으로 시작
-                      ),
-                    ),
-                  );
-                },
-                child: _statBadge('FOLLOWING', _stats['following']!),
-              ),
-            ],
-          ),
+          ],
         ],
       ),
     );
   }
 
-  Widget _statBadge(String label, int count) {
+  // 통계 컬럼 (게시글, 팔로워, 팔로잉)
+  Widget _buildStatColumn(String label, int count) {
     return Column(
       children: [
         Text(
-          count.toString(),
+          _formatNumber(count),
           style: const TextStyle(
-            color: Color(0xFF17C964),
-            fontSize: 28,
+            color: Colors.black,
+            fontSize: 24,
             fontWeight: FontWeight.w900,
           ),
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 2),
         Text(
           label,
           style: const TextStyle(
             color: Colors.black54,
-            fontSize: 10,
+            fontSize: 13,
             fontWeight: FontWeight.w900,
             letterSpacing: 0.5,
           ),
@@ -511,68 +514,6 @@ class _ProfileScreenState extends State<ProfileScreen> with WidgetsBindingObserv
     return number.toString().replaceAllMapped(
       RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
       (Match m) => '${m[1]},',
-    );
-  }
-
-  Widget _buildStatsGrid() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Row(
-        children: [
-          Expanded(child: _statCard(Pixel.file, 'POSTS', _stats['posts']!)),
-          const SizedBox(width: 12),
-          Expanded(
-            child: GestureDetector(
-              onTap: () async {
-                // 내 프로필일 때만 댓글 목록 화면으로 이동
-                if (widget.userId == AuthService.userId ||
-                    widget.userId == AuthService.nickname) {
-                  await Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => MyCommentsScreen(userId: widget.userId),
-                    ),
-                  );
-                  // 댓글 목록 화면에서 돌아오면 프로필 정보 갱신
-                  _loadProfile();
-                }
-              },
-              child: _statCard(Pixel.message, 'COMMENTS', _stats['comments']!),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(child: _statCard(Pixel.heart, 'LIKES', _stats['likes']!)),
-        ],
-      ),
-    );
-  }
-
-  Widget _statCard(IconData icon, String label, int count) {
-    return NesContainer(
-      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 12),
-      child: Column(
-        children: [
-          Icon(icon, color: const Color(0xFF17C964), size: 28),
-          const SizedBox(height: 8),
-          Text(
-            count.toString(),
-            style: const TextStyle(
-              color: Colors.black,
-              fontSize: 20,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: const TextStyle(
-              color: Colors.black54,
-              fontSize: 9,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ],
-      ),
     );
   }
 

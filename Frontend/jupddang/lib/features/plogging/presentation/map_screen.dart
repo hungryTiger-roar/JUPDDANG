@@ -784,12 +784,25 @@ class _MapScreenState extends State<MapScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(title),
-        content: Text(content),
+        backgroundColor: Colors.white,
+        title: Text(
+          title,
+          style: const TextStyle(
+            color: Colors.black,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        content: Text(
+          content,
+          style: const TextStyle(color: Colors.black),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text("확인"),
+            child: const Text(
+              "확인",
+              style: TextStyle(color: Colors.black),
+            ),
           ),
         ],
       ),
@@ -805,19 +818,35 @@ class _MapScreenState extends State<MapScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(title),
-        content: Text(content),
+        backgroundColor: Colors.white,
+        title: Text(
+          title,
+          style: const TextStyle(
+            color: Colors.black,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        content: Text(
+          content,
+          style: const TextStyle(color: Colors.black),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text("취소"),
+            child: const Text(
+              "취소",
+              style: TextStyle(color: Colors.black),
+            ),
           ),
           TextButton(
             onPressed: () {
               Navigator.pop(ctx);
               onConfirm();
             },
-            child: Text(confirmText),
+            child: Text(
+              confirmText,
+              style: const TextStyle(color: Colors.black),
+            ),
           ),
         ],
       ),
@@ -1623,7 +1652,7 @@ class _MapScreenState extends State<MapScreen> {
         Navigator.of(context).popUntil((route) => route.isFirst);
     } catch (e) {
       if (mounted) Navigator.pop(context);
-      _snack("임시 저장 실패: $e");
+      _showAlertDialog("임시 저장 실패", "$e");
     }
   }
 

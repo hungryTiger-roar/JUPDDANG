@@ -360,11 +360,28 @@ class _CommunityScreenState extends State<CommunityScreen> with RouteAware {
 
   Future<void> _submitPost(CommunityPostDraft draft) async {
     try {
+      // 이미지 경로를 개별 변수로 분리
+      String? beforeImagePath;
+      String? afterImagePath;
+      String? mapImagePath;
+
+      if (draft.localImagePaths.isNotEmpty) {
+        beforeImagePath = draft.localImagePaths[0];
+      }
+      if (draft.localImagePaths.length > 1) {
+        afterImagePath = draft.localImagePaths[1];
+      }
+      if (draft.localImagePaths.length > 2) {
+        mapImagePath = draft.localImagePaths[2];
+      }
+
       final response = await _authService.createPost(
-        userId: draft.userId,
         content: draft.content,
-        imagePaths: draft.localImagePaths,
+        beforeImagePath: beforeImagePath,
+        afterImagePath: afterImagePath,
+        mapImagePath: mapImagePath,
       );
+
       if (response is Map) {
         final post = CommunityPost.fromPostJson(
           response.cast<String, dynamic>(),

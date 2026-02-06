@@ -54,6 +54,18 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       title: 'Jupddang',
       theme: flutterNesTheme(brightness: Brightness.light).copyWith(
         textTheme: const TextTheme().apply(fontFamily: 'NeoDunggeunmo'),
+        dialogTheme: const DialogThemeData(
+          backgroundColor: Colors.white,
+          titleTextStyle: TextStyle(
+            color: Colors.black,
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
+          contentTextStyle: TextStyle(color: Colors.black),
+        ),
+        textButtonTheme: TextButtonThemeData(
+          style: TextButton.styleFrom(foregroundColor: Colors.black),
+        ),
       ),
       // darkTheme: flutterNesTheme(brightness: Brightness.dark),
       themeMode: ThemeMode.light,

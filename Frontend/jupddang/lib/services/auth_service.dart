@@ -79,13 +79,15 @@ class AuthService {
   Future<bool> toggleFollow(String targetId) =>
       _socialService.toggleFollow(targetId);
   Future<dynamic> createPost({
-    required String userId,
     required String content,
-    List<String> imagePaths = const [],
+    String? beforeImagePath,
+    String? afterImagePath,
+    String? mapImagePath,
   }) => _socialService.createPost(
-    userId: userId,
     content: content,
-    imagePaths: imagePaths,
+    beforeImagePath: beforeImagePath,
+    afterImagePath: afterImagePath,
+    mapImagePath: mapImagePath,
   );
   Future<void> likePost(String postId) => _socialService.likePost(postId);
   Future<dynamic> addComment(String postId, String userId, String content) =>
@@ -118,6 +120,9 @@ class AuthService {
     afterImagePath: afterImagePath,
     mapImagePath: mapImagePath,
   );
+
+  Future<List<PloggingTempDetailResponse>> getTempPloggings() =>
+      _ploggingService.getTempPloggings();
 
   // --- Legacy Support ---
   Future<List<dynamic>> getAccounts() async => []; // 사용처 거의 없음

@@ -96,29 +96,42 @@ class SocialService {
 
   // 게시글 생성
   Future<dynamic> createPost({
-    required String userId,
     required String content,
-    List<String> imagePaths = const [],
+    String? beforeImagePath,
+    String? afterImagePath,
+    String? mapImagePath,
   }) async {
     try {
+      // 1. JSON 데이터 구성 (content만 필요)
       final payload = {
-          'userId': userId,
-          'content': content,
-          'beforeImageUrl': '',
-          'afterImageUrl': '',
-          'mapImageUrl': '',
-        };
+        'content': content,
+        // 다른 필드가 있다면 여기에 추가
+      };
 
-        final formData = FormData.fromMap({
-          'data': MultipartFile.fromString(
-            jsonEncode(payload),
-            contentType: MediaType('application', 'json'),
+      // 2. FormData 구성
+      final formData = FormData.fromMap({
+        // data 파트: JSON 문자열로 전달
+        'data': MultipartFile.fromString(
+          jsonEncode(payload),
+          contentType: MediaType('application', 'json'),
+        ),
+        // 이미지들은 개별 파라미터로
+        if (beforeImagePath != null)
+          'beforeImage': await MultipartFile.fromFile(
+            beforeImagePath,
+            filename: 'before.jpg',
           ),
-          'images': [
-            for (final path in imagePaths.take(5))
-              await MultipartFile.fromFile(path),
-          ],
-        });
+        if (afterImagePath != null)
+          'afterImage': await MultipartFile.fromFile(
+            afterImagePath,
+            filename: 'after.jpg',
+          ),
+        if (mapImagePath != null)
+          'mapImage': await MultipartFile.fromFile(
+            mapImagePath,
+            filename: 'map.jpg',
+          ),
+      });
 
       final response = await _apiClient.dio.post(
         '/posts',

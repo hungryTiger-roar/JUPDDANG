@@ -6,9 +6,14 @@ import 'profile_screen.dart';
 import 'edit_profile_screen.dart';
 import '../../../services/auth_service.dart';
 
-class SettingsScreen extends StatelessWidget {
+class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
 
+  @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -23,7 +28,7 @@ class SettingsScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
+                    const Text(
                       'SETTINGS',
                       style: TextStyle(
                         color: Colors.white,
@@ -32,15 +37,15 @@ class SettingsScreen extends StatelessWidget {
                         letterSpacing: 2.0,
                       ),
                     ),
-                    SizedBox(height: 6),
+                    const SizedBox(height: 6),
                     Row(
                       children: [
-                        Text(
+                        const Text(
                           'MANAGE YOUR ACCOUNT',
                           style: TextStyle(color: Colors.white70, fontSize: 12),
                         ),
-                        Spacer(),
-                        //화현: 로그아웃 버튼
+                        const Spacer(),
+                        // 화현: 로그아웃 버튼
                         GestureDetector(
                           onTap: () => _showLogoutDialog(context),
                           child: NesButton(
@@ -48,7 +53,7 @@ class SettingsScreen extends StatelessWidget {
                             onPressed: () => _showLogoutDialog(context),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
-                              children: [
+                              children: const [
                                 Icon(
                                   Pixel.power,
                                   color: Colors.black,
@@ -74,68 +79,104 @@ class SettingsScreen extends StatelessWidget {
               ),
             ),
 
-            // Profile Section (Clickable)
+            // My Profile Title
             SliverToBoxAdapter(
-              child: GestureDetector(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) =>
-                          ProfileScreen(userId: AuthService.userId ?? 'Guest'),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 24, 20, 16),
+                child: const Text(
+                  'MY PROFILE',
+                  style: TextStyle(
+                    color: Colors.black54,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 1.2,
+                  ),
+                ),
+              ),
+            ),
+
+            // Profile Section (Clickable) - 괄호 오류 수정됨
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: GestureDetector(
+                  onTap: () async {
+                    await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => ProfileScreen(
+                            userId: AuthService.userId ?? 'Guest'),
+                      ),
+                    );
+                    // 프로필 화면에서 돌아온 후 UI 업데이트
+                    if (mounted) setState(() {});
+                  },
+                  child: NesContainer(
+                    padding: const EdgeInsets.all(20),
+                    child: Row(
+                      children: [
+                        // Avatar
+                        Container(
+                          width: 56,
+                          height: 56,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            border: Border.all(color: Colors.black, width: 2),
+                          ),
+                          child: AuthService.profileImage != null &&
+                                  AuthService.profileImage!.isNotEmpty
+                              ? ClipRect(
+                                  child: Image.network(
+                                    AuthService.profileImage!,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (context, error, stackTrace) {
+                                      return const Icon(
+                                        Pixel.user,
+                                        color: Color(0xFF17C964),
+                                        size: 32,
+                                      );
+                                    },
+                                  ),
+                                )
+                              : const Icon(
+                                  Pixel.user,
+                                  color: Color(0xFF17C964),
+                                  size: 32,
+                                ),
+                        ),
+                        const SizedBox(width: 16),
+                        // Info
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                (AuthService.userId ?? 'Guest').toUpperCase(),
+                                style: const TextStyle(
+                                  color: Colors.black,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              const Text(
+                                'View Profile',
+                                style: TextStyle(
+                                  color: Color(0xFF17C964),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const Icon(
+                          Pixel.chevronright,
+                          color: Colors.black26,
+                          size: 24,
+                        ),
+                      ],
                     ),
-                  );
-                },
-                child: NesContainer(
-                  padding: const EdgeInsets.all(20),
-                  child: Row(
-                    children: [
-                      // Avatar
-                      Container(
-                        width: 56,
-                        height: 56,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          border: Border.all(color: Colors.black, width: 2),
-                        ),
-                        child: const Icon(
-                          Pixel.user,
-                          color: Color(0xFF17C964),
-                          size: 32,
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      // Info
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              (AuthService.userId ?? 'Guest').toUpperCase(),
-                              style: const TextStyle(
-                                color: Colors.black,
-                                fontSize: 18,
-                                fontWeight: FontWeight.w900,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            const Text(
-                              'View Profile',
-                              style: TextStyle(
-                                color: Color(0xFF17C964),
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const Icon(
-                        Pixel.chevronright,
-                        color: Colors.black26,
-                        size: 24,
-                      ),
-                    ],
                   ),
                 ),
               ),
@@ -144,7 +185,7 @@ class SettingsScreen extends StatelessWidget {
             // Settings Grid Title
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 24, 20, 16),
+                padding: const EdgeInsets.fromLTRB(20, 32, 20, 20),
                 child: const Text(
                   'QUICK SETTINGS',
                   style: TextStyle(
@@ -157,68 +198,48 @@ class SettingsScreen extends StatelessWidget {
               ),
             ),
 
-            // 2x2 Settings Grid
+            // Settings List (3 rows)
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Column(
                   children: [
-                    // Row 1
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _settingTile(
-                            context,
-                            icon: Pixel.edit,
-                            label: '개인정보\n변경',
-                            color: const Color(0xFF17C964),
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) =>
-                                      const EditProfileScreen(),
-                                ),
-                              );
-                            },
+                    // 개인정보 변경
+                    _settingTileHorizontal(
+                      context,
+                      icon: Pixel.edit,
+                      label: '개인정보 변경',
+                      color: const Color(0xFF17C964),
+                      onTap: () async {
+                        final result = await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const EditProfileScreen(),
                           ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: _settingTile(
-                            context,
-                            icon: Pixel.notification,
-                            label: '알림\n설정',
-                            color: const Color(0xFF17C964),
-                            onTap: () => _showComingSoon(context, '알림 설정'),
-                          ),
-                        ),
-                      ],
+                        );
+                        // 프로필 수정 후 돌아오면 UI 업데이트
+                        if (result == true && mounted) {
+                          setState(() {});
+                        }
+                      },
                     ),
                     const SizedBox(height: 16),
-                    // Row 2
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _settingTile(
-                            context,
-                            icon: Pixel.infobox,
-                            label: '앱\n정보',
-                            color: const Color(0xFFFBBF24),
-                            onTap: () => _showAppInfo(context),
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: _settingTile(
-                            context,
-                            icon: Pixel.logout,
-                            label: '회원\n탈퇴',
-                            color: const Color(0xFFEF4444),
-                            onTap: () => _showDeleteDialog(context),
-                          ),
-                        ),
-                      ],
+                    // 앱 정보
+                    _settingTileHorizontal(
+                      context,
+                      icon: Pixel.infobox,
+                      label: '앱 정보',
+                      color: const Color(0xFFFBBF24),
+                      onTap: () => _showAppInfo(context),
+                    ),
+                    const SizedBox(height: 16),
+                    // 회원 탈퇴
+                    _settingTileHorizontal(
+                      context,
+                      icon: Pixel.logout,
+                      label: '회원 탈퇴',
+                      color: const Color(0xFFEF4444),
+                      onTap: () => _showDeleteDialog(context),
                     ),
                   ],
                 ),
@@ -232,66 +253,32 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 
-  Widget _settingTile(
-    BuildContext context, {
-    required IconData icon,
-    required String label,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
+  Widget _settingTileHorizontal(
+      BuildContext context, {
+        required IconData icon,
+        required String label,
+        required Color color,
+        required VoidCallback onTap,
+      }) {
     return GestureDetector(
       onTap: onTap,
       child: NesContainer(
-        height: 140,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        child: Row(
           children: [
-            Icon(icon, color: color, size: 40),
-            const SizedBox(height: 12),
-            Text(
-              label,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: Colors.black,
-                fontSize: 11,
-                fontWeight: FontWeight.w900,
-                height: 1.1,
+            Icon(icon, color: color, size: 32),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Text(
+                label,
+                style: const TextStyle(
+                  color: Colors.black,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w900,
+                ),
               ),
             ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showComingSoon(BuildContext context, String feature) {
-    showDialog(
-      context: context,
-      builder: (context) => NesDialog(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              'Coming Soon',
-              style: TextStyle(
-                color: Colors.black,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-            SizedBox(height: 16),
-            Text(
-              '$feature 기능은 곧 추가될 예정입니다!',
-              style: const TextStyle(color: Colors.black),
-            ),
-            SizedBox(height: 16),
-            NesButton(
-              type: NesButtonType.success,
-              onPressed: () => Navigator.pop(context),
-              child: const Text(
-                'OK',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-            ),
+            const Icon(Pixel.chevronright, color: Colors.black26, size: 20),
           ],
         ),
       ),
@@ -379,13 +366,6 @@ class SettingsScreen extends StatelessWidget {
                 NesButton(
                   type: NesButtonType.error,
                   onPressed: () async {
-                    // ... implementation retained but needs context copy ...
-                    // Since the original code had complex logic inside onPressed,
-                    // I will simplify this chunk replacement to just the UI part
-                    // and keep logic if possible.
-                    // But replacement chunk must contain the Logic.
-
-                    // RE-INSERTING LOGIC CAREFULLY
                     final originalContext = context;
                     Navigator.pop(context);
 
@@ -403,7 +383,7 @@ class SettingsScreen extends StatelessWidget {
                     final success = await authService.deleteAccount();
 
                     if (originalContext.mounted) {
-                      Navigator.of(originalContext).pop();
+                      Navigator.of(originalContext).pop(); // 로딩 닫기
                     }
 
                     if (success) {
@@ -412,7 +392,7 @@ class SettingsScreen extends StatelessWidget {
                           MaterialPageRoute(
                             builder: (context) => const SplashScreen(),
                           ),
-                          (route) => false,
+                              (route) => false,
                         );
                       }
                     } else {
@@ -438,8 +418,7 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 
-  //화현: 로그아웃 다이얼로그
-  //화현: 로그아웃 다이얼로그
+  // 화현: 로그아웃 다이얼로그
   void _showLogoutDialog(BuildContext context) {
     showDialog(
       context: context,
@@ -473,7 +452,7 @@ class SettingsScreen extends StatelessWidget {
                   type: NesButtonType.warning,
                   onPressed: () {
                     Navigator.pop(context);
-                    // JWT 토큰 삭제
+                    // JWT 토큰 삭제 및 정보 초기화
                     AuthService.accessToken = null;
                     AuthService.userId = null;
                     AuthService.nickname = null;
@@ -482,7 +461,7 @@ class SettingsScreen extends StatelessWidget {
                       MaterialPageRoute(
                         builder: (context) => const SplashScreen(),
                       ),
-                      (route) => false,
+                          (route) => false,
                     );
                   },
                   child: const Text(

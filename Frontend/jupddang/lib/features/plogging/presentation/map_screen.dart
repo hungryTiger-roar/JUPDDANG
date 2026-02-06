@@ -12,7 +12,6 @@ import 'package:image_picker/image_picker.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:gal/gal.dart';
 
-
 // --- Project Imports (경로는 프로젝트에 맞게 유지해주세요) ---
 import '../../../services/location_h3_service.dart';
 import '../../../services/gps_signal_filter.dart';
@@ -508,7 +507,7 @@ class _MapScreenState extends State<MapScreen> {
     });
     _fetchStartAddress();
 
-// 5초 후 튜토리얼 자동 닫기 제거 (사용자 수동 닫기 유도)
+    // 5초 후 튜토리얼 자동 닫기 제거 (사용자 수동 닫기 유도)
   }
 
   Future<void> _fetchStartAddress() async {
@@ -890,17 +889,21 @@ class _MapScreenState extends State<MapScreen> {
           if (_phase == PloggingPhase.summary) _buildSummaryOverlay(),
 
           // 6. Quest Modals
-          if (_showQuestTutorial) QuestTutorialModal(onClose: () => setState(() => _showQuestTutorial = false)),
-          if (_showQuestModal) QuestModal(
-            beforeImage: _questBeforeImage,
-            afterImage: _questAfterImage,
-            beforeTrashCount: _beforeTrashCount,
-            afterTrashCount: _afterTrashCount,
-            onClose: () => setState(() => _showQuestModal = false),
-            onTakeBeforePhoto: () => _takeQuestPhoto(true),
-            onTakeAfterPhoto: () => _takeQuestPhoto(false),
-            onValidate: _validateQuest,
-          ),
+          if (_showQuestTutorial)
+            QuestTutorialModal(
+              onClose: () => setState(() => _showQuestTutorial = false),
+            ),
+          if (_showQuestModal)
+            QuestModal(
+              beforeImage: _questBeforeImage,
+              afterImage: _questAfterImage,
+              beforeTrashCount: _beforeTrashCount ?? 0,
+              afterTrashCount: _afterTrashCount ?? 0,
+              onClose: () => setState(() => _showQuestModal = false),
+              onTakeBeforePhoto: () => _takeQuestPhoto(true),
+              onTakeAfterPhoto: () => _takeQuestPhoto(false),
+              onValidate: _validateQuest,
+            ),
         ],
       ),
     );
@@ -1349,7 +1352,10 @@ class _MapScreenState extends State<MapScreen> {
                 child: PixelButton(
                   text: "FINISH",
                   isGreen: false,
-                  color: _questCompleted ? _selectedGridColor : Colors.grey[600]!,
+                  color: _questCompleted
+                      ? _selectedGridColor
+                      : Colors.grey[600]!,
+
                   onPressed: _questCompleted ? _finishPlogging : _showQuestHint,
                 ),
               ),
@@ -1377,7 +1383,10 @@ class _MapScreenState extends State<MapScreen> {
                 child: PixelButton(
                   text: "FINISH",
                   isGreen: false,
-                  color: _questCompleted ? _selectedGridColor : Colors.grey[600]!,
+                  color: _questCompleted
+                      ? _selectedGridColor
+                      : Colors.grey[600]!,
+
                   onPressed: _questCompleted ? _finishPlogging : _showQuestHint,
                 ),
               ),
@@ -1426,6 +1435,11 @@ class _MapScreenState extends State<MapScreen> {
                       _summaryStat(Pixel.coin, "$_coinsGained", "POINT"),
                     ],
                   ),
+                  // 파티 모드일 때 보너스 점수 상세 표시
+                  if (widget.partyId != null) ...[
+                    const SizedBox(height: 16),
+                    _buildPartyBonusInfo(),
+                  ],
                   const SizedBox(height: 32),
                   if (_startAddress != null)
                     Padding(
@@ -1563,8 +1577,16 @@ class _MapScreenState extends State<MapScreen> {
 
       if (mounted) Navigator.pop(context);
       _snack("기록이 업로드되었습니다!");
-      widget.onPloggingComplete?.call(_extractPostId(response));
+      if (widget.onPloggingComplete != null) {
+        widget.onPloggingComplete!(_extractPostId(response));
+      }
+
       _resetPlogging();
+
+      // 파티 모드일 때는 메인 화면으로 바로 이동
+      if (widget.partyId != null && mounted) {
+        Navigator.of(context).popUntil((route) => route.isFirst);
+      }
     } catch (e) {
       if (mounted) Navigator.pop(context);
       _snack("업로드 실패: $e", isError: true);
@@ -1637,6 +1659,89 @@ class _MapScreenState extends State<MapScreen> {
     ],
   );
 
+  // 파티 보너스 점수 상세 정보 위젯 (NES UI 스타일)
+  Widget _buildPartyBonusInfo() {
+    final memberCount = _party?.members.length ?? 1;
+    final multiplier = memberCount >= 2 ? 1.0 + (memberCount - 1) * 0.2 : 1.0;
+    final bonusPoints = (_coinsGained * (multiplier - 1.0)).toInt();
+    final finalScore = (_coinsGained * multiplier).toInt();
+
+    return NesContainer(
+      backgroundColor: const Color(0xFFFFF9E6),
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Pixel.coin,
+                color: const Color(0xFFFBBF24),
+                size: 16,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'PARTY BONUS (${memberCount}명 x${multiplier.toStringAsFixed(1)})',
+                style: const TextStyle(
+                  color: Colors.black,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _bonusStatItem('BASE', '$_coinsGained'),
+              const Text('+', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+              _bonusStatItem('BONUS', '+$bonusPoints'),
+              const Text('=', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+              _bonusStatItem('TOTAL', '$finalScore', isHighlight: true),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _bonusStatItem(String label, String value, {bool isHighlight = false}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: isHighlight
+          ? BoxDecoration(
+              color: const Color(0xFF17C964),
+              border: Border.all(color: Colors.black, width: 2),
+              boxShadow: const [
+                BoxShadow(color: Colors.black, offset: Offset(2, 2)),
+              ],
+            )
+          : null,
+      child: Column(
+        children: [
+          Text(
+            value,
+            style: TextStyle(
+              color: isHighlight ? Colors.white : Colors.black87,
+              fontSize: isHighlight ? 14 : 12,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          Text(
+            label,
+            style: TextStyle(
+              color: isHighlight ? Colors.white70 : Colors.black54,
+              fontSize: 8,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _summaryLabel(String text) => Align(
     alignment: Alignment.centerLeft,
     child: Text(
@@ -1697,8 +1802,8 @@ class _MapScreenState extends State<MapScreen> {
       if (direct != null) return direct.toString();
       final data = response['data'];
       if (data is Map) {
-        final nested =
-            data['postId'] ?? data['post_id'] ?? data['id'];
+        final nested = data['postId'] ?? data['post_id'] ?? data['id'];
+
         if (nested != null) return nested.toString();
       }
     }
@@ -1732,10 +1837,10 @@ class _MapScreenState extends State<MapScreen> {
   String _formatDuration(Duration d) =>
       "${d.inMinutes.remainder(60).toString().padLeft(2, '0')}:${d.inSeconds.remainder(60).toString().padLeft(2, '0')}";
 
-  String _formatEndTime(DateTime time) => time.toIso8601String().split('.').first;
+  String _formatEndTime(DateTime time) =>
+      time.toIso8601String().split('.').first;
 
   Color _getTrashcanColor(TrashcanStatus status) {
-
     switch (status) {
       case TrashcanStatus.VERIFIED:
         return Colors.blueAccent;
@@ -1811,7 +1916,11 @@ class _MapScreenState extends State<MapScreen> {
     FocusScope.of(context).unfocus();
 
     try {
-      final XFile? photo = await _picker.pickImage(source: ImageSource.camera, imageQuality: 85);
+      final XFile? photo = await _picker.pickImage(
+        source: ImageSource.camera,
+        imageQuality: 85,
+      );
+
       if (photo == null) return;
       final currentLocation = _currentPosition;
       if (currentLocation == null) {
@@ -1845,7 +1954,11 @@ class _MapScreenState extends State<MapScreen> {
     }
     _showLoading(const Color(0xFF3B82F6));
     try {
-      final response = _questService.validateLocally(beforeLocation: _questBeforeLocation!, afterLocation: _questAfterLocation!);
+      final response = _questService.validateLocally(
+        beforeLocation: _questBeforeLocation!,
+        afterLocation: _questAfterLocation!,
+      );
+
       if (mounted) Navigator.pop(context);
       if (response.isValid) {
         setState(() {

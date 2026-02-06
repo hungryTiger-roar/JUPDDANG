@@ -82,14 +82,11 @@ class QuestTutorialModal extends StatelessWidget {
                       color: Colors.black,
                     ),
                   ),
-                  NesIconButton(
-                    icon: NesIcons.close,
-                    onPress: onClose,
-                  ),
+                  NesIconButton(icon: NesIcons.close, onPress: onClose),
                 ],
               ),
               const SizedBox(height: 16),
-              
+
               // 아이콘
               NesIcon(
                 iconData: NesIcons.check,
@@ -97,18 +94,15 @@ class QuestTutorialModal extends StatelessWidget {
                 primaryColor: Colors.black,
               ),
               const SizedBox(height: 16),
-              
+
               // 안내 텍스트
               const Text(
                 "플로깅을 종료하려면\nBefore/After 사진을 촬영해야 합니다",
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 10,
-                  color: Colors.black,
-                ),
+                style: TextStyle(fontSize: 10, color: Colors.black),
               ),
               const SizedBox(height: 16),
-              
+
               // Q버튼 안내
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -143,7 +137,7 @@ class QuestTutorialModal extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 20),
-              
+
               // 확인 버튼
               NesButton(
                 type: NesButtonType.primary,
@@ -185,7 +179,9 @@ class QuestPhotoSlot extends StatelessWidget {
         child: SizedBox(
           height: 140, // 120 → 140으로 증가
           width: double.infinity,
-          child: file == null ? _buildEmptySlot(context) : _buildFilledSlot(context),
+          child: file == null
+              ? _buildEmptySlot(context)
+              : _buildFilledSlot(context),
         ),
       ),
     );
@@ -215,11 +211,7 @@ class QuestPhotoSlot extends StatelessWidget {
             ),
           ),
           // 카메라 아이콘
-          Icon(
-            Pixel.camera,
-            size: 36,
-            color: Colors.black54,
-          ),
+          Icon(Pixel.camera, size: 36, color: Colors.black54),
           const SizedBox(height: 8),
           // 안내 텍스트
           Text(
@@ -236,10 +228,7 @@ class QuestPhotoSlot extends StatelessWidget {
       fit: StackFit.expand,
       children: [
         // 이미지
-        Image.file(
-          File(file!.path),
-          fit: BoxFit.cover,
-        ),
+        Image.file(File(file!.path), fit: BoxFit.cover),
         // 라벨 오버레이
         Positioned(
           top: 8,
@@ -253,7 +242,7 @@ class QuestPhotoSlot extends StatelessWidget {
             child: Text(
               label,
               style: const TextStyle(
-                color: Colors.white, 
+                color: Colors.white,
                 fontSize: 10,
                 fontWeight: FontWeight.bold,
               ),
@@ -272,11 +261,7 @@ class QuestPhotoSlot extends StatelessWidget {
                 color: Colors.black.withValues(alpha: 0.7),
                 border: Border.all(color: Colors.white, width: 1),
               ),
-              child: const Icon(
-                Pixel.reload,
-                size: 16,
-                color: Colors.white,
-              ),
+              child: const Icon(Pixel.reload, size: 16, color: Colors.white),
             ),
           ),
         ),
@@ -294,7 +279,7 @@ class QuestPhotoSlot extends StatelessWidget {
               child: Text(
                 "쓰레기: $trashCount개",
                 style: const TextStyle(
-                  color: Colors.white, 
+                  color: Colors.white,
                   fontSize: 10,
                   fontWeight: FontWeight.bold,
                 ),
@@ -403,10 +388,7 @@ class QuestModal extends StatelessWidget {
             color: Colors.black,
           ),
         ),
-        NesIconButton(
-          icon: NesIcons.close,
-          onPress: onClose,
-        ),
+        NesIconButton(icon: NesIcons.close, onPress: onClose),
       ],
     );
   }
@@ -423,18 +405,12 @@ class QuestModal extends StatelessWidget {
               if (progress > 0)
                 Expanded(
                   flex: (progress * 100).toInt().clamp(1, 100),
-                  child: Container(
-                    height: 12,
-                    color: const Color(0xFF17C964),
-                  ),
+                  child: Container(height: 12, color: const Color(0xFF17C964)),
                 ),
               if (progress < 1.0)
                 Expanded(
                   flex: ((1 - progress) * 100).toInt().clamp(1, 100),
-                  child: Container(
-                    height: 12,
-                    color: Colors.grey[400],
-                  ),
+                  child: Container(height: 12, color: Colors.grey[400]),
                 ),
             ],
           ),

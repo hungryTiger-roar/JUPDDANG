@@ -149,7 +149,7 @@ class PloggingIntegrationTest {
         redisRepository.addCapturedGrid(testUser.getUserId(), "8930e128077ffff");
 
         PloggingEndRequest requestDto = new PloggingEndRequest(
-                null, "오늘 플로깅 완료!", 5.5, 3600, java.time.LocalDateTime.now());
+                null, "오늘 플로깅 완료!", 5.5, 3600, "테스트 기록", null, null, java.time.LocalDateTime.now());
 
         MockMultipartFile requestPart = new MockMultipartFile(
                 "data", "", "application/json",
@@ -187,7 +187,8 @@ class PloggingIntegrationTest {
     @DisplayName("⚠️ 예외: 필수 이미지 누락 시 400 에러")
     void endPlogging_MissingImage() throws Exception {
         // given
-        PloggingEndRequest requestDto = new PloggingEndRequest(null, "테스트", 1.0, 100, java.time.LocalDateTime.now());
+        PloggingEndRequest requestDto = new PloggingEndRequest(null, "테스트", 1.0, 100, "테스트 기록", null, null,
+                java.time.LocalDateTime.now());
         MockMultipartFile requestPart = new MockMultipartFile(
                 "data", "", "application/json",
                 objectMapper.writeValueAsString(requestDto).getBytes(StandardCharsets.UTF_8));
@@ -236,7 +237,7 @@ class PloggingIntegrationTest {
                     String userId = "user" + index;
 
                     PloggingEndRequest reqDto = new PloggingEndRequest(null, "부하테스트", 10.0, 100,
-                            java.time.LocalDateTime.now());
+                            "부하테스트 기록", null, null, java.time.LocalDateTime.now());
                     MockMultipartFile reqPart = new MockMultipartFile("data", "", "application/json",
                             objectMapper.writeValueAsString(reqDto).getBytes());
                     MockMultipartFile img = new MockMultipartFile("beforeImage", "i.jpg", "image/jpeg", "d".getBytes());

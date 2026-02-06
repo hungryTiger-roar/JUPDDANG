@@ -13,6 +13,7 @@ public class PostResponseDto {
     private Long postId;
     private String userId;
     private String nickname;
+    private String profileImage; // 프로필 이미지 URL 추가
     private Long ploggingId;
     private String beforeImageUrl;
     private String afterImageUrl;
@@ -26,6 +27,7 @@ public class PostResponseDto {
         this.postId = post.getPostId();
         this.userId = post.getAccount().getUserId();
         this.nickname = post.getAccount().getNickname();
+        this.profileImage = post.getAccount().getProfileImage(); // 프로필 이미지 추가
         this.ploggingId = post.getPloggingId();
         this.beforeImageUrl = post.getBeforeImageUrl();
         this.afterImageUrl = post.getAfterImageUrl();

@@ -47,9 +47,10 @@ public class TrashcanCsvService {
             // 헤더 스킵 (첫 번째 줄)
             for (int i = 1; i < allLines.size(); i++) {
                 String[] line = allLines.get(i);
-                
+
                 // 빈 라인 무시
-                if (line == null || line.length == 0) continue;
+                if (line == null || line.length == 0)
+                    continue;
 
                 try {
                     // 1. 스마트 좌표 파싱 (밀림 현상 방지)
@@ -73,9 +74,9 @@ public class TrashcanCsvService {
                     trashcan.setLongitude(coordinate.longitude);
                     trashcan.setStatus(TrashcanStatus.OFFICIAL); // 공공 데이터는 OFFICIAL
                     trashcan.setVerificationCount(0);
-                    
+
                     // 공공데이터는 제보자(Account)가 없으므로 null 유지 혹은 시스템 계정 할당
-                    // trashcan.setReportedBy(null); 
+                    // trashcan.setReportedBy(null);
 
                     trashcans.add(trashcan);
                     successCount++;
@@ -124,10 +125,11 @@ public class TrashcanCsvService {
         // 이미지 기준 기본 인덱스: 위도(5), 경도(6)
         // 하지만 안전을 위해 라인 전체에서 좌표 포맷을 찾습니다.
         // 뒤에서부터 찾는 것이 보통 더 정확합니다 (주소가 앞에서 늘어났을 확률이 높음)
-        
+
         for (int j = 0; j < line.length; j++) {
             Double val = parseDouble(line[j]);
-            if (val == null) continue;
+            if (val == null)
+                continue;
 
             // 값이 위도 범위인지 경도 범위인지 체크
             boolean isLat = (val >= MIN_LAT && val <= MAX_LAT);
@@ -136,21 +138,21 @@ public class TrashcanCsvService {
             if (isLat || isLng) {
                 // 현재 값과 바로 다음 값(j+1)을 쌍으로 확인
                 if (j + 1 < line.length) {
-                    Double nextVal = parseDouble(line[j+1]);
-                    
+                    Double nextVal = parseDouble(line[j + 1]);
+
                     // Case 1: [Lat, Lng] 순서 (정상)
                     if (isLat && isValidLng(nextVal)) {
                         return new Coordinate(val, nextVal, j);
                     }
                     // Case 2: [Lng, Lat] 순서 (뒤집힘) -> 스왑
                     if (isLng && isValidLat(nextVal)) {
-                         log.debug("좌표 반전 감지 및 보정: {}, {}", nextVal, val);
-                         return new Coordinate(nextVal, val, j);
+                        log.debug("좌표 반전 감지 및 보정: {}, {}", nextVal, val);
+                        return new Coordinate(nextVal, val, j);
                     }
                 }
             }
         }
-        
+
         // 쌍을 못 찾았지만, 개별적으로라도 유효한 값이 있는지 최후의 검색 (선택사항)
         // 여기서는 데이터 무결성을 위해 쌍이 맞지 않으면 null 반환
         return null;
@@ -159,30 +161,33 @@ public class TrashcanCsvService {
     /**
      * 주소 추출 로직
      * 쉼표로 인해 주소가 여러 컬럼에 나뉘었을 경우 하나로 합칩니다.
-     * @param line 전체 컬럼 배열
+     * 
+     * @param line            전체 컬럼 배열
      * @param coordStartIndex 좌표가 발견된 시작 인덱스
      */
     private String extractAddress(String[] line, int coordStartIndex) {
         // 이미지 기준: 0(장소명), 1(시도), 2(시군구), 3(도로명), 4(지번)
         // 보통 도로명주소(3)부터 좌표 전까지 합치면 됩니다.
-        
-        if (coordStartIndex <= 3) return ""; // 주소 데이터가 없는 경우
+
+        if (coordStartIndex <= 3)
+            return ""; // 주소 데이터가 없는 경우
 
         StringBuilder sb = new StringBuilder();
         // 도로명 주소 시작 인덱스(3)부터 좌표 나오기 전까지 루프
         for (int i = 3; i < coordStartIndex; i++) {
             String part = line[i].trim();
             if (StringUtils.hasText(part)) {
-                if (!sb.isEmpty()) sb.append(" ");
+                if (!sb.isEmpty())
+                    sb.append(" ");
                 sb.append(part);
             }
         }
-        
+
         // 만약 조합된 주소가 비었다면 지번주소(4)라도 쓰거나, 시도/시군구(1,2)를 활용
         if (sb.isEmpty() && line.length > 2) {
-             sb.append(line[1]).append(" ").append(line[2]);
+            sb.append(line[1]).append(" ").append(line[2]);
         }
-        
+
         return sb.toString();
     }
 
@@ -195,7 +200,8 @@ public class TrashcanCsvService {
     }
 
     private Double parseDouble(String value) {
-        if (!StringUtils.hasText(value)) return null;
+        if (!StringUtils.hasText(value))
+            return null;
         try {
             return Double.parseDouble(value.trim());
         } catch (NumberFormatException e) {

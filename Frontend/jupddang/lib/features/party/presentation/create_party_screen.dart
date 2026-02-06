@@ -157,7 +157,7 @@ class _CreatePartyScreenState extends State<CreatePartyScreen> {
                         Icon(Pixel.users, color: Colors.black54, size: 16),
                         SizedBox(width: 8),
                         Text(
-                          '최대 4명까지 함께 플로깅할 수 있어요',
+                          '최대 6명까지 함께 플로깅할 수 있어요',
                           style: TextStyle(color: Colors.black54, fontSize: 12),
                         ),
                       ],

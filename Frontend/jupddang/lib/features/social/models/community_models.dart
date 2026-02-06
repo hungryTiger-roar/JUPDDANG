@@ -53,12 +53,14 @@ class CommunityPostDraft {
   final String nickname;
   final String content;
   final List<String> localImagePaths;
+  final int? ploggingId;
 
   CommunityPostDraft({
     required this.userId,
     required this.nickname,
     required this.content,
     List<String>? localImagePaths,
+    this.ploggingId,
   }) : localImagePaths = localImagePaths ?? const [];
 }
 

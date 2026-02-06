@@ -70,6 +70,18 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
           labelMedium: TextStyle(fontFamily: 'NeoDunggeunmo'),
           labelSmall: TextStyle(fontFamily: 'NeoDunggeunmo'),
         ),
+        dialogTheme: const DialogThemeData(
+          backgroundColor: Colors.white,
+          titleTextStyle: TextStyle(
+            color: Colors.black,
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
+          contentTextStyle: TextStyle(color: Colors.black),
+        ),
+        textButtonTheme: TextButtonThemeData(
+          style: TextButton.styleFrom(foregroundColor: Colors.black),
+        ),
         scaffoldBackgroundColor: Colors.white,
       ),
       // darkTheme: flutterNesTheme(brightness: Brightness.dark),

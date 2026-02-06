@@ -2,8 +2,11 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-
+import 'package:flutter/foundation.dart'; // consolidateHttpClientResponseBytes를 위해 추가
+import 'package:jupddang/features/plogging/data/plogging_service.dart';
 import 'package:jupddang/features/social/models/community_models.dart';
+import '../../../features/plogging/models/plogging_models.dart';
+import '../../../services/auth_service.dart';
 import '../../../widgets/pixel_button.dart';
 import 'package:pixelarticons/pixelarticons.dart';
 
@@ -23,76 +26,72 @@ class CommunityComposeScreen extends StatefulWidget {
   State<CommunityComposeScreen> createState() => _CommunityComposeScreenState();
 }
 
-class _PloggingRecord {
-  final String id;
-  final String title;
-  final String date;
-  final String distance;
-  final String duration;
-
-  const _PloggingRecord({
-    required this.id,
-    required this.title,
-    required this.date,
-    required this.distance,
-    required this.duration,
-  });
-}
-
 class _CommunityComposeScreenState extends State<CommunityComposeScreen> {
   static const Color _navAccent = Color(0xFF17C964);
   static const Color _borderColor = Colors.black;
+  static const String _recordPrefix = '기록:'; // content prefix
 
-  final TextEditingController _hashtagController = TextEditingController();
   final TextEditingController _contentController = TextEditingController();
   final ImagePicker _picker = ImagePicker();
+  final AuthService _authService = AuthService();
+  final PloggingService _ploggingService = PloggingService();
 
   AccountSummary? _selectedAccount;
-  _PloggingRecord? _selectedRecord;
+  PloggingTempDetailResponse? _selectedRecord;
   XFile? _beforeImage;
   XFile? _afterImage;
+  XFile? _mapImage;
   bool _submitting = false;
 
-  final List<_PloggingRecord> _records = const [
-    _PloggingRecord(
-      id: '1',
-      title: '한강 플로깅',
-      date: '2024-11-02',
-      distance: '3.2km',
-      duration: '32분',
-    ),
-    _PloggingRecord(
-      id: '2',
-      title: '캠퍼스 러닝',
-      date: '2024-10-29',
-      distance: '2.1km',
-      duration: '24분',
-    ),
-    _PloggingRecord(
-      id: '3',
-      title: '동네 산책 플로깅',
-      date: '2024-10-24',
-      distance: '1.4km',
-      duration: '18분',
-    ),
-  ];
+  List<PloggingTempDetailResponse> _records = [];
+  bool _loadingRecords = false;
 
   @override
   void initState() {
     super.initState();
     _selectedAccount =
         widget.initialAccount ??
-        (widget.accounts.isNotEmpty ? widget.accounts.first : null);
+            (widget.accounts.isNotEmpty ? widget.accounts.first : null);
 
-    // 이어쓰기 데이터가 있으면 불러오기 실행
     if (widget.initialDraft != null) {
       _loadFromDraft(widget.initialDraft!);
     }
+
+    // 임시 저장 목록 로드
+    _loadTempRecords();
   }
 
-  // Draft 데이터를 화면 컨트롤러에 채워넣는 로직
+  Future<void> _loadTempRecords() async {
+    setState(() => _loadingRecords = true);
+    try {
+      final temps = await _authService.getTempPloggings();
+      setState(() {
+        _records = temps;
+      });
+    } catch (e) {
+      debugPrint('임시 저장 목록 로드 실패: $e');
+      _showMessage('기록을 불러오는 데 실패했습니다');
+    } finally {
+      setState(() => _loadingRecords = false);
+    }
+  }
+
+  String _formatDate(DateTime? dateTime) {
+    if (dateTime == null) return '';
+    return '${dateTime.year}.${dateTime.month.toString().padLeft(2, '0')}.${dateTime.day.toString().padLeft(2, '0')}';
+  }
+
+  String _formatDuration(int? seconds) {
+    if (seconds == null) return '0m';
+    final hours = seconds ~/ 3600;
+    final minutes = (seconds % 3600) ~/ 60;
+    if (hours > 0) {
+      return '${hours}h ${minutes}m';
+    }
+    return '${minutes}m';
+  }
+
   void _loadFromDraft(CommunityPostDraft draft) {
-    // 1. 이미지 복구
     if (draft.localImagePaths.isNotEmpty) {
       _beforeImage = XFile(draft.localImagePaths[0]);
       if (draft.localImagePaths.length > 1) {
@@ -100,21 +99,16 @@ class _CommunityComposeScreenState extends State<CommunityComposeScreen> {
       }
     }
 
-    // 2. 텍스트 파싱 (해시태그, 본문, 기록 분리)
     final lines = draft.content.split('\n');
     final bodyBuffer = StringBuffer();
-    final hashtagBuffer = StringBuffer();
 
     for (var line in lines) {
       final trimmed = line.trim();
       if (trimmed.isEmpty) continue;
 
-      if (trimmed.startsWith('#')) {
-        hashtagBuffer.write('$trimmed ');
-      } else if (trimmed.startsWith('기록:')) {
-        // 기록 데이터 매칭 (제목과 날짜로 찾기)
+      if (trimmed.startsWith(_recordPrefix)) {
         for (var record in _records) {
-          if (trimmed.contains(record.title) && trimmed.contains(record.date)) {
+          if (trimmed.contains(record.recordName)) {
             _selectedRecord = record;
             break;
           }
@@ -125,13 +119,11 @@ class _CommunityComposeScreenState extends State<CommunityComposeScreen> {
       }
     }
 
-    _hashtagController.text = hashtagBuffer.toString().trim();
     _contentController.text = bodyBuffer.toString().trim();
   }
 
   @override
   void dispose() {
-    _hashtagController.dispose();
     _contentController.dispose();
     super.dispose();
   }
@@ -163,6 +155,159 @@ class _CommunityComposeScreenState extends State<CommunityComposeScreen> {
     });
   }
 
+  // void _openRecordPicker() {
+  //   showModalBottomSheet(
+  //     context: context,
+  //     backgroundColor: Colors.white,
+  //     shape: const RoundedRectangleBorder(
+  //       borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+  //     ),
+  //     builder: (context) {
+  //       return SafeArea(
+  //         child: _loadingRecords
+  //             ? const Center(
+  //           child: CircularProgressIndicator(color: _navAccent),
+  //         )
+  //             : _records.isEmpty
+  //             ? const Center(
+  //           child: Padding(
+  //             padding: EdgeInsets.all(32.0),
+  //             child: Text(
+  //               '불러올 수 있는 기록이 없습니다',
+  //               style: TextStyle(color: Colors.black54),
+  //             ),
+  //           ),
+  //         )
+  //             : ListView.separated(
+  //           padding: const EdgeInsets.symmetric(vertical: 16),
+  //           itemCount: _records.length,
+  //           separatorBuilder: (_, __) =>
+  //           const Divider(height: 1, color: Colors.blueGrey),
+  //           itemBuilder: (context, index) {
+  //             final record = _records[index];
+  //             final selected =
+  //                 _selectedRecord?.ploggingId == record.ploggingId;
+  //             return ListTile(
+  //               title: Text(
+  //                 record.recordName,
+  //                 style: const TextStyle(color: Colors.black),
+  //               ),
+  //               subtitle: Text(
+  //                 '${_formatDate(record.createdAt)} · ${(record.distance ?? 0).toStringAsFixed(2)}km · ${_formatDuration(record.times)}',
+  //                 style: const TextStyle(color: Colors.black54),
+  //               ),
+  //               trailing: selected
+  //                   ? const Icon(Icons.check_circle,
+  //                   color: _navAccent)
+  //                   : const Icon(
+  //                 Icons.circle_outlined,
+  //                 color: Colors.black26,
+  //               ),
+  //               onTap: () {
+  //                 setState(() {
+  //                   _selectedRecord = record;
+  //                 });
+  //                 Navigator.pop(context);
+  //               },
+  //             );
+  //           },
+  //         ),
+  //       );
+  //     },
+  //   );
+  // }
+
+  Future<void> _pickMapImage() async {
+    final picked = await _picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 85,
+    );
+    if (picked == null) {
+      return;
+    }
+    setState(() {
+      _mapImage = picked;
+    });
+  }
+
+  void _removeMapImage() {
+    setState(() {
+      _mapImage = null;
+    });
+  }
+
+  Widget _buildMapPhotoSection() {
+    return GestureDetector(
+      onTap: _pickMapImage,
+      child: AspectRatio(
+        aspectRatio: 16 / 9,  // 가로로 긴 비율
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            border: Border.all(color: _borderColor, width: 2.0),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.4),
+                offset: const Offset(4, 4),
+                blurRadius: 0,
+                spreadRadius: 0,
+              ),
+            ],
+            image: _mapImage == null
+                ? null
+                : DecorationImage(
+              image: FileImage(File(_mapImage!.path)),
+              fit: BoxFit.cover,
+            ),
+          ),
+          child: Stack(
+            children: [
+              if (_mapImage == null)
+                Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Pixel.map, color: Colors.black54, size: 32),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Map Photo',
+                        style: TextStyle(
+                          color: Colors.black54,
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              if (_mapImage != null)
+                Positioned(
+                  right: 8,
+                  top: 8,
+                  child: GestureDetector(
+                    onTap: _removeMapImage,
+                    child: Container(
+                      width: 28,
+                      height: 28,
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.6),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Pixel.close,
+                        color: Colors.white,
+                        size: 16,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   void _openRecordPicker() {
     showModalBottomSheet(
       context: context,
@@ -172,31 +317,47 @@ class _CommunityComposeScreenState extends State<CommunityComposeScreen> {
       ),
       builder: (context) {
         return SafeArea(
-          child: ListView.separated(
+          child: _loadingRecords
+              ? const Center(
+            child: CircularProgressIndicator(color: _navAccent),
+          )
+              : _records.isEmpty
+              ? const Center(
+            child: Padding(
+              padding: EdgeInsets.all(32.0),
+              child: Text(
+                '불러올 수 있는 기록이 없습니다',
+                style: TextStyle(color: Colors.black54),
+              ),
+            ),
+          )
+              : ListView.separated(
             padding: const EdgeInsets.symmetric(vertical: 16),
             itemCount: _records.length,
             separatorBuilder: (_, __) =>
-                const Divider(height: 1, color: Colors.blueGrey),
+            const Divider(height: 1, color: Colors.blueGrey),
             itemBuilder: (context, index) {
               final record = _records[index];
-              final selected = _selectedRecord?.id == record.id;
+              final selected =
+                  _selectedRecord?.ploggingId == record.ploggingId;
               return ListTile(
                 title: Text(
-                  record.title,
+                  record.recordName,
                   style: const TextStyle(color: Colors.black),
                 ),
                 subtitle: Text(
-                  '${record.date} · ${record.distance} · ${record.duration}',
+                  '${_formatDate(record.createdAt)} · ${(record.distance ?? 0).toStringAsFixed(2)}km · ${_formatDuration(record.times)}',
                   style: const TextStyle(color: Colors.black54),
                 ),
                 trailing: selected
                     ? const Icon(Icons.check_circle, color: _navAccent)
-                    : const Icon(Icons.circle_outlined, color: Colors.black26),
+                    : const Icon(
+                  Icons.circle_outlined,
+                  color: Colors.black26,
+                ),
                 onTap: () {
-                  setState(() {
-                    _selectedRecord = record;
-                  });
                   Navigator.pop(context);
+                  _loadRecordDetail(record.ploggingId);
                 },
               );
             },
@@ -206,77 +367,172 @@ class _CommunityComposeScreenState extends State<CommunityComposeScreen> {
     );
   }
 
-  void _submit() {
-    if (_submitting) return;
-    if (_selectedAccount == null) {
-      _showMessage('작성자를 확인해 주세요.');
-      return;
-    }
-    final body = _contentController.text.trim();
-    if (body.isEmpty) {
-      _showMessage('내용을 입력해 주세요.');
-      return;
-    }
-    setState(() {
-      _submitting = true;
-    });
-    final content = _composeContent();
-    final imagePaths = <String>[];
-    if (_beforeImage != null) {
-      imagePaths.add(_beforeImage!.path);
-    }
-    if (_afterImage != null) {
-      imagePaths.add(_afterImage!.path);
-    }
-    final draft = CommunityPostDraft(
-      userId: _selectedAccount!.userId,
-      nickname: _selectedAccount!.nickname,
-      content: content,
-      localImagePaths: imagePaths,
+  Future<void> _loadRecordDetail(int ploggingId) async {
+    // 로딩 표시
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(color: _navAccent),
+      ),
     );
-    Navigator.pop(context, draft);
+
+    // 새 기록 선택 시 기존 이미지 초기화
+    setState(() {
+      _beforeImage = null;
+      _afterImage = null;
+      _mapImage = null;
+    });
+
+    try {
+      final detail = await _ploggingService.getTempPloggingDetail(ploggingId);
+
+      if (!mounted) return;
+
+      // 로딩 다이얼로그 닫기
+      Navigator.pop(context);
+
+      setState(() {
+        _selectedRecord = detail;
+
+        // 내용 채우기
+        if (detail.content != null && detail.content!.isNotEmpty) {
+          _contentController.text = _stripRecordLine(detail.content!);
+        }
+      });
+
+      // 이미지 다운로드 및 설정
+      await _loadRecordImages(detail);
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.pop(context); // 로딩 다이얼로그 닫기
+      debugPrint('기록 상세 조회 실패: $e');
+      _showMessage('기록을 불러오는 데 실패했습니다');
+    }
+  }
+
+  Future<void> _loadRecordImages(PloggingTempDetailResponse detail) async {
+    try {
+      // Before Image 로드
+      if (detail.beforeImageUrl != null && detail.beforeImageUrl!.isNotEmpty) {
+        final beforeFile = await _downloadImageFromUrl(detail.beforeImageUrl!);
+        if (beforeFile != null) {
+          setState(() {
+            _beforeImage = XFile(beforeFile.path);
+          });
+        }
+      }
+
+      // After Image 로드
+      if (detail.afterImageUrl != null && detail.afterImageUrl!.isNotEmpty) {
+        final afterFile = await _downloadImageFromUrl(detail.afterImageUrl!);
+        if (afterFile != null) {
+          setState(() {
+            _afterImage = XFile(afterFile.path);
+          });
+        }
+      }
+
+      // Map Image 로드
+      if (detail.mapImageUrl != null && detail.mapImageUrl!.isNotEmpty) {
+        final mapFile = await _downloadImageFromUrl(detail.mapImageUrl!);
+        if (mapFile != null) {
+          setState(() {
+            _mapImage = XFile(mapFile.path);
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('이미지 로드 실패: $e');
+    }
+  }
+
+  Future<File?> _downloadImageFromUrl(String url) async {
+    try {
+      final http = HttpClient();
+      final request = await http.getUrl(Uri.parse(url));
+      final response = await request.close();
+
+      if (response.statusCode == 200) {
+        final bytes = await consolidateHttpClientResponseBytes(response);
+        final tempDir = Directory.systemTemp;
+        final fileName = url.split('/').last;
+        final file = File('${tempDir.path}/$fileName');
+        await file.writeAsBytes(bytes);
+        return file;
+      }
+    } catch (e) {
+      debugPrint('이미지 다운로드 실패: $e');
+    }
+    return null;
   }
 
   void _showMessage(String message) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  String _stripRecordLine(String content) {
+    final lines = content.split('\n');
+    final filtered =
+        lines.where((line) => !line.trim().startsWith(_recordPrefix)).toList();
+    return filtered.join('\n').trim();
   }
 
   String _composeContent() {
-    final hashtags = _normalizeHashtags(_hashtagController.text);
-    final body = _contentController.text.trim();
-    final record = _selectedRecord;
-    final buffer = StringBuffer();
-
-    if (hashtags.isNotEmpty) {
-      buffer.writeln(hashtags);
-    }
-    if (body.isNotEmpty) {
-      if (buffer.isNotEmpty) {
-        buffer.writeln();
-      }
-      buffer.write(body);
-    }
-    if (record != null) {
-      buffer.writeln();
-      buffer.writeln();
-      buffer.write(
-        '기록: ${record.title} · ${record.date} · ${record.distance} · ${record.duration}',
-      );
-    }
-    return buffer.toString().trim();
+    return _contentController.text.trim();
   }
 
-  String _normalizeHashtags(String raw) {
-    final items = raw
-        .replaceAll(',', ' ')
-        .split(' ')
-        .map((tag) => tag.trim())
-        .where((tag) => tag.isNotEmpty)
-        .map((tag) => tag.startsWith('#') ? tag : '#$tag')
-        .toList();
-    return items.join(' ');
+  Future<void> _submit() async {
+    if (_submitting) return;
+
+    final content = _composeContent();
+    final hasImages =
+        _beforeImage != null || _afterImage != null || _mapImage != null;
+
+    if (content.isEmpty && !hasImages) {
+      _showMessage('Please write something or add an image.');
+      return;
+    }
+
+    setState(() => _submitting = true);
+
+    try {
+      final account =
+          _selectedAccount ??
+          (widget.accounts.isNotEmpty ? widget.accounts.first : null);
+
+      if (account == null) {
+        _showMessage('No account found.');
+        return;
+      }
+
+      final imagePaths = <String>[];
+      if (_beforeImage != null) {
+        imagePaths.add(_beforeImage!.path);
+      }
+      if (_afterImage != null) {
+        imagePaths.add(_afterImage!.path);
+      }
+      if (_mapImage != null) {
+        imagePaths.add(_mapImage!.path);
+      }
+
+      final draft = CommunityPostDraft(
+        userId: account.userId,
+        nickname: account.nickname,
+        content: content,
+        localImagePaths: imagePaths,
+        ploggingId: _selectedRecord?.ploggingId,
+      );
+
+      if (!mounted) return;
+      Navigator.pop(context, draft);
+    } finally {
+      if (mounted) {
+        setState(() => _submitting = false);
+      }
+    }
   }
 
   @override
@@ -285,8 +541,8 @@ class _CommunityComposeScreenState extends State<CommunityComposeScreen> {
       backgroundColor: Colors.white,
       appBar: AppBar(
         title: const Text('NEW POST'),
-        backgroundColor: Colors.transparent, // ★ 투명 배경
-        foregroundColor: Colors.black, // ★ 검은색 글씨/아이콘
+        backgroundColor: Colors.transparent,
+        foregroundColor: Colors.black,
         leading: IconButton(
           icon: const Icon(Icons.close_rounded, size: 24),
           onPressed: () => Navigator.pop(context),
@@ -301,13 +557,13 @@ class _CommunityComposeScreenState extends State<CommunityComposeScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const SizedBox(height: 10),
-                  _buildLabel('해시태그'),
-                  const SizedBox(height: 8),
-                  _buildHashtagField(),
-                  const SizedBox(height: 18),
                   _buildLabel('내용'),
                   const SizedBox(height: 8),
                   _buildContentField(),
+                  const SizedBox(height: 18),
+                  _buildLabel('Map Photo'),
+                  const SizedBox(height: 10),
+                  _buildMapPhotoSection(),
                   const SizedBox(height: 18),
                   _buildLabel('Before · After'),
                   const SizedBox(height: 10),
@@ -340,28 +596,7 @@ class _CommunityComposeScreenState extends State<CommunityComposeScreen> {
         color: Colors.black,
         fontWeight: FontWeight.w900,
         fontSize: 16,
-
         letterSpacing: 1.0,
-      ),
-    );
-  }
-
-  Widget _buildHashtagField() {
-    return _buildInputContainer(
-      TextField(
-        controller: _hashtagController,
-        cursorColor: const Color(0xFF17C964),
-        style: const TextStyle(
-          color: Colors.black,
-          fontSize: 20,
-          fontWeight: FontWeight.bold,
-          fontFamily: 'NeoDunggeunmo',
-        ),
-        decoration: const InputDecoration(
-          hintText: '#플로깅 #환경',
-          hintStyle: TextStyle(color: Colors.black38),
-          border: InputBorder.none,
-        ),
       ),
     );
   }
@@ -387,15 +622,15 @@ class _CommunityComposeScreenState extends State<CommunityComposeScreen> {
         ),
         buildCounter:
             (context, {required currentLength, required isFocused, maxLength}) {
-              final limit = maxLength ?? 1000;
-              return Align(
-                alignment: Alignment.centerRight,
-                child: Text(
-                  '$currentLength / 최대 $limit자',
-                  style: const TextStyle(color: Colors.black38, fontSize: 12),
-                ),
-              );
-            },
+          final limit = maxLength ?? 1000;
+          return Align(
+            alignment: Alignment.centerRight,
+            child: Text(
+              '$currentLength / 최대 $limit자',
+              style: const TextStyle(color: Colors.black38, fontSize: 12),
+            ),
+          );
+        },
       ),
     );
   }
@@ -449,9 +684,9 @@ class _CommunityComposeScreenState extends State<CommunityComposeScreen> {
             image: image == null
                 ? null
                 : DecorationImage(
-                    image: FileImage(File(image.path)),
-                    fit: BoxFit.cover,
-                  ),
+              image: FileImage(File(image.path)),
+              fit: BoxFit.cover,
+            ),
           ),
           child: Stack(
             children: [
@@ -506,8 +741,20 @@ class _CommunityComposeScreenState extends State<CommunityComposeScreen> {
             _buildLabel('기록 불러오기'),
             const Spacer(),
             TextButton(
-              onPressed: _openRecordPicker,
-              child: const Text('기록 선택', style: TextStyle(color: _navAccent)),
+              onPressed: _loadingRecords ? null : _openRecordPicker,
+              child: _loadingRecords
+                  ? const SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: _navAccent,
+                ),
+              )
+                  : const Text(
+                '기록 선택',
+                style: TextStyle(color: _navAccent),
+              ),
             ),
           ],
         ),
@@ -551,7 +798,7 @@ class _CommunityComposeScreenState extends State<CommunityComposeScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        _selectedRecord!.title,
+                        _selectedRecord!.recordName,
                         style: const TextStyle(
                           fontWeight: FontWeight.w600,
                           color: Colors.black,
@@ -559,14 +806,22 @@ class _CommunityComposeScreenState extends State<CommunityComposeScreen> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        '${_selectedRecord!.date} · ${_selectedRecord!.distance} · ${_selectedRecord!.duration}',
+                        '${_formatDate(_selectedRecord!.createdAt)} · ${(_selectedRecord!.distance ?? 0).toStringAsFixed(2)}km · ${_formatDuration(_selectedRecord!.times)}',
                         style: const TextStyle(color: Colors.black87),
                       ),
                     ],
                   ),
                 ),
                 IconButton(
-                  onPressed: () => setState(() => _selectedRecord = null),
+                  onPressed: () {
+                    setState(() {
+                      _selectedRecord = null;
+                      _beforeImage = null;
+                      _afterImage = null;
+                      _mapImage = null;
+                      _contentController.clear();
+                    });
+                  },
                   icon: const Icon(Pixel.close, color: Colors.black54),
                 ),
               ],
@@ -589,7 +844,7 @@ class _CommunityComposeScreenState extends State<CommunityComposeScreen> {
               ],
             ),
             child: const Text(
-              '플로깅 기록을 선택하면 게시글에 함께 올라갑니다.',
+              '플로깅 기록을 선택하면 게시글과 함께 올라갑니다.',
               style: TextStyle(color: Colors.black38),
             ),
           ),
@@ -615,4 +870,5 @@ class _CommunityComposeScreenState extends State<CommunityComposeScreen> {
       child: child,
     );
   }
+
 }

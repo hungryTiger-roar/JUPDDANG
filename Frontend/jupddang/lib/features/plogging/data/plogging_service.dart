@@ -75,5 +75,45 @@ class PloggingService {
     }
   }
 
+  // 임시 저장 목록 조회
+  Future<List<PloggingTempDetailResponse>> getTempPloggings() async {
+    try {
+      final response = await _apiClient.dio.get('/v1/plogging/temp');
+      final data = response.data;
+      if (data is List) {
+        return data
+            .whereType<Map>()
+            .map(
+              (item) => PloggingTempDetailResponse.fromJson(
+                item.cast<String, dynamic>(),
+              ),
+            )
+            .toList();
+      }
+      return [];
+    } catch (e) {
+      print('Get Temp Ploggings Error: $e');
+      rethrow;
+    }
+  }
+
+  // 임시 저장 상세 조회 (게시글 폼에 채우기)
+  Future<PloggingTempDetailResponse> getTempPloggingDetail(
+    int ploggingId,
+  ) async {
+    try {
+      final response = await _apiClient.dio.get(
+        '/v1/plogging/temp/$ploggingId',
+      );
+      return PloggingTempDetailResponse.fromJson(
+        response.data as Map<String, dynamic>,
+      );
+    } catch (e) {
+      print('Get Temp Plogging Detail Error: $e');
+      rethrow;
+    }
+
+  }
+
   // [WebSocket] 관련 메서드는 추후 여기에 추가하거나 별도 SocketService로 분리
 }

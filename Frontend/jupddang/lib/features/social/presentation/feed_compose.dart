@@ -483,10 +483,29 @@ class _CommunityComposeScreenState extends State<CommunityComposeScreen> {
     return _contentController.text.trim();
   }
 
+  String _composeContentForSubmit() {
+    final body = _contentController.text.trim();
+    final record = _selectedRecord;
+    if (record == null) {
+      return body;
+    }
+
+    final buffer = StringBuffer();
+    if (body.isNotEmpty) {
+      buffer.write(body);
+      buffer.writeln();
+      buffer.writeln();
+    }
+    buffer.write(
+      '기록: ${record.recordName} · ${_formatDate(record.createdAt)} · ${(record.distance ?? 0).toStringAsFixed(2)}km · ${_formatDuration(record.times)}',
+    );
+    return buffer.toString().trim();
+  }
+
   Future<void> _submit() async {
     if (_submitting) return;
 
-    final content = _composeContent();
+    final content = _composeContentForSubmit();
     final hasImages =
         _beforeImage != null || _afterImage != null || _mapImage != null;
 

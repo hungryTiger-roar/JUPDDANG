@@ -172,10 +172,8 @@ class _CommunityScreenState extends State<CommunityScreen> with RouteAware {
   void _focusPostIfNeeded() {
     final targetId = _pendingFocusPostId;
     if (targetId == null) return;
-    final key = _postKeys[targetId];
-    final targetContext = key?.currentContext;
-    if (targetContext == null) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      final key = _postKeys[targetId];
       final ctx = key?.currentContext;
       if (ctx == null) return;
       Scrollable.ensureVisible(

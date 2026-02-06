@@ -5,6 +5,7 @@ import com.jupddang.jupddang.account.entity.Account;
 public record FollowResponse(
         String userId,
         String nickname,
+        String tier,
         String profileImage,
         String intro
 ) {
@@ -13,6 +14,7 @@ public record FollowResponse(
         return new FollowResponse(
                 account.getUserId(),
                 account.getNickname(),
+                account.getTier(),
                 account.getProfileImage(),
                 account.getIntro()
         );

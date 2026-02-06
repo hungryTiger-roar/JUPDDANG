@@ -24,12 +24,14 @@ class RaidBossModel {
 class RaidRankInfo {
   final int rank;
   final String nickname;
+  final String tier;
   final int score;
   final String userId;
 
   RaidRankInfo({
     required this.rank,
     required this.nickname,
+    this.tier = '',
     required this.score,
     required this.userId,
   });
@@ -38,6 +40,7 @@ class RaidRankInfo {
     return RaidRankInfo(
       rank: json['rank'] ?? 0,
       nickname: json['nickname'] ?? 'Anonymous',
+      tier: json['tier']?.toString() ?? '',
       score: json['score'] ?? 0,
       userId: json['userId']?.toString() ?? '',
     );

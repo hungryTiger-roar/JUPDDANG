@@ -3,6 +3,7 @@ import 'package:jupddang/features/raid/models/raid_models.dart';
 import '../data/raid_service.dart';
 import '../../../widgets/pixel_character.dart';
 import '../../../widgets/animated_boss_widget.dart';
+import '../../../core/utils/tier_utils.dart';
 
 class BossDetailScreen extends StatefulWidget {
   final int bossId;
@@ -298,13 +299,32 @@ class _BossDetailScreenState extends State<BossDetailScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  ranker.nickname.toUpperCase(),
-                  style: TextStyle(
-                    color: isMe ? const Color(0xFF17C964) : Colors.black,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 16, // Increased size
-                  ),
+                Row(
+                  children: [
+                    if (ranker.tier.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(right: 6),
+                        child: Image.asset(
+                          TierUtils.getTierBadgePath(ranker.tier),
+                          width: 16,
+                          height: 16,
+                          errorBuilder: (context, error, stackTrace) {
+                            return const SizedBox(width: 16, height: 16);
+                          },
+                        ),
+                      ),
+                    Flexible(
+                      child: Text(
+                        ranker.nickname.toUpperCase(),
+                        style: TextStyle(
+                          color: isMe ? const Color(0xFF17C964) : Colors.black,
+                          fontWeight: FontWeight.w900,
+                          fontSize: 16, // Increased size
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
                 ),
                 if (isMe)
                   const Text(

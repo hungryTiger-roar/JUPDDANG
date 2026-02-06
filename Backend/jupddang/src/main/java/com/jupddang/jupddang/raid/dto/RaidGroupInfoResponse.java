@@ -26,6 +26,7 @@ public class RaidGroupInfoResponse {
     public static class RankInfo {
         private int rank;
         private String nickname;
+        private String tier;
         private long score;
         private String userId; // 본인 여부 확인용
     }

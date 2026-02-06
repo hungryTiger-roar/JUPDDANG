@@ -82,9 +82,19 @@ flutter:
     - assets/images/
     - assets/images/bosses/
     - assets/images/bosses/gif/
+    - assets/images/badges/tier/bronze/
+    - assets/images/badges/tier/silver/
+    - assets/images/badges/tier/gold/
+    - assets/images/badges/tier/platinum/
+    - assets/images/badges/tier/diamond/
+    - assets/images/badges/tier/elite/
+    - assets/images/badges/tier/master/
+    - assets/images/badges/tier/grandmaster/
+    - assets/images/badges/tier/champion/
+    - assets/images/badges/tier/legend/
 
   # An image asset can refer to one or more resolution-specific "variants", see
-  # https://flutter.dev/to/resolution-aware-images
+  # https://fluttfer.dev/to/resolution-aware-images
 
   # For details regarding adding assets from package dependencies, see
   # https://flutter.dev/to/asset-from-package

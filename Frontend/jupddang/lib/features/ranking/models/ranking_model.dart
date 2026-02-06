@@ -1,6 +1,7 @@
 class Ranker {
   final int rank;
   final String nickname;
+  final String tier;
   final int score;
   final String? profileImage;
   final String userId;
@@ -8,6 +9,7 @@ class Ranker {
   Ranker({
     required this.rank,
     required this.nickname,
+    this.tier = '',
     required this.score,
     required this.userId,
     this.profileImage,
@@ -17,6 +19,7 @@ class Ranker {
     return Ranker(
       rank: json['rank'] ?? 0,
       nickname: json['nickname'] ?? 'Anonymous',
+      tier: json['tier']?.toString() ?? '',
       score: json['score'] ?? 0,
       userId: json['userId']?.toString() ?? '',
       profileImage: json['profileImage'],

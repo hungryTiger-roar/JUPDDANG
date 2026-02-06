@@ -27,6 +27,7 @@ class CommunityComment {
   final String id;
   final String? userId; // userId 추가
   final String nickname;
+  final String tier;
   final String? profileImage; // 프로필 사진 URL 추가
   final String content;
   final DateTime createdAt;
@@ -35,6 +36,7 @@ class CommunityComment {
     required this.id,
     this.userId,
     required this.nickname,
+    this.tier = '',
     this.profileImage,
     required this.content,
     required this.createdAt,
@@ -45,6 +47,7 @@ class CommunityComment {
       id: json['commentId']?.toString() ?? '',
       userId: json['userId']?.toString(),
       nickname: json['nickname']?.toString() ?? 'unknown',
+      tier: json['tier']?.toString() ?? '',
       profileImage: json['profileImage']?.toString(),
       content: json['content']?.toString() ?? '',
       createdAt:
@@ -74,6 +77,7 @@ class CommunityPost {
   final String id;
   final String? userId;
   final String nickname;
+  final String tier; // 티어
   final String? profileImage; // 프로필 사진 URL
   final String content;
   final DateTime createdAt;
@@ -87,6 +91,7 @@ class CommunityPost {
     required this.id,
     this.userId,
     required this.nickname,
+    this.tier = '',
     this.profileImage,
     required this.content,
     required this.createdAt,
@@ -115,6 +120,7 @@ class CommunityPost {
       id: json['postId']?.toString() ?? '',
       userId: json['userId']?.toString(),
       nickname: json['nickname']?.toString() ?? 'unknown',
+      tier: json['tier']?.toString() ?? '',
       profileImage: profileImage,
       content: json['content']?.toString() ?? '',
       createdAt: createdAt,
@@ -155,6 +161,7 @@ class CommunityPost {
 
   CommunityPost copyWith({
     String? id,
+    String? tier,
     String? userId,
     String? nickname,
     String? profileImage,
@@ -168,6 +175,7 @@ class CommunityPost {
   }) {
     return CommunityPost(
       id: id ?? this.id,
+      tier: tier ?? this.tier,
       userId: userId ?? this.userId,
       nickname: nickname ?? this.nickname,
       profileImage: profileImage ?? this.profileImage,

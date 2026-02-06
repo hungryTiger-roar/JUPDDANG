@@ -57,3 +57,44 @@ class TempPloggingRequest {
     if (recordTitle != null && recordTitle!.isNotEmpty) 'recordTitle': recordTitle,
   };
 }
+
+class PloggingTempDetailResponse {
+  final String ploggingId;
+  final String recordName;
+  final double? distance;
+  final int? times;
+  final int? score;
+  final String? beforeImageUrl;
+  final String? afterImageUrl;
+  final String? mapImageUrl;
+  final String? content;
+  final DateTime? createdAt;
+
+  PloggingTempDetailResponse({
+    required this.ploggingId,
+    required this.recordName,
+    this.distance,
+    this.times,
+    this.score,
+    this.beforeImageUrl,
+    this.afterImageUrl,
+    this.mapImageUrl,
+    this.content,
+    this.createdAt,
+  });
+
+  factory PloggingTempDetailResponse.fromJson(Map<String, dynamic> json) {
+    return PloggingTempDetailResponse(
+      ploggingId: json['ploggingId']?.toString() ?? '',
+      recordName: json['recordName']?.toString() ?? '',
+      distance: (json['distance'] as num?)?.toDouble(),
+      times: (json['times'] as num?)?.toInt(),
+      score: (json['score'] as num?)?.toInt(),
+      beforeImageUrl: json['beforeImageUrl']?.toString(),
+      afterImageUrl: json['afterImageUrl']?.toString(),
+      mapImageUrl: json['mapImageUrl']?.toString(),
+      content: json['content']?.toString(),
+      createdAt: DateTime.tryParse(json['createdAt']?.toString() ?? ''),
+    );
+  }
+}

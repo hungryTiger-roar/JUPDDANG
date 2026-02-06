@@ -9,6 +9,10 @@ import '../../../core/logger/log_service.dart';
 
 class PloggingSocketService {
   StompClient? _client;
+  final StompClient Function({required StompConfig config})? stompClientFactory;
+  final String? _baseUrl;
+
+  PloggingSocketService({this.stompClientFactory, String? baseUrl}) : _baseUrl = baseUrl;
   
   // Callbacks
   Function(String)? onConnectionError;
@@ -28,9 +32,10 @@ class PloggingSocketService {
   String? _currentUserId;
   bool _isIndividual = false;
 
-  static final String wsUrl = dotenv.env['WS_URL'] ?? 'https://i14d208.p.ssafy.io/dev-api/ws';
+  String get wsUrl => _baseUrl ?? dotenv.env['WS_URL'] ?? 'https://i14d208.p.ssafy.io/dev-api/ws';
 
-  void connect({int? partyId, required String userId}) {
+
+  void connect({int? partyId, required String userId, String? accessToken}) {
     _currentPartyId = partyId;
     _currentUserId = userId;
     _isIndividual = partyId == null;
@@ -40,6 +45,8 @@ class PloggingSocketService {
       return;
     }
 
+    final token = accessToken ?? AuthService.accessToken;
+
     final config = StompConfig.sockJS(
       url: wsUrl,
       onConnect: _onConnect,
@@ -47,16 +54,19 @@ class PloggingSocketService {
       onStompError: (dynamic error) => _onError(error.toString()),
       onDisconnect: (frame) => _onDisconnect(),
       stompConnectHeaders: {
-        'Authorization': 'Bearer ${AuthService.accessToken}',
+        'Authorization': 'Bearer $token',
       },
       webSocketConnectHeaders: {
-        'Authorization': 'Bearer ${AuthService.accessToken}',
+        'Authorization': 'Bearer $token',
       },
       heartbeatOutgoing: const Duration(seconds: 10),
       heartbeatIncoming: const Duration(seconds: 10),
     );
 
-    _client = StompClient(config: config);
+    _client = stompClientFactory != null
+      ? stompClientFactory!(config: config)
+      : StompClient(config: config);
+    
     _client!.activate();
   }
 

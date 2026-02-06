@@ -3,6 +3,7 @@ import 'package:pixelarticons/pixelarticons.dart';
 import '../../../services/auth_service.dart';
 import 'package:jupddang/features/social/models/follow_model.dart';
 import '../../account/presentation/profile_screen.dart'; //화현이: 프로필 화면 import 추가
+import '../../../core/utils/tier_utils.dart';
 
 //화련 팔로우 리스트 스크린
 class FollowListScreen extends StatefulWidget {
@@ -330,13 +331,32 @@ class _FollowListScreenState extends State<FollowListScreen>
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              user.nickname.toUpperCase(),
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w900,
-                              ),
+                            Row(
+                              children: [
+                                if (user.tier.isNotEmpty)
+                                  Padding(
+                                    padding: const EdgeInsets.only(right: 6),
+                                    child: Image.asset(
+                                      TierUtils.getTierBadgePath(user.tier),
+                                      width: 14,
+                                      height: 14,
+                                      errorBuilder: (context, error, stackTrace) {
+                                        return const SizedBox(width: 14, height: 14);
+                                      },
+                                    ),
+                                  ),
+                                Flexible(
+                                  child: Text(
+                                    user.nickname.toUpperCase(),
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w900,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
                             ),
                             if (user.intro.isNotEmpty) ...[
                               const SizedBox(height: 4),

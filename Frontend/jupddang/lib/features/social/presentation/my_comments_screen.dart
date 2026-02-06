@@ -4,6 +4,7 @@ import 'package:nes_ui/nes_ui.dart';
 import '../../../services/auth_service.dart';
 import '../../../widgets/pixel_character.dart';
 import '../../../widgets/pixel_loader.dart';
+import '../../../core/utils/tier_utils.dart';
 
 class MyCommentsScreen extends StatefulWidget {
   final String userId;
@@ -236,6 +237,8 @@ class _MyCommentsScreenState extends State<MyCommentsScreen> {
     // API 응답에서 필요한 정보 추출
     final postNickname = commentData['postNickname']?.toString() ??
                         commentData['nickname']?.toString() ?? 'Unknown';
+    final postTier = commentData['postTier']?.toString() ??
+        commentData['tier']?.toString() ?? '';
     final postContent = commentData['postContent']?.toString() ??
                        commentData['content']?.toString() ?? '';
     final commentContent = commentData['commentContent']?.toString() ??

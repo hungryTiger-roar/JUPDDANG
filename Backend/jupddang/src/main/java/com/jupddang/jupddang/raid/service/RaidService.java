@@ -56,6 +56,7 @@ public class RaidService {
                                 .map(record -> RaidGroupInfoResponse.RankInfo.builder()
                                                 .rank(allRecords.indexOf(record) + 1)
                                                 .nickname(record.getAccount().getNickname())
+                                                .tier(record.getAccount().getTier())
                                                 .score(record.getTotalScore())
                                                 .userId(record.getAccount().getUserId())
                                                 .build())
@@ -81,6 +82,7 @@ public class RaidService {
                                 myRanking = RaidGroupInfoResponse.RankInfo.builder()
                                                 .rank(myIndex + 1)
                                                 .nickname(myRecord.getAccount().getNickname())
+                                                .tier(myRecord.getAccount().getTier())
                                                 .score(myRecord.getTotalScore())
                                                 .userId(myRecord.getAccount().getUserId())
                                                 .build();
@@ -93,6 +95,7 @@ public class RaidService {
                                                 .map(record -> RaidGroupInfoResponse.RankInfo.builder()
                                                                 .rank(allRecords.indexOf(record) + 1)
                                                                 .nickname(record.getAccount().getNickname())
+                                                                .tier(record.getAccount().getTier())
                                                                 .score(record.getTotalScore())
                                                                 .userId(record.getAccount().getUserId())
                                                                 .build())

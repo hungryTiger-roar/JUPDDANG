@@ -17,6 +17,7 @@ public class MyCommentResponseDto {
     // 게시글 정보
     private Long postId;
     private String postAuthor;
+    private String postTier; // 게시글 작성자 티어 추가
     private String postContent;
     private LocalDateTime postCreatedAt;
 
@@ -26,6 +27,7 @@ public class MyCommentResponseDto {
         this.createdAt = comment.getCreatedAt();
         this.postId = comment.getPost().getPostId();
         this.postAuthor = comment.getPost().getAccount().getNickname();
+        this.postTier = comment.getPost().getAccount().getTier(); // 게시글 작성자 티어 추가
         this.postContent = comment.getPost().getContent();
         this.postCreatedAt = comment.getPost().getCreatedAt();
     }

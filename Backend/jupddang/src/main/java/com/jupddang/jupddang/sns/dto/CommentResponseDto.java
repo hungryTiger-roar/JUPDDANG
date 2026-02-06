@@ -10,12 +10,14 @@ import java.time.LocalDateTime;
 public class CommentResponseDto {
     private Long commentId;
     private String nickname; // 아이디 대신 닉네임
+    private String tier; // 티어 추가
     private String content;
     private LocalDateTime createdAt;
 
     public CommentResponseDto(Comment comment) {
         this.commentId = comment.getCommentId();
         this.nickname = comment.getAccount().getNickname(); // 아이디 대신 닉네임
+        this.tier = comment.getAccount().getTier(); // 티어 추가
         this.content = comment.getContent();
         this.createdAt = comment.getCreatedAt();
     }

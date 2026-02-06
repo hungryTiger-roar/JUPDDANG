@@ -12,6 +12,7 @@ import 'package:pixelarticons/pixelarticons.dart';
 import '../../../widgets/pixel_character.dart';
 import '../../account/presentation/profile_screen.dart';
 import '../../../main.dart';
+import '../../../core/utils/tier_utils.dart';
 
 class CommunityScreen extends StatefulWidget {
   final String? focusPostId;
@@ -701,6 +702,19 @@ class _CommunityScreenState extends State<CommunityScreen> with RouteAware {
                       children: [
                         Row(
                           children: [
+                            // Tier 뱃지 이미지
+                            if (post.tier.isNotEmpty)
+                              Padding(
+                                padding: const EdgeInsets.only(right: 6),
+                                child: Image.asset(
+                                  TierUtils.getTierBadgePath(post.tier),
+                                  width: 16,
+                                  height: 16,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return const SizedBox(width: 16, height: 16);
+                                  },
+                                ),
+                              ),
                             Flexible(
                               // 닉네임이 길어질 경우를 대비해 Flexible 사용
                               child: Text(
@@ -1403,6 +1417,19 @@ class _CommentBottomSheetState extends State<_CommentBottomSheet> {
                                 children: [
                                   Row(
                                     children: [
+                                      // Tier 뱃지 이미지
+                                      if (comment.tier.isNotEmpty)
+                                        Padding(
+                                          padding: const EdgeInsets.only(right: 6),
+                                          child: Image.asset(
+                                            TierUtils.getTierBadgePath(comment.tier),
+                                            width: 14,
+                                            height: 14,
+                                            errorBuilder: (context, error, stackTrace) {
+                                              return const SizedBox(width: 14, height: 14);
+                                            },
+                                          ),
+                                        ),
                                       Expanded(
                                         // 닉네임
                                         child: Text(

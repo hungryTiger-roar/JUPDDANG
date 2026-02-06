@@ -4,6 +4,7 @@ import '../../../services/auth_service.dart';
 import 'package:jupddang/features/ranking/models/ranking_model.dart';
 import '../data/ranking_service.dart';
 import '../../../widgets/pixel_character.dart';
+import '../../../core/utils/tier_utils.dart';
 
 class RankingScreen extends StatefulWidget {
   const RankingScreen({super.key});
@@ -219,14 +220,33 @@ class _RankingScreenState extends State<RankingScreen> {
                   isMoving: isFirst,
                 ),
                 const SizedBox(height: 4),
-                Text(
-                  ranker.nickname.toUpperCase(),
-                  style: const TextStyle(
-                    color: Colors.black,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 9,
-                  ),
-                  overflow: TextOverflow.ellipsis,
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (ranker.tier.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(right: 4),
+                        child: Image.asset(
+                          TierUtils.getTierBadgePath(ranker.tier),
+                          width: 12,
+                          height: 12,
+                          errorBuilder: (context, error, stackTrace) {
+                            return const SizedBox(width: 12, height: 12);
+                          },
+                        ),
+                      ),
+                    Flexible(
+                      child: Text(
+                        ranker.nickname.toUpperCase(),
+                        style: const TextStyle(
+                          color: Colors.black,
+                          fontWeight: FontWeight.w900,
+                          fontSize: 9,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 4),
                 NesContainer(
@@ -284,13 +304,32 @@ class _RankingScreenState extends State<RankingScreen> {
           ),
           const SizedBox(width: 16),
           Expanded(
-            child: Text(
-              ranker.nickname.toUpperCase(),
-              style: TextStyle(
-                color: isMe ? const Color(0xFF17C964) : Colors.black,
-                fontWeight: FontWeight.w900,
-                fontSize: 14,
-              ),
+            child: Row(
+              children: [
+                if (ranker.tier.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 6),
+                    child: Image.asset(
+                      TierUtils.getTierBadgePath(ranker.tier),
+                      width: 16,
+                      height: 16,
+                      errorBuilder: (context, error, stackTrace) {
+                        return const SizedBox(width: 16, height: 16);
+                      },
+                    ),
+                  ),
+                Flexible(
+                  child: Text(
+                    ranker.nickname.toUpperCase(),
+                    style: TextStyle(
+                      color: isMe ? const Color(0xFF17C964) : Colors.black,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 14,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
             ),
           ),
           Text(

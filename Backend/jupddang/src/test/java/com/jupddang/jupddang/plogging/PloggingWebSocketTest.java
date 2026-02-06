@@ -91,7 +91,7 @@ class PloggingWebSocketTest {
         mockJwt(token, userId);
 
         StompSession session = connectSession(token);
-        LocationRequest request = new LocationRequest(37.5, 127.0, null);
+        LocationRequest request = new LocationRequest(37.5, 127.0, null, null, null, null, null, null);
 
         // when
         session.send(TRACK_PATH, request);
@@ -125,7 +125,7 @@ class PloggingWebSocketTest {
         StompSession session = connectSession(token);
 
         // 위도 200.0 (범위 초과)
-        LocationRequest invalidRequest = new LocationRequest(200.0, 127.0, null);
+        LocationRequest invalidRequest = new LocationRequest(200.0, 127.0, null, null, null, null, null, null);
 
         // when
         session.send(TRACK_PATH, invalidRequest);
@@ -174,7 +174,8 @@ class PloggingWebSocketTest {
                     StompSession session = connectSession(token);
 
                     // 위치 전송
-                    LocationRequest req = new LocationRequest(37.5 + (index * 0.0001), 127.0, null);
+                    LocationRequest req = new LocationRequest(37.5 + (index * 0.0001), 127.0, null, null, null, null,
+                            null, null);
                     session.send(TRACK_PATH, req);
 
                     successConnect.incrementAndGet();

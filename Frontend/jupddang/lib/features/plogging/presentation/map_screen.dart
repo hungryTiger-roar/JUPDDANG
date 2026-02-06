@@ -8,6 +8,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:pixelarticons/pixelarticons.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart'; // dotenv import 추가
 import 'package:image_picker/image_picker.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:gal/gal.dart';
@@ -1173,9 +1174,8 @@ class _MapScreenState extends State<MapScreen> {
           TileLayer(
             urlTemplate:
                 'https://api.mapbox.com/styles/v1/mapbox/light-v10/tiles/256/{z}/{x}/{y}@2x?access_token={accessToken}',
-            additionalOptions: const {
-              'accessToken':
-                  'pk.eyJ1IjoiZG1kbTA2MDEiLCJhIjoiY21sYThjaTM3MGJ1OTNlczc4eGdsY3htOCJ9.7Fe99m7u1Voirekm6pVxLQ',
+            additionalOptions: {
+              'accessToken': dotenv.env['MAPBOX_ACCESS_TOKEN'] ?? '',
             },
             userAgentPackageName: 'com.ssafy.jupddang.app',
           ),
@@ -1543,10 +1543,6 @@ class _MapScreenState extends State<MapScreen> {
           _manualMoveButton(Pixel.minus, "zoom_out", _zoomOut),
           const SizedBox(height: 24),
           _manualMoveButton(Pixel.gps, "my_location", _centerToCurrentLocation),
-          if (_isPlogging) ...[
-            const SizedBox(height: 24),
-            _manualMoveButton(Pixel.camera, "take_photo", _takePhoto),
-          ],
         ],
       ),
     );

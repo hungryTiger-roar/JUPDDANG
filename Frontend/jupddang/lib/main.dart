@@ -1,20 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // SystemChrome imports
 import 'package:nes_ui/nes_ui.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart'; // import 추가
 import 'features/auth/presentation/splash_screen.dart';
 
 // RouteObserver를 글로벌로 선언하여 화면 간 이동 감지
 final RouteObserver<PageRoute> routeObserver = RouteObserver<PageRoute>();
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+  await dotenv.load(fileName: ".env");
+
   // 가로 모드 방지 및 풀스크린 설정
   SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
   ]);
-  
+
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
 
   runApp(const MyApp());

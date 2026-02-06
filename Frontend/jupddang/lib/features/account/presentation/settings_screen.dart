@@ -5,6 +5,7 @@ import 'package:pixelarticons/pixelarticons.dart';
 import 'profile_screen.dart';
 import 'edit_profile_screen.dart';
 import '../../../services/auth_service.dart';
+import '../../social/presentation/my_comments_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -38,41 +39,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                     ),
                     const SizedBox(height: 6),
-                    Row(
-                      children: [
-                        const Text(
-                          'MANAGE YOUR ACCOUNT',
-                          style: TextStyle(color: Colors.white70, fontSize: 12),
-                        ),
-                        const Spacer(),
-                        // 화현: 로그아웃 버튼
-                        GestureDetector(
-                          onTap: () => _showLogoutDialog(context),
-                          child: NesButton(
-                            type: NesButtonType.normal,
-                            onPressed: () => _showLogoutDialog(context),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: const [
-                                Icon(
-                                  Pixel.power,
-                                  color: Colors.black,
-                                  size: 14,
-                                ),
-                                SizedBox(width: 6),
-                                Text(
-                                  'LOGOUT',
-                                  style: TextStyle(
-                                    color: Colors.black,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w900,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
+                    const Text(
+                      'MANAGE YOUR ACCOUNT',
+                      style: TextStyle(color: Colors.white70, fontSize: 12),
                     ),
                   ],
                 ),
@@ -198,7 +167,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ),
 
-            // Settings List (3 rows)
+            // Settings List (4 rows)
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -224,6 +193,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       },
                     ),
                     const SizedBox(height: 16),
+                    // 내가 쓴 댓글
+                    _settingTileHorizontal(
+                      context,
+                      icon: Pixel.comment,
+                      label: '내가 쓴 댓글',
+                      color: const Color(0xFF3B82F6),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => MyCommentsScreen(
+                              userId: AuthService.userId ?? 'Guest',
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 16),
                     // 앱 정보
                     _settingTileHorizontal(
                       context,
@@ -233,13 +220,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       onTap: () => _showAppInfo(context),
                     ),
                     const SizedBox(height: 16),
-                    // 회원 탈퇴
+                    // 로그아웃
                     _settingTileHorizontal(
                       context,
-                      icon: Pixel.logout,
-                      label: '회원 탈퇴',
-                      color: const Color(0xFFEF4444),
-                      onTap: () => _showDeleteDialog(context),
+                      icon: Pixel.power,
+                      label: '로그아웃',
+                      color: const Color(0xFF6B7280),
+                      onTap: () => _showLogoutDialog(context),
                     ),
                   ],
                 ),
@@ -326,91 +313,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 'Close',
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showDeleteDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => NesDialog(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              'Account Deletion',
-              style: TextStyle(
-                color: Color(0xFFEF4444),
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              '정말로 회원 탈퇴를 진행하시겠습니까?\n\n모든 데이터가 삭제되며 복구할 수 없습니다.',
-              style: TextStyle(color: Colors.black87),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 24),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                NesButton(
-                  type: NesButtonType.normal,
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Cancel'),
-                ),
-                const SizedBox(width: 16),
-                NesButton(
-                  type: NesButtonType.error,
-                  onPressed: () async {
-                    final originalContext = context;
-                    Navigator.pop(context);
-
-                    showDialog(
-                      context: originalContext,
-                      barrierDismissible: false,
-                      builder: (dialogContext) => const Center(
-                        child: CircularProgressIndicator(
-                          color: Color(0xFF17C964),
-                        ),
-                      ),
-                    );
-
-                    final authService = AuthService();
-                    final success = await authService.deleteAccount();
-
-                    if (originalContext.mounted) {
-                      Navigator.of(originalContext).pop(); // 로딩 닫기
-                    }
-
-                    if (success) {
-                      if (originalContext.mounted) {
-                        Navigator.of(originalContext).pushAndRemoveUntil(
-                          MaterialPageRoute(
-                            builder: (context) => const SplashScreen(),
-                          ),
-                              (route) => false,
-                        );
-                      }
-                    } else {
-                      if (originalContext.mounted) {
-                        NesSnackbar.show(
-                          originalContext,
-                          text: '회원 탈퇴에 실패했습니다. 다시 시도해주세요',
-                          type: NesSnackbarType.error,
-                        );
-                      }
-                    }
-                  },
-                  child: const Text(
-                    'Delete',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
-                ),
-              ],
             ),
           ],
         ),

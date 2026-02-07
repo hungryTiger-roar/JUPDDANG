@@ -208,9 +208,8 @@ class _MapScreenState extends State<MapScreen> {
   Future<void> _initializeServices() async {
     await _initLocation();
     await _loadRaidBosses();
-    await _setupSocketLogic(); // Generalize setup
-    await _setupSocketLogic(); // Generalize setup
-    await _loadOccupiedGrids(); // [Added] Fetch occupied grids
+    await _setupSocketLogic();
+    await _loadOccupiedGrids();
     if (widget.partyId != null) {
       await _loadPartyInfo();
     }
@@ -331,6 +330,12 @@ class _MapScreenState extends State<MapScreen> {
               _occupyProgress = memberLocation.occupyProgress;
               _currentH3Index = memberLocation.currentH3Index;
               _updateHexagons(_mapController.camera.visibleBounds);
+
+              // [Added] Move camera to leader's location
+              _mapController.move(
+                LatLng(memberLocation.lat, memberLocation.lon),
+                15.0,
+              );
             }
           }
         });
@@ -403,6 +408,14 @@ class _MapScreenState extends State<MapScreen> {
         _occupiedGridsMap = {for (var g in grids) g.id: g};
       });
       debugPrint("✅ Loaded ${grids.length} occupied grids");
+
+      // [Fix] Refresh visualization to show loaded grids immediately
+      if (mounted) {
+        // Safe check for map controller
+        try {
+          _updateHexagons(_mapController.camera.visibleBounds);
+        } catch (_) {}
+      }
     } catch (e) {
       debugPrint("Failed to load occupied grids: $e");
     }
@@ -413,6 +426,14 @@ class _MapScreenState extends State<MapScreen> {
   // ==========================================
 
   void _centerToCurrentLocation() {
+    if (!_isLeader && _leaderLocation != null) {
+      _mapController.move(
+        LatLng(_leaderLocation!.lat, _leaderLocation!.lon),
+        15.0,
+      );
+      return;
+    }
+
     if (_currentPosition != null) {
       _mapController.move(_currentPosition!, 15.0);
     } else {
@@ -455,7 +476,11 @@ class _MapScreenState extends State<MapScreen> {
     if (!_isInitialCenterSet &&
         _currentPosition != null &&
         _mapController.camera.zoom > 0) {
-      _mapController.move(_currentPosition!, 15.0);
+      // 파티원이면 리더 위치를 따라가므로 초기 위치 이동 생략 가능
+      // 하지만 아직 리더 위치 수신 전일 수 있으므로 일단 이동
+      if (_isLeader) {
+        _mapController.move(_currentPosition!, 15.0);
+      }
       _isInitialCenterSet = true;
     }
 

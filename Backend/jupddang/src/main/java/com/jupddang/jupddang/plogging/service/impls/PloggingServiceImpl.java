@@ -60,8 +60,8 @@ public class PloggingServiceImpl implements PloggingService {
     private final PostRepository postRepository;
     private final GcsImageService gcsImageService;
 
-    // [변경된 로직 1] H3 Resolution 11 (약 25m)
-    private static final int H3_RESOLUTION = 11;
+    // [변경된 로직 1] H3 Resolution 9
+    private static final int H3_RESOLUTION = 9;
     // [변경된 로직 2] 점령 기준 거리 100m
     private static final double OCCUPY_DISTANCE_THRESHOLD = 100.0;
 

@@ -878,8 +878,8 @@ class _ProfileScreenState extends State<ProfileScreen> with WidgetsBindingObserv
                       );
                     },
                     child: Container(
-                      width: 36,
-                      height: 36,
+                      width: 37,
+                      height: 37,
                       decoration: BoxDecoration(
                         color: Colors.white,
                         border: Border.all(color: Colors.black, width: 2.0),
@@ -892,7 +892,7 @@ class _ProfileScreenState extends State<ProfileScreen> with WidgetsBindingObserv
                                 errorBuilder: (context, error, stackTrace) {
                                   return Center(
                                     child: PixelCharacter(
-                                      size: 24,
+                                      size: 32,
                                       color: _getColorForNickname(post.nickname),
                                     ),
                                   );
@@ -901,7 +901,7 @@ class _ProfileScreenState extends State<ProfileScreen> with WidgetsBindingObserv
                             )
                           : Center(
                               child: PixelCharacter(
-                                size: 24,
+                                size: 32,
                                 color: _getColorForNickname(post.nickname),
                               ),
                             ),
@@ -921,10 +921,10 @@ class _ProfileScreenState extends State<ProfileScreen> with WidgetsBindingObserv
                                   _totalTop3UserIds.contains(post.userId)
                                       ? TierUtils.getTierBadgePath('legend')
                                       : TierUtils.getTierBadgePath(post.tier),
-                                  width: 28,
-                                  height: 28,
+                                  width: 20,
+                                  height: 20,
                                   errorBuilder: (context, error, stackTrace) {
-                                    return const SizedBox(width: 28, height: 28);
+                                    return const SizedBox(width: 20, height: 20);
                                   },
                                 ),
                               ),
@@ -934,7 +934,7 @@ class _ProfileScreenState extends State<ProfileScreen> with WidgetsBindingObserv
                                 style: const TextStyle(
                                   color: Colors.black,
                                   fontWeight: FontWeight.w900,
-                                  fontSize: 14,
+                                  fontSize: 15,
                                 ),
                                 overflow: TextOverflow.ellipsis,
                               ),

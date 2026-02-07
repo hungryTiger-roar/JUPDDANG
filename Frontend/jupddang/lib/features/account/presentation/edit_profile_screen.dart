@@ -420,38 +420,38 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                               },
                             ),
 
-                            const SizedBox(height: 40),
+                            const SizedBox(height: 32),
 
-                            // 저장 버튼
-                            SizedBox(
-                              width: double.infinity,
-                              child: NesButton(
-                                type: NesButtonType.success,
-                                onPressed: _saving ? null : _saveChanges,
-                                child: Text(
-                                  _saving ? 'SAVING...' : 'SAVE CHANGES',
-                                  style: const TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
+                            // 계정 삭제 섹션
+                            _buildSectionTitle('계정 삭제'),
+                            const SizedBox(height: 8),
+                            Text(
+                              '회원 탈퇴 시 모든 데이터가 영구 삭제되며 복구할 수 없습니다.',
+                              style: TextStyle(
+                                color: Colors.red.shade700,
+                                fontSize: 13,
+                                height: 1.4,
                               ),
                             ),
-
-                            const SizedBox(height: 20),
-
-                            // 회원 탈퇴 버튼
+                            const SizedBox(height: 12),
                             SizedBox(
                               width: double.infinity,
                               child: NesButton(
                                 type: NesButtonType.error,
                                 onPressed: _showDeleteDialog,
-                                child: const Text(
-                                  'DELETE ACCOUNT',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                                child: const Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Pixel.trash, size: 18),
+                                    SizedBox(width: 8),
+                                    Text(
+                                      'DELETE ACCOUNT',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ),
@@ -463,6 +463,43 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
                   const SliverToBoxAdapter(child: SizedBox(height: 100)),
                 ],
+              ),
+            ),
+      bottomNavigationBar: _loading
+          ? null
+          : Container(
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                border: Border(
+                  top: BorderSide(color: Colors.black, width: 4),
+                ),
+              ),
+              padding: const EdgeInsets.all(20),
+              child: SafeArea(
+                child: NesButton(
+                  type: NesButtonType.success,
+                  onPressed: _saving ? null : _saveChanges,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          _saving ? Pixel.hourglass : Pixel.check,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 12),
+                        Text(
+                          _saving ? 'SAVING...' : 'SAVE CHANGES',
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ),
             ),
     );
@@ -561,18 +598,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   // 사용 가능한 색상 목록 (static으로 선언하여 재사용)
   static const List<Color> availableColors = [
-    Color(0xFFE53935), // 빨강
-    Color(0xFFFF6F00), // 주황
-    Color(0xFFFBC02D), // 노랑
-    Color(0xFF43A047), // 녹색
-    Color(0xFF00ACC1), // 청록
-    Color(0xFF1E88E5), // 파랑
-    Color(0xFF5E35B1), // 보라
-    Color(0xFFD81B60), // 핑크
-    Color(0xFF6D4C41), // 갈색
-    Color(0xFF546E7A), // 청회색
-    Color(0xFF00897B), // 틸
-    Color(0xFFF4511E), // 진한 주황
+    Color(0xFFE53935), // 1. 빨강
+    Color(0xFFF7E56A), // 2. 노랑
+    Color(0xFFE69938), // 3. 주황
+    Color(0xFFA7D460), // 4. 연두
+    Color(0xFF4DD0E1), // 5. 하늘 (Cyan/Sky)
+    Color(0xFF2962FF), // 6. 파랑 (Blue)
+    Color(0xFF7E57C2), // 7. 보라 (Purple)
+    Color(0xFFDB5FBD), // 8. 핑크 (Hot Pink)
   ];
 
   Widget _buildColorPicker() {
@@ -580,46 +613,59 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
     return NesContainer(
       padding: const EdgeInsets.all(16),
-      child: Wrap(
-        spacing: 12,
-        runSpacing: 12,
-        children: colors.map((color) {
-          // RGB 값만 비교 (알파 채널 제외)
-          final selectedRGB = _selectedColor.value & 0x00FFFFFF;
-          final colorRGB = color.value & 0x00FFFFFF;
-          final isSelected = selectedRGB == colorRGB;
-          return GestureDetector(
-            onTap: () {
-              setState(() {
-                _selectedColor = color;
-                print('🎨 색상 선택: 0x${color.value.toRadixString(16)}');
-              });
-            },
-            child: Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                color: color,
-                border: Border.all(
-                  color: isSelected ? Colors.black : Colors.black26,
-                  width: isSelected ? 3 : 2,
-                ),
-                boxShadow: isSelected
-                    ? [
-                        const BoxShadow(
-                          color: Colors.black26,
-                          blurRadius: 4,
-                          offset: Offset(0, 2),
-                        ),
-                      ]
-                    : null,
-              ),
-              child: isSelected
-                  ? const Icon(Icons.check, color: Colors.white, size: 28)
-                  : null,
-            ),
-          );
-        }).toList(),
+      child: Column(
+        children: [
+          // 첫 번째 줄 (4개)
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: colors.take(4).map((color) => _buildColorOption(color)).toList(),
+          ),
+          const SizedBox(height: 16),
+          // 두 번째 줄 (4개)
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: colors.skip(4).take(4).map((color) => _buildColorOption(color)).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildColorOption(Color color) {
+    // RGB 값만 비교 (알파 채널 제외)
+    final selectedRGB = _selectedColor.value & 0x00FFFFFF;
+    final colorRGB = color.value & 0x00FFFFFF;
+    final isSelected = selectedRGB == colorRGB;
+
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _selectedColor = color;
+          print('🎨 색상 선택: 0x${color.value.toRadixString(16)}');
+        });
+      },
+      child: Container(
+        width: 56,
+        height: 56,
+        decoration: BoxDecoration(
+          color: color,
+          border: Border.all(
+            color: isSelected ? Colors.black : Colors.black26,
+            width: isSelected ? 4 : 2,
+          ),
+          boxShadow: isSelected
+              ? [
+                  const BoxShadow(
+                    color: Colors.black26,
+                    blurRadius: 6,
+                    offset: Offset(0, 3),
+                  ),
+                ]
+              : null,
+        ),
+        child: isSelected
+            ? const Icon(Icons.check, color: Colors.white, size: 32)
+            : null,
       ),
     );
   }
@@ -632,7 +678,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             const Text(
-              'Account Deletion',
+              '계정 삭제',
               style: TextStyle(
                 color: Color(0xFFEF4444),
                 fontWeight: FontWeight.w900,
@@ -651,7 +697,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 NesButton(
                   type: NesButtonType.normal,
                   onPressed: () => Navigator.pop(context),
-                  child: const Text('Cancel'),
+                  child: const Text(
+                    '취소',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
                 ),
                 const SizedBox(width: 16),
                 NesButton(
@@ -698,7 +747,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     }
                   },
                   child: const Text(
-                    'Delete',
+                    '탈퇴',
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                 ),

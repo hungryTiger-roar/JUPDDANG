@@ -105,6 +105,8 @@ class AuthService {
       _socialService.getPosts(allPosts: allPosts);
   Future<List<dynamic>> getMyPosts() => _socialService.getMyPosts();
   Future<List<dynamic>> getMyComments() => _socialService.getMyComments();
+  Future<Map<String, dynamic>?> getPostById(String postId) =>
+      _socialService.getPostById(postId);
   Future<List<dynamic>> getFollowings(String userId) =>
       _socialService.getFollowings(userId);
   Future<List<dynamic>> getFollowers(String userId) =>

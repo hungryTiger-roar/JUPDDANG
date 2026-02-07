@@ -13,6 +13,7 @@ import '../../../widgets/pixel_character.dart';
 import '../../account/presentation/profile_screen.dart';
 import '../../../main.dart';
 import '../../../core/utils/tier_utils.dart';
+import '../../ranking/data/ranking_service.dart';
 
 class CommunityScreen extends StatefulWidget {
   final String? focusPostId;
@@ -26,6 +27,7 @@ class CommunityScreen extends StatefulWidget {
 
 class _CommunityScreenState extends State<CommunityScreen> with RouteAware {
   final AuthService _authService = AuthService();
+  final RankingService _rankingService = RankingService();
   final ScrollController _scrollController = ScrollController();
   final List<CommunityPost> _localPosts = [];
   List<CommunityPost> _remotePosts = [];
@@ -41,6 +43,7 @@ class _CommunityScreenState extends State<CommunityScreen> with RouteAware {
   bool _showFollowingOnly = false;
   final Set<String> _likedPostIds = {}; // Track liked posts locally
   final Map<String, int> _currentImageIndex = {}; // 각 게시글의 현재 이미지 인덱스
+  Set<String> _totalTop3UserIds = {}; // 누적 랭킹 top 3 userId 저장
 
   @override
   void initState() {
@@ -49,6 +52,7 @@ class _CommunityScreenState extends State<CommunityScreen> with RouteAware {
     if (_pendingFocusPostId != null) {
       _showFollowingOnly = false;
     }
+    _loadTopRanking(); // 누적 랭킹 top 3 로드
     _refreshAll();
   }
 
@@ -96,6 +100,21 @@ class _CommunityScreenState extends State<CommunityScreen> with RouteAware {
   void didPopNext() {
     // 게시글 목록 새로고침하여 댓글이 동기화되도록 함
     _loadPosts();
+  }
+
+  // 누적 랭킹 top 3 userId 로드
+  Future<void> _loadTopRanking() async {
+    try {
+      final totalRanking = await _rankingService.getTotalRanking();
+      setState(() {
+        _totalTop3UserIds = totalRanking.topRankers
+            .take(3)
+            .map((ranker) => ranker.userId)
+            .toSet();
+      });
+    } catch (e) {
+      print('❌ Failed to fetch total ranking for legend badges: $e');
+    }
   }
 
   @override
@@ -322,6 +341,7 @@ class _CommunityScreenState extends State<CommunityScreen> with RouteAware {
         post: post,
         authService: _authService,
         onCommentAdded: () => _loadPosts(),
+        totalTop3UserIds: _totalTop3UserIds,
       ),
     );
   }
@@ -725,12 +745,14 @@ class _CommunityScreenState extends State<CommunityScreen> with RouteAware {
                       children: [
                         Row(
                           children: [
-                            // Tier 뱃지 이미지
+                            // Tier 뱃지 이미지 (top 3는 legend 뱃지)
                             if (post.tier.isNotEmpty)
                               Padding(
                                 padding: const EdgeInsets.only(right: 4),
                                 child: Image.asset(
-                                  TierUtils.getTierBadgePath(post.tier),
+                                  _totalTop3UserIds.contains(post.userId)
+                                      ? TierUtils.getTierBadgePath('legend')
+                                      : TierUtils.getTierBadgePath(post.tier),
                                   width: 28,
                                   height: 28,
                                   errorBuilder: (context, error, stackTrace) {
@@ -1260,11 +1282,13 @@ class _CommentBottomSheet extends StatefulWidget {
   final CommunityPost post;
   final AuthService authService;
   final VoidCallback onCommentAdded;
+  final Set<String> totalTop3UserIds;
 
   const _CommentBottomSheet({
     required this.post,
     required this.authService,
     required this.onCommentAdded,
+    required this.totalTop3UserIds,
   });
 
   @override
@@ -1481,12 +1505,14 @@ class _CommentBottomSheetState extends State<_CommentBottomSheet> {
                                 children: [
                                   Row(
                                     children: [
-                                      // Tier 뱃지 이미지
+                                      // Tier 뱃지 이미지 (top 3는 legend 뱃지)
                                       if (comment.tier.isNotEmpty)
                                         Padding(
                                           padding: const EdgeInsets.only(right: 4),
                                           child: Image.asset(
-                                            TierUtils.getTierBadgePath(comment.tier),
+                                            widget.totalTop3UserIds.contains(comment.userId)
+                                                ? TierUtils.getTierBadgePath('legend')
+                                                : TierUtils.getTierBadgePath(comment.tier),
                                             width: 24,
                                             height: 24,
                                             errorBuilder: (context, error, stackTrace) {

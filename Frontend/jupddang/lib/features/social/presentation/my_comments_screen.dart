@@ -5,6 +5,7 @@ import '../../../services/auth_service.dart';
 import '../../../widgets/pixel_character.dart';
 import '../../../widgets/pixel_loader.dart';
 import '../../../core/utils/tier_utils.dart';
+import '../../account/presentation/profile_screen.dart';
 
 class MyCommentsScreen extends StatefulWidget {
   final String userId;
@@ -35,6 +36,23 @@ class _MyCommentsScreenState extends State<MyCommentsScreen> {
           .whereType<Map>()
           .map((item) => item.cast<String, dynamic>())
           .toList();
+
+      // 첫 번째 댓글의 데이터 확인
+      if (comments.isNotEmpty) {
+        print('🔍 [DEBUG] Comment data: ${comments[0]}');
+        print('🔍 [DEBUG] postUserId: ${comments[0]['postUserId']}');
+        print('🔍 [DEBUG] postProfileImage: ${comments[0]['postProfileImage']}');
+        print('🔍 [DEBUG] postTier: ${comments[0]['postTier']}');
+      }
+
+      // API 응답의 필드명을 코드에서 사용하는 필드명으로 매핑
+      for (var comment in comments) {
+        // postAuthor -> postNickname으로 매핑 (하위 호환성)
+        if (comment.containsKey('postAuthor')) {
+          comment['postNickname'] = comment['postAuthor'];
+        }
+        // postUserId, postTier, postProfileImage는 백엔드에서 제공됨
+      }
 
       // 최신순으로 정렬 (createdAt 기준 내림차순)
       comments.sort((a, b) {
@@ -235,10 +253,12 @@ class _MyCommentsScreenState extends State<MyCommentsScreen> {
 
   Widget _buildCommentCard(Map<String, dynamic> commentData) {
     // API 응답에서 필요한 정보 추출
+    final postUserId = commentData['postUserId']?.toString() ?? '';
     final postNickname = commentData['postNickname']?.toString() ??
                         commentData['nickname']?.toString() ?? 'Unknown';
     final postTier = commentData['postTier']?.toString() ??
         commentData['tier']?.toString() ?? '';
+    final postProfileImage = commentData['postProfileImage']?.toString();
     final postContent = commentData['postContent']?.toString() ??
                        commentData['content']?.toString() ?? '';
     final commentContent = commentData['commentContent']?.toString() ??
@@ -260,38 +280,104 @@ class _MyCommentsScreenState extends State<MyCommentsScreen> {
           // 게시글 작성자 정보
           Row(
             children: [
-              NesContainer(
-                width: 32,
-                height: 32,
-                padding: EdgeInsets.zero,
-                child: Center(
-                  child: PixelCharacter(
-                    size: 20,
-                    color: _getColorForNickname(postNickname),
-                  ),
-                ),
+              GestureDetector(
+                onTap: postUserId.isNotEmpty
+                    ? () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => ProfileScreen(userId: postUserId),
+                          ),
+                        );
+                      }
+                    : null,
+                child: postProfileImage != null && postProfileImage.isNotEmpty
+                    ? NesContainer(
+                        width: 32,
+                        height: 32,
+                        padding: EdgeInsets.zero,
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.zero,
+                          child: Image.network(
+                            postProfileImage,
+                            width: 32,
+                            height: 32,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Center(
+                                child: PixelCharacter(
+                                  size: 20,
+                                  color: _getColorForNickname(postNickname),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      )
+                    : NesContainer(
+                        width: 32,
+                        height: 32,
+                        padding: EdgeInsets.zero,
+                        child: Center(
+                          child: PixelCharacter(
+                            size: 20,
+                            color: _getColorForNickname(postNickname),
+                          ),
+                        ),
+                      ),
               ),
               const SizedBox(width: 10),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '${postNickname.toUpperCase()}의 게시글',
-                      style: const TextStyle(
-                        color: Colors.black,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w900,
+                child: GestureDetector(
+                  onTap: postUserId.isNotEmpty
+                      ? () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => ProfileScreen(userId: postUserId),
+                            ),
+                          );
+                        }
+                      : null,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          if (postTier.isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(right: 4),
+                              child: Image.asset(
+                                TierUtils.getTierBadgePath(postTier),
+                                width: 16,
+                                height: 16,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return const SizedBox(width: 16, height: 16);
+                                },
+                              ),
+                            ),
+                          Flexible(
+                            child: Text(
+                              '${postNickname.toUpperCase()}의 게시글',
+                              style: const TextStyle(
+                                color: Colors.black,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w900,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                    Text(
-                      _formatTime(createdAt),
-                      style: const TextStyle(
-                        color: Colors.black54,
-                        fontSize: 11,
+                      Text(
+                        _formatTime(createdAt),
+                        style: const TextStyle(
+                          color: Colors.black54,
+                          fontSize: 11,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
               NesButton(

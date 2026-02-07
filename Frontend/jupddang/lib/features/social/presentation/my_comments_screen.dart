@@ -314,6 +314,7 @@ class _MyCommentsScreenState extends State<MyCommentsScreen> {
         children: [
           // 게시글 작성자 정보
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               GestureDetector(
                 onTap: navigateToPost,
@@ -402,10 +403,16 @@ class _MyCommentsScreenState extends State<MyCommentsScreen> {
                   ),
                 ),
               ),
-              NesButton(
-                type: NesButtonType.error,
-                onPressed: () => _deleteComment(commentData),
-                child: const Icon(Pixel.trash, size: 16),
+              SizedBox(
+                width: 45,
+                height: 45,
+                child: NesButton(
+                  type: NesButtonType.error,
+                  onPressed: () => _deleteComment(commentData),
+                  child: const Center(
+                    child: Icon(Pixel.trash, size: 20),
+                  ),
+                ),
               ),
             ],
           ),

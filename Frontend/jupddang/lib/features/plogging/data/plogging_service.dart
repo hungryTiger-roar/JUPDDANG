@@ -3,6 +3,7 @@ import 'package:dio/dio.dart';
 import '../../../../core/network/api_client.dart';
 import 'package:http_parser/http_parser.dart';
 import 'package:jupddang/features/plogging/models/plogging_models.dart';
+import 'package:jupddang/features/plogging/models/occupied_grid_model.dart';
 
 class PloggingService {
   final ApiClient _apiClient;
@@ -112,7 +113,24 @@ class PloggingService {
       print('Get Temp Plogging Detail Error: $e');
       rethrow;
     }
+  }
 
+  // [New] 모든 기점령된 헥사곤 조회
+  Future<List<OccupiedGrid>> getAllOccupiedGrids() async {
+    try {
+      final response = await _apiClient.dio.get('/v1/plogging/grid/all');
+      final data = response.data;
+      if (data is List) {
+        return data
+            .whereType<Map>()
+            .map((item) => OccupiedGrid.fromJson(item.cast<String, dynamic>()))
+            .toList();
+      }
+      return [];
+    } catch (e) {
+      print('❌ Get All Occupied Grids Error: $e');
+      return [];
+    }
   }
 
   // [WebSocket] 관련 메서드는 추후 여기에 추가하거나 별도 SocketService로 분리

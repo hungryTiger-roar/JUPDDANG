@@ -33,8 +33,13 @@ import org.springframework.web.multipart.MultipartFile;
 import java.security.SecureRandom;
 import java.util.List;
 
+import lombok.RequiredArgsConstructor;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
+import java.util.Map;
+
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class PartyService {
 
         private final PartyRepository partyRepository;
@@ -43,28 +48,13 @@ public class PartyService {
         private final PloggingService ploggingService;
         private final PloggingRepository ploggingRepository;
         private final PostRepository postRepository;
+        private final AccountRepository accountRepository;
+        private final SimpMessagingTemplate messagingTemplate;
 
         private static final SecureRandom RANDOM = new SecureRandom();
         private static final int CODE_LENGTH = 6;
         private static final int MAX_CODE_VALUE = 1_000_000;
         private static final int MAX_ATTEMPTS = 10;
-        private final AccountRepository accountRepository;
-
-        public PartyService(PartyRepository partyRepository,
-                        PartyMemberRepository partyMemberRepository,
-                        PartyActivityRepository partyActivityRepository,
-                        PloggingService ploggingService,
-                        PloggingRepository ploggingRepository,
-                        PostRepository postRepository,
-                        AccountRepository accountRepository) {
-                this.partyRepository = partyRepository;
-                this.partyMemberRepository = partyMemberRepository;
-                this.partyActivityRepository = partyActivityRepository;
-                this.ploggingService = ploggingService;
-                this.ploggingRepository = ploggingRepository;
-                this.postRepository = postRepository;
-                this.accountRepository = accountRepository;
-        }
 
         // 초대 코드 생성
         public String generateUniqueInviteCode() {
@@ -197,6 +187,12 @@ public class PartyService {
                                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 파티입니다."));
 
                 party.start(userId);
+
+                // [Added] Broadcast party status to /sub/party/{partyId}/status
+                messagingTemplate.convertAndSend(
+                    "/sub/party/" + partyId + "/status", 
+                    Map.of("status", "IN_PROGRESS")
+                );
 
                 log.info("partyId : {}", partyId);
                 log.info("status : {}", party.getStatus());

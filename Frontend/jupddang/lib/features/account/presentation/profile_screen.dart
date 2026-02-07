@@ -8,6 +8,7 @@ import '../../social/presentation/follow_list_screen.dart';
 import '../../social/presentation/my_comments_screen.dart';
 import '../../../main.dart';
 import '../../../core/utils/tier_utils.dart';
+import '../../ranking/data/ranking_service.dart';
 
 class ProfileScreen extends StatefulWidget {
   final String userId;
@@ -20,6 +21,7 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> with WidgetsBindingObserver, RouteAware {
   final AuthService _authService = AuthService();
+  final RankingService _rankingService = RankingService();
   bool _loading = true;
   String _profileNickname = '';
   String? _profileImage; // 프로필 이미지 URL
@@ -43,11 +45,13 @@ class _ProfileScreenState extends State<ProfileScreen> with WidgetsBindingObserv
   final Map<String, int> _currentImageIndex = {}; // postId -> image index
   bool _isGridView = true; // 그리드/피드 뷰 토글
   final Set<String> _likedPostIds = {}; // 좋아요한 게시글 ID
+  Set<String> _totalTop3UserIds = {}; // 누적 랭킹 top 3 userId 저장
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _loadTopRanking(); // 누적 랭킹 top 3 로드
     _loadProfile();
   }
 
@@ -196,6 +200,21 @@ class _ProfileScreenState extends State<ProfileScreen> with WidgetsBindingObserv
           context,
         ).showSnackBar(const SnackBar(content: Text('프로필 정보를 불러오는데 실패했습니다.')));
       }
+    }
+  }
+
+  // 누적 랭킹 top 3 userId 로드
+  Future<void> _loadTopRanking() async {
+    try {
+      final totalRanking = await _rankingService.getTotalRanking();
+      setState(() {
+        _totalTop3UserIds = totalRanking.topRankers
+            .take(3)
+            .map((ranker) => ranker.userId)
+            .toSet();
+      });
+    } catch (e) {
+      print('❌ Failed to fetch total ranking for legend badges: $e');
     }
   }
 
@@ -899,7 +918,9 @@ class _ProfileScreenState extends State<ProfileScreen> with WidgetsBindingObserv
                               Padding(
                                 padding: const EdgeInsets.only(right: 4),
                                 child: Image.asset(
-                                  TierUtils.getTierBadgePath(post.tier),
+                                  _totalTop3UserIds.contains(post.userId)
+                                      ? TierUtils.getTierBadgePath('legend')
+                                      : TierUtils.getTierBadgePath(post.tier),
                                   width: 28,
                                   height: 28,
                                   errorBuilder: (context, error, stackTrace) {
@@ -1061,6 +1082,7 @@ class _ProfileScreenState extends State<ProfileScreen> with WidgetsBindingObserv
         post: post,
         authService: _authService,
         onCommentAdded: () => _loadProfile(),
+        totalTop3UserIds: _totalTop3UserIds,
       ),
     );
   }
@@ -1348,11 +1370,13 @@ class _CommentBottomSheet extends StatefulWidget {
   final CommunityPost post;
   final AuthService authService;
   final VoidCallback onCommentAdded;
+  final Set<String> totalTop3UserIds;
 
   const _CommentBottomSheet({
     required this.post,
     required this.authService,
     required this.onCommentAdded,
+    required this.totalTop3UserIds,
   });
 
   @override
@@ -1569,12 +1593,14 @@ class _CommentBottomSheetState extends State<_CommentBottomSheet> {
                                 children: [
                                   Row(
                                     children: [
-                                      // Tier 뱃지 이미지
+                                      // Tier 뱃지 이미지 (top 3는 legend 뱃지)
                                       if (comment.tier.isNotEmpty)
                                         Padding(
                                           padding: const EdgeInsets.only(right: 4),
                                           child: Image.asset(
-                                            TierUtils.getTierBadgePath(comment.tier),
+                                            widget.totalTop3UserIds.contains(comment.userId)
+                                                ? TierUtils.getTierBadgePath('legend')
+                                                : TierUtils.getTierBadgePath(comment.tier),
                                             width: 24,
                                             height: 24,
                                             errorBuilder: (context, error, stackTrace) {

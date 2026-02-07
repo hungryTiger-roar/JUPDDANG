@@ -17,6 +17,7 @@ class _RankingScreenState extends State<RankingScreen> {
   final RankingService _rankingService = RankingService();
   bool _isTotal = true; // Use Total as default
   late Future<RankingResponse> _rankingFuture;
+  Set<String> _totalTop3UserIds = {}; // 누적 랭킹 1,2,3위 userId 저장
 
   final String currentUserId = AuthService.userId ?? '';
 
@@ -26,7 +27,22 @@ class _RankingScreenState extends State<RankingScreen> {
     _loadRanking();
   }
 
-  void _loadRanking() {
+  void _loadRanking() async {
+    if (!_isTotal) {
+      // 월간 랭킹일 때는 누적 랭킹 top3도 함께 가져오기
+      try {
+        final totalRanking = await _rankingService.getTotalRanking();
+        setState(() {
+          _totalTop3UserIds = totalRanking.topRankers
+              .take(3)
+              .map((ranker) => ranker.userId)
+              .toSet();
+        });
+      } catch (e) {
+        print('❌ Failed to fetch total ranking for legend badges: $e');
+      }
+    }
+
     setState(() {
       _rankingFuture = _isTotal
           ? _rankingService.getTotalRanking()
@@ -223,11 +239,13 @@ class _RankingScreenState extends State<RankingScreen> {
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    if (ranker.tier.isNotEmpty)
+                    if (ranker.tier.isNotEmpty || (!_isTotal && _totalTop3UserIds.contains(ranker.userId)))
                       Padding(
                         padding: const EdgeInsets.only(right: 3),
                         child: Image.asset(
-                          TierUtils.getTierBadgePath(ranker.tier),
+                          (!_isTotal && _totalTop3UserIds.contains(ranker.userId))
+                              ? TierUtils.getTierBadgePath('legend')
+                              : TierUtils.getTierBadgePath(ranker.tier),
                           width: 20,
                           height: 20,
                           errorBuilder: (context, error, stackTrace) {
@@ -306,11 +324,13 @@ class _RankingScreenState extends State<RankingScreen> {
           Expanded(
             child: Row(
               children: [
-                if (ranker.tier.isNotEmpty)
+                if (ranker.tier.isNotEmpty || (!_isTotal && _totalTop3UserIds.contains(ranker.userId)))
                   Padding(
                     padding: const EdgeInsets.only(right: 4),
                     child: Image.asset(
-                      TierUtils.getTierBadgePath(ranker.tier),
+                      (!_isTotal && _totalTop3UserIds.contains(ranker.userId))
+                          ? TierUtils.getTierBadgePath('legend')
+                          : TierUtils.getTierBadgePath(ranker.tier),
                       width: 28,
                       height: 28,
                       errorBuilder: (context, error, stackTrace) {

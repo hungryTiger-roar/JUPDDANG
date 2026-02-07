@@ -82,6 +82,7 @@ flutter:
     - assets/images/
     - assets/images/bosses/
     - assets/images/bosses/gif/
+    - assets/images/otter/
     - assets/images/badges/tier/bronze/
     - assets/images/badges/tier/silver/
     - assets/images/badges/tier/gold/

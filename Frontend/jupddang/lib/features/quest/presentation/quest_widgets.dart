@@ -5,7 +5,7 @@ import 'package:nes_ui/nes_ui.dart';
 import 'package:pixelarticons/pixelarticons.dart';
 
 /// Q 버튼 위젯 - NES 스타일에 맞춤
-class QuestButton extends StatelessWidget {
+class QuestButton extends StatefulWidget {
   final bool isCompleted;
   final VoidCallback onTap;
   final bool isHighlighted;
@@ -18,26 +18,80 @@ class QuestButton extends StatelessWidget {
   });
 
   @override
+  State<QuestButton> createState() => _QuestButtonState();
+}
+
+class _QuestButtonState extends State<QuestButton>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _animation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 1500),
+      vsync: this,
+    );
+    
+    // 호흡하는 듯한 효과 (0.0 -> 1.0 -> 0.0)
+    _animation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+
+    if (widget.isHighlighted) {
+      _controller.repeat(reverse: true);
+    }
+  }
+
+  @override
+  void didUpdateWidget(QuestButton oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isHighlighted != oldWidget.isHighlighted) {
+      if (widget.isHighlighted) {
+        _controller.repeat(reverse: true);
+      } else {
+        _controller.stop();
+        _controller.reset();
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 300),
-      decoration: isHighlighted
-          ? BoxDecoration(
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.yellow.withValues(alpha: 0.8),
-                  blurRadius: 12,
-                  spreadRadius: 4,
-                ),
-              ],
-            )
-          : null,
+    return AnimatedBuilder(
+      animation: _animation,
+      builder: (context, child) {
+        return Container(
+          decoration: widget.isHighlighted
+              ? BoxDecoration(
+                  shape: BoxShape.rectangle, // FloatingActionButton 모양에 맞춤 (하지만 FAB는 기본적으로 원형이나 shape에 따라 다름)
+                  // FAB가 BeveledRectangleBorder이므로 BoxShape.rectangle 사용
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.yellow.withValues(
+                          alpha: 0.6 + (0.4 * _animation.value)), // 0.6 ~ 1.0 투명도
+                      blurRadius: 10 + (10 * _animation.value), // 10 ~ 20 blur
+                      spreadRadius: 2 + (4 * _animation.value), // 2 ~ 6 spread
+                    ),
+                  ],
+                )
+              : null,
+          child: child,
+        );
+      },
       child: FloatingActionButton.small(
         heroTag: "quest_button",
-        onPressed: onTap,
-        backgroundColor: isCompleted ? const Color(0xFF17C964) : Colors.black,
+        onPressed: widget.onTap,
+        backgroundColor: widget.isCompleted ? const Color(0xFF17C964) : Colors.black,
         shape: const BeveledRectangleBorder(borderRadius: BorderRadius.zero),
-        child: isCompleted
+        child: widget.isCompleted
             ? const Icon(Pixel.check, color: Colors.white)
             : const Text(
                 'Q',

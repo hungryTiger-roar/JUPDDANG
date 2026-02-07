@@ -7,6 +7,7 @@ import '../../social/models/community_models.dart';
 import '../../social/presentation/follow_list_screen.dart';
 import '../../social/presentation/my_comments_screen.dart';
 import '../../../main.dart';
+import '../../../core/utils/tier_utils.dart';
 
 class ProfileScreen extends StatefulWidget {
   final String userId;
@@ -25,6 +26,7 @@ class _ProfileScreenState extends State<ProfileScreen> with WidgetsBindingObserv
   String _intro = ''; // 한줄 소개
   String _realUserId = ''; // 실제 userId
   bool _isFollowing = false;
+  String _tier = ''; // 티어 정보
 
   // Mock stats - replace with actual API calls
   final Map<String, int> _stats = {
@@ -158,6 +160,7 @@ class _ProfileScreenState extends State<ProfileScreen> with WidgetsBindingObserv
       final fetchedUserId = profileData['userId'] ?? widget.userId; // 실제 userId
       final profileImageUrl = profileData['profileImage'] as String?; // 프로필 이미지 URL
       final introText = profileData['intro'] ?? ''; // 한줄 소개
+      final tierInfo = profileData['tier'] ?? ''; // 티어 정보
 
       print(
         '서버 isFollowing: ${profileData['isFollowing']} / 내 검증 결과: $realIsFollowing',
@@ -168,6 +171,7 @@ class _ProfileScreenState extends State<ProfileScreen> with WidgetsBindingObserv
         _realUserId = fetchedUserId; // 실제 userId 저장
         _profileImage = profileImageUrl; // 프로필 이미지 저장
         _intro = introText; // 한줄 소개 저장
+        _tier = tierInfo; // 티어 정보 저장
         _isFollowing = realIsFollowing;
         _stats['posts'] = userPosts.length;
         _stats['comments'] = commentCount;
@@ -182,7 +186,7 @@ class _ProfileScreenState extends State<ProfileScreen> with WidgetsBindingObserv
             ? totalScore
             : (totalScore as num).toInt(); //화현이: score 저장
         _loading = false;
-        
+
         // 화현이: userPosts를 _myPosts에 직접 저장
         _myPosts = userPosts;
         _loadingPosts = false;
@@ -386,20 +390,53 @@ class _ProfileScreenState extends State<ProfileScreen> with WidgetsBindingObserv
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const SizedBox(height: 8),
-                    Padding(
-                      padding: const EdgeInsets.only(left: 8.0),
-                      child: Text(
-                        (_profileNickname.isEmpty ? widget.userId : _profileNickname)
-                            .toUpperCase(),
-                        style: const TextStyle(
-                          color: Colors.black,
-                          fontSize: 24,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 1.0,
+                    Row(
+                      children: [
+                        // 티어 뱃지
+                        if (_tier.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(right: 4),
+                            child: Image.asset(
+                              TierUtils.getTierBadgePath(_tier),
+                              width: 32,
+                              height: 32,
+                              errorBuilder: (context, error, stackTrace) {
+                                return const SizedBox(width: 32, height: 32);
+                              },
+                            ),
+                          ),
+                        // 닉네임
+                        Flexible(
+                          child: Text(
+                            (_profileNickname.isEmpty ? widget.userId : _profileNickname)
+                                .toUpperCase(),
+                            style: const TextStyle(
+                              color: Colors.black,
+                              fontSize: 20,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 1.0,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
+                        // 티어 텍스트 (괄호 안에)
+                        if (_tier.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(left: 4),
+                            child: Text(
+                              '($_tier)',
+                              style: const TextStyle(
+                                color: Colors.black54,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.5,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                      ],
                     ),
                     const SizedBox(height: 14),
                     // 게시글, 팔로워, 팔로잉 수

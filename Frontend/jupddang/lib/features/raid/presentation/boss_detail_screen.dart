@@ -303,13 +303,13 @@ class _BossDetailScreenState extends State<BossDetailScreen> {
                   children: [
                     if (ranker.tier.isNotEmpty)
                       Padding(
-                        padding: const EdgeInsets.only(right: 6),
+                        padding: const EdgeInsets.only(right: 4),
                         child: Image.asset(
                           TierUtils.getTierBadgePath(ranker.tier),
-                          width: 16,
-                          height: 16,
+                          width: 28,
+                          height: 28,
                           errorBuilder: (context, error, stackTrace) {
-                            return const SizedBox(width: 16, height: 16);
+                            return const SizedBox(width: 28, height: 28);
                           },
                         ),
                       ),

@@ -33,7 +33,7 @@ public class RankingService {
      * Redis Key: "ranking:total"
      */
     public RankingListResponseDto getTotalRanking(String userId) {
-        return getRankingResponse("ranking:total", userId);
+        return getRankingResponse("ranking:total", userId, true);
     }
 
     /**
@@ -50,12 +50,12 @@ public class RankingService {
         // 키 생성 (예: ranking:monthly:202602)
         String redisKey = String.format("ranking:monthly:%04d%02d", year, month);
 
-        return getRankingResponse(redisKey, userId);
+        return getRankingResponse(redisKey, userId, false);
     }
 
     // [Redis]
     // 내부 로직: Redis에서 데이터를 가져와 DTO로 변환하는 핵심 메서드
-    private RankingListResponseDto getRankingResponse(String redisKey, String userId) {
+    private RankingListResponseDto getRankingResponse(String redisKey, String userId, boolean isTotalRanking) {
 
         // [Redis에서 랭킹 데이터 조회]
         // 1. Top 3 가져오기
@@ -97,10 +97,10 @@ public class RankingService {
 
         // [DTO 변환]
         // 1. Top 3 리스트 변환
-        List<RankingResponseDto> topRankers = convertToDtoList(top3Set, accountMap, 0);
+        List<RankingResponseDto> topRankers = convertToDtoList(top3Set, accountMap, 0, isTotalRanking);
 
         // 2. 내 윈도우 리스트 변환
-        List<RankingResponseDto> myRankWindow = convertToDtoList(windowList, accountMap, (int) windowStartRank);
+        List<RankingResponseDto> myRankWindow = convertToDtoList(windowList, accountMap, (int) windowStartRank, isTotalRanking);
 
         return RankingListResponseDto.builder()
                 .topRankers(topRankers)
@@ -111,7 +111,8 @@ public class RankingService {
     private List<RankingResponseDto> convertToDtoList(
             Collection<ZSetOperations.TypedTuple<Object>> tuples,
             Map<String, Account> accountMap,
-            int startRankIndex) {
+            int startRankIndex,
+            boolean isTotalRanking) {
         List<RankingResponseDto> dtoList = new ArrayList<>();
         int currentRank = startRankIndex + 1;
 
@@ -126,13 +127,21 @@ public class RankingService {
             // DB에서 찾아온 유저 정보(없으면 스킵)
             Account account = accountMap.get(uid);
             if (account != null) {
+                // 티어 결정: 누적 랭킹 1~3등이면 LEGEND, 그 외에는 Account의 tier 사용
+                String tier;
+                if (isTotalRanking && currentRank >= 1 && currentRank <= 3) {
+                    tier = PloggingLevel.LEGEND.getLabel();
+                } else {
+                    tier = account.getTier();  // Account 테이블의 tier 필드 사용
+                }
+
                 dtoList.add(RankingResponseDto.builder()
                         .rank(currentRank)
                         .userId(uid)
                         .nickname(account.getNickname())
                         .profileImage(account.getProfileImage())
                         .score(score)
-                        .tier(PloggingLevel.findByScore(score).getLabel())
+                        .tier(tier)
                         .build());
             }
             currentRank++;

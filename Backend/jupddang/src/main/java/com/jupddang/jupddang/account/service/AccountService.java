@@ -3,8 +3,10 @@ package com.jupddang.jupddang.account.service;
 import com.jupddang.jupddang.account.dto.*;
 import com.jupddang.jupddang.account.entity.Account;
 import com.jupddang.jupddang.account.repository.AccountRepository;
+import com.jupddang.jupddang.common.enums.PloggingLevel;
 import com.jupddang.jupddang.common.infrastructure.storage.GcsImageService;
 import com.jupddang.jupddang.follow.repository.FollowRepository;
+import com.jupddang.jupddang.ranking.repository.RankingRedisRepository;
 import com.jupddang.jupddang.security.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -29,6 +31,7 @@ public class AccountService {
     private final JwtTokenProvider jwtTokenProvider;
     private final GcsImageService gcsImageService;
     private final FollowRepository followRepository;
+    private final RankingRedisRepository rankingRedisRepository;
 
     @Transactional
     public AccountResponse createAccount(AccountCreateRequest request) {
@@ -57,7 +60,11 @@ public class AccountService {
     @Transactional(readOnly = true)
     public List<AccountResponse> getAllAccounts() {
         return accountRepository.findAll().stream()
-                .map(AccountResponse::from)
+                .map(account -> {
+                    // 누적 랭킹 확인하여 LEGEND 처리
+                    String tier = getTierWithLegendCheck(account);
+                    return AccountResponse.from(account, tier);
+                })
                 .toList();
     }
 
@@ -102,7 +109,30 @@ public class AccountService {
         long followerCount = followRepository.countByFollowing(target);
         long followingCount = followRepository.countByFollower(target);
 
-        return AccountResponse.from(target, isFollowing, followerCount, followingCount);
+        // 3. 누적 랭킹 확인하여 LEGEND 처리
+        String tier = getTierWithLegendCheck(target);
+
+        return AccountResponse.from(target, isFollowing, followerCount, followingCount, tier);
+    }
+
+    /**
+     * 누적 랭킹 1~3등이면 LEGEND 티어를 반환, 아니면 Account의 tier 반환
+     */
+    private String getTierWithLegendCheck(Account account) {
+        try {
+            // 누적 랭킹에서 등수 확인
+            Long rank = rankingRedisRepository.getMyRank("ranking:total", account.getUserId());
+
+            // 1~3등이면 LEGEND 반환
+            if (rank != null && rank >= 0 && rank <= 2) {  // Redis는 0-based index
+                return PloggingLevel.LEGEND.getLabel();
+            }
+        } catch (Exception e) {
+            log.warn("랭킹 조회 실패 (tier는 기본값 사용): {}", e.getMessage());
+        }
+
+        // 그 외에는 Account의 tier 반환
+        return account.getTier();
     }
 
     @Transactional
@@ -163,5 +193,32 @@ public class AccountService {
 
         accountRepository.delete(account);
         return AccountResponse.from(account);
+    }
+
+    /**
+     * 모든 계정의 tier를 total_score에 맞게 재계산
+     * 더미 데이터 수정용 (개발/테스트 환경에서만 사용)
+     */
+    @Transactional
+    public int recalculateAllTiers() {
+        List<Account> allAccounts = accountRepository.findAll();
+        int updatedCount = 0;
+
+        for (Account account : allAccounts) {
+            String currentTier = account.getTier();
+            String correctTier = PloggingLevel.findByScore(account.getTotalScore()).getLabel();
+
+            // tier가 다르면 재계산
+            if (!currentTier.equals(correctTier)) {
+                // addScore(0)을 호출하면 tier가 재계산됨
+                account.addScore(0);
+                updatedCount++;
+                log.info("Updated tier for {}: {} -> {}",
+                    account.getUserId(), currentTier, correctTier);
+            }
+        }
+
+        log.info("Total {} accounts' tiers updated", updatedCount);
+        return updatedCount;
     }
 }

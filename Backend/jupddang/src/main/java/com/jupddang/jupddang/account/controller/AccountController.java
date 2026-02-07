@@ -94,4 +94,12 @@ public class AccountController {
         AccountResponse accountResponse = accountService.deleteAccount(account.getUserId());
         return ResponseEntity.ok(accountResponse);
     }
+
+    // 모든 계정 tier 재계산 (개발/테스트용)
+    @PostMapping("/recalculate-tiers")
+    @Operation(summary = "모든 계정의 tier를 total_score에 맞게 재계산 (개발/테스트용)")
+    public ResponseEntity<String> recalculateAllTiers() {
+        int updatedCount = accountService.recalculateAllTiers();
+        return ResponseEntity.ok(updatedCount + "개 계정의 tier가 업데이트되었습니다.");
+    }
 }

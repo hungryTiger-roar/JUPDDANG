@@ -225,13 +225,13 @@ class _RankingScreenState extends State<RankingScreen> {
                   children: [
                     if (ranker.tier.isNotEmpty)
                       Padding(
-                        padding: const EdgeInsets.only(right: 4),
+                        padding: const EdgeInsets.only(right: 3),
                         child: Image.asset(
                           TierUtils.getTierBadgePath(ranker.tier),
-                          width: 12,
-                          height: 12,
+                          width: 20,
+                          height: 20,
                           errorBuilder: (context, error, stackTrace) {
-                            return const SizedBox(width: 12, height: 12);
+                            return const SizedBox(width: 20, height: 20);
                           },
                         ),
                       ),
@@ -308,13 +308,13 @@ class _RankingScreenState extends State<RankingScreen> {
               children: [
                 if (ranker.tier.isNotEmpty)
                   Padding(
-                    padding: const EdgeInsets.only(right: 6),
+                    padding: const EdgeInsets.only(right: 4),
                     child: Image.asset(
                       TierUtils.getTierBadgePath(ranker.tier),
-                      width: 16,
-                      height: 16,
+                      width: 28,
+                      height: 28,
                       errorBuilder: (context, error, stackTrace) {
-                        return const SizedBox(width: 16, height: 16);
+                        return const SizedBox(width: 28, height: 28);
                       },
                     ),
                   ),

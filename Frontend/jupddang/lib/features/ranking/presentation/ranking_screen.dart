@@ -103,18 +103,31 @@ class _RankingScreenState extends State<RankingScreen> {
                               // 1~3등
                               if (topRankers.isNotEmpty) ...[
                                 _buildPodium(topRankers),
-                                const SizedBox(height: 10),
-                              ],
-                              // 1등과 4등 사이가 멀면 점선 표시
-                              if (myRankWindow.isNotEmpty &&
-                                  myRankWindow.first.rank > 4)
+                                const SizedBox(height: 20),
+                                // 설명 추가
                                 const Padding(
-                                  padding: EdgeInsets.symmetric(vertical: 8),
-                                  child: Icon(
-                                    Icons.more_vert,
-                                    color: Colors.black26,
+                                  padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                                  child: Text(
+                                    '내 앞뒤엔 누가 있을까? 🔥 라이벌을 확인해보세요!',
+                                    style: TextStyle(
+                                      color: Colors.black54,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w900,
+                                    ),
+                                    textAlign: TextAlign.start,
                                   ),
                                 ),
+                              ],
+                              // // 1등과 4등 사이가 멀면 점선 표시
+                              // if (myRankWindow.isNotEmpty &&
+                              //     myRankWindow.first.rank > 4)
+                              //   const Padding(
+                              //     padding: EdgeInsets.symmetric(vertical: 8),
+                              //     child: Icon(
+                              //       Icons.more_vert,
+                              //       color: Colors.black26,
+                              //     ),
+                              //   ),
 
                               // 내 주변 리스트
                               ...myRankWindow.map(
@@ -271,13 +284,13 @@ class _RankingScreenState extends State<RankingScreen> {
                           isMoving: isFirst,
                         ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 7),
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     if (ranker.tier.isNotEmpty || (!_isTotal && _totalTop3UserIds.contains(ranker.userId)))
                       Padding(
-                        padding: const EdgeInsets.only(right: 3),
+                        padding: const EdgeInsets.only(right: 4),
                         child: Image.asset(
                           (!_isTotal && _totalTop3UserIds.contains(ranker.userId))
                               ? TierUtils.getTierBadgePath('legend')
@@ -295,7 +308,7 @@ class _RankingScreenState extends State<RankingScreen> {
                         style: const TextStyle(
                           color: Colors.black,
                           fontWeight: FontWeight.w900,
-                          fontSize: 9,
+                          fontSize: 15,
                         ),
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -394,15 +407,15 @@ class _RankingScreenState extends State<RankingScreen> {
                 children: [
                   if (ranker.tier.isNotEmpty || (!_isTotal && _totalTop3UserIds.contains(ranker.userId)))
                     Padding(
-                      padding: const EdgeInsets.only(right: 4),
+                      padding: const EdgeInsets.only(right: 8),
                       child: Image.asset(
                         (!_isTotal && _totalTop3UserIds.contains(ranker.userId))
                             ? TierUtils.getTierBadgePath('legend')
                             : TierUtils.getTierBadgePath(ranker.tier),
-                        width: 28,
-                        height: 28,
+                        width: 20,
+                        height: 20,
                         errorBuilder: (context, error, stackTrace) {
-                          return const SizedBox(width: 28, height: 28);
+                          return const SizedBox(width: 22, height: 22);
                         },
                       ),
                     ),
@@ -412,7 +425,7 @@ class _RankingScreenState extends State<RankingScreen> {
                       style: TextStyle(
                         color: isMe ? const Color(0xFF17C964) : Colors.black,
                         fontWeight: FontWeight.w900,
-                        fontSize: 14,
+                        fontSize: 15,
                       ),
                       overflow: TextOverflow.ellipsis,
                     ),

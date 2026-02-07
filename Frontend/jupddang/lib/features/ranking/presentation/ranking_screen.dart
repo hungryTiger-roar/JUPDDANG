@@ -5,6 +5,7 @@ import 'package:jupddang/features/ranking/models/ranking_model.dart';
 import '../data/ranking_service.dart';
 import '../../../widgets/pixel_character.dart';
 import '../../../core/utils/tier_utils.dart';
+import '../../account/presentation/profile_screen.dart';
 
 class RankingScreen extends StatefulWidget {
   const RankingScreen({super.key});
@@ -228,12 +229,47 @@ class _RankingScreenState extends State<RankingScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                PixelCharacter(
-                  size: isFirst ? 55 : 45,
-                  color: isFirst
-                      ? Colors.red
-                      : (isSecond ? Colors.blue : Colors.orange),
-                  isMoving: isFirst,
+                GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => ProfileScreen(userId: ranker.userId),
+                      ),
+                    );
+                  },
+                  child: ranker.profileImage != null && ranker.profileImage!.isNotEmpty
+                      ? Container(
+                          width: isFirst ? 55 : 45,
+                          height: isFirst ? 55 : 45,
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.black, width: 2),
+                          ),
+                          child: ClipRect(
+                            child: Image.network(
+                              ranker.profileImage!,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) {
+                                return Center(
+                                  child: PixelCharacter(
+                                    size: isFirst ? 55 : 45,
+                                    color: isFirst
+                                        ? Colors.red
+                                        : (isSecond ? Colors.blue : Colors.orange),
+                                    isMoving: isFirst,
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        )
+                      : PixelCharacter(
+                          size: isFirst ? 55 : 45,
+                          color: isFirst
+                              ? Colors.red
+                              : (isSecond ? Colors.blue : Colors.orange),
+                          isMoving: isFirst,
+                        ),
                 ),
                 const SizedBox(height: 4),
                 Row(
@@ -296,71 +332,104 @@ class _RankingScreenState extends State<RankingScreen> {
   Widget _buildRankItem(Ranker ranker) {
     final isMe = ranker.userId == currentUserId;
 
-    return NesContainer(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      backgroundColor: isMe ? const Color(0xFFF0F0F0) : Colors.white,
-      child: Row(
-        children: [
-          SizedBox(
-            width: 35,
-            child: Text(
-              '${ranker.rank}',
-              style: TextStyle(
-                color: isMe ? const Color(0xFF17C964) : Colors.black,
-                fontWeight: FontWeight.w900,
-                fontSize: 16,
-                fontStyle: isMe ? FontStyle.italic : FontStyle.normal,
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ProfileScreen(userId: ranker.userId),
+          ),
+        );
+      },
+      child: NesContainer(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        backgroundColor: isMe ? const Color(0xFFF0F0F0) : Colors.white,
+        child: Row(
+          children: [
+            SizedBox(
+              width: 35,
+              child: Text(
+                '${ranker.rank}',
+                style: TextStyle(
+                  color: isMe ? const Color(0xFF17C964) : Colors.black,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 16,
+                  fontStyle: isMe ? FontStyle.italic : FontStyle.normal,
+                ),
               ),
             ),
-          ),
-          const SizedBox(width: 8),
-          // 내 캐릭터만 핑크색으로 포인트 & 움직임 효과!
-          PixelCharacter(
-            size: 30,
-            color: isMe ? Colors.pinkAccent : Colors.blueGrey,
-            isMoving: isMe,
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Row(
-              children: [
-                if (ranker.tier.isNotEmpty || (!_isTotal && _totalTop3UserIds.contains(ranker.userId)))
-                  Padding(
-                    padding: const EdgeInsets.only(right: 4),
-                    child: Image.asset(
-                      (!_isTotal && _totalTop3UserIds.contains(ranker.userId))
-                          ? TierUtils.getTierBadgePath('legend')
-                          : TierUtils.getTierBadgePath(ranker.tier),
-                      width: 28,
-                      height: 28,
-                      errorBuilder: (context, error, stackTrace) {
-                        return const SizedBox(width: 28, height: 28);
-                      },
+            const SizedBox(width: 8),
+            // 프로필 이미지가 있으면 표시, 없으면 캐릭터
+            ranker.profileImage != null && ranker.profileImage!.isNotEmpty
+                ? Container(
+                    width: 30,
+                    height: 30,
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.black, width: 2),
+                    ),
+                    child: ClipRect(
+                      child: Image.network(
+                        ranker.profileImage!,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Center(
+                            child: PixelCharacter(
+                              size: 30,
+                              color: isMe ? Colors.pinkAccent : Colors.blueGrey,
+                              isMoving: isMe,
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  )
+                : PixelCharacter(
+                    size: 30,
+                    color: isMe ? Colors.pinkAccent : Colors.blueGrey,
+                    isMoving: isMe,
+                  ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Row(
+                children: [
+                  if (ranker.tier.isNotEmpty || (!_isTotal && _totalTop3UserIds.contains(ranker.userId)))
+                    Padding(
+                      padding: const EdgeInsets.only(right: 4),
+                      child: Image.asset(
+                        (!_isTotal && _totalTop3UserIds.contains(ranker.userId))
+                            ? TierUtils.getTierBadgePath('legend')
+                            : TierUtils.getTierBadgePath(ranker.tier),
+                        width: 28,
+                        height: 28,
+                        errorBuilder: (context, error, stackTrace) {
+                          return const SizedBox(width: 28, height: 28);
+                        },
+                      ),
+                    ),
+                  Flexible(
+                    child: Text(
+                      ranker.nickname.toUpperCase(),
+                      style: TextStyle(
+                        color: isMe ? const Color(0xFF17C964) : Colors.black,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 14,
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                Flexible(
-                  child: Text(
-                    ranker.nickname.toUpperCase(),
-                    style: TextStyle(
-                      color: isMe ? const Color(0xFF17C964) : Colors.black,
-                      fontWeight: FontWeight.w900,
-                      fontSize: 14,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-          Text(
-            '${ranker.score} P',
-            style: const TextStyle(
-              color: Color(0xFF17C964),
-              fontWeight: FontWeight.w900,
-              fontSize: 14,
+            Text(
+              '${ranker.score} P',
+              style: const TextStyle(
+                color: Color(0xFF17C964),
+                fontWeight: FontWeight.w900,
+                fontSize: 14,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

@@ -6,6 +6,7 @@ import '../../../widgets/pixel_character.dart';
 import '../../../widgets/pixel_loader.dart';
 import '../../../core/utils/tier_utils.dart';
 import '../../account/presentation/profile_screen.dart';
+import '../../ranking/data/ranking_service.dart';
 
 class MyCommentsScreen extends StatefulWidget {
   final String userId;
@@ -18,13 +19,31 @@ class MyCommentsScreen extends StatefulWidget {
 
 class _MyCommentsScreenState extends State<MyCommentsScreen> {
   final AuthService _authService = AuthService();
+  final RankingService _rankingService = RankingService();
   bool _loading = true;
   List<Map<String, dynamic>> _myComments = [];
+  Set<String> _totalTop3UserIds = {}; // 누적 랭킹 top 3 userId 저장
 
   @override
   void initState() {
     super.initState();
+    _loadTopRanking(); // 누적 랭킹 top 3 로드
     _loadMyComments();
+  }
+
+  // 누적 랭킹 top 3 userId 로드
+  Future<void> _loadTopRanking() async {
+    try {
+      final totalRanking = await _rankingService.getTotalRanking();
+      setState(() {
+        _totalTop3UserIds = totalRanking.topRankers
+            .take(3)
+            .map((ranker) => ranker.userId)
+            .toSet();
+      });
+    } catch (e) {
+      print('❌ Failed to fetch total ranking for legend badges: $e');
+    }
   }
 
   Future<void> _loadMyComments() async {
@@ -253,6 +272,7 @@ class _MyCommentsScreenState extends State<MyCommentsScreen> {
 
   Widget _buildCommentCard(Map<String, dynamic> commentData) {
     // API 응답에서 필요한 정보 추출
+    final postId = commentData['postId']?.toString() ?? '';
     final postUserId = commentData['postUserId']?.toString() ?? '';
     final postNickname = commentData['postNickname']?.toString() ??
                         commentData['nickname']?.toString() ?? 'Unknown';
@@ -272,6 +292,21 @@ class _MyCommentsScreenState extends State<MyCommentsScreen> {
         ? '${postContent.substring(0, 80)}...'
         : postContent;
 
+    // 게시글로 이동하는 함수
+    void navigateToPost() {
+      if (postUserId.isNotEmpty && postId.isNotEmpty) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ProfileScreen(
+              userId: postUserId,
+              focusPostId: postId,
+            ),
+          ),
+        );
+      }
+    }
+
     return NesContainer(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -281,20 +316,11 @@ class _MyCommentsScreenState extends State<MyCommentsScreen> {
           Row(
             children: [
               GestureDetector(
-                onTap: postUserId.isNotEmpty
-                    ? () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => ProfileScreen(userId: postUserId),
-                          ),
-                        );
-                      }
-                    : null,
+                onTap: navigateToPost,
                 child: postProfileImage != null && postProfileImage.isNotEmpty
                     ? NesContainer(
-                        width: 32,
-                        height: 32,
+                        width: 37,
+                        height: 37,
                         padding: EdgeInsets.zero,
                         child: ClipRRect(
                           borderRadius: BorderRadius.zero,
@@ -329,31 +355,27 @@ class _MyCommentsScreenState extends State<MyCommentsScreen> {
               const SizedBox(width: 10),
               Expanded(
                 child: GestureDetector(
-                  onTap: postUserId.isNotEmpty
-                      ? () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => ProfileScreen(userId: postUserId),
-                            ),
-                          );
-                        }
-                      : null,
+                  onTap: navigateToPost,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
                         children: [
                           if (postTier.isNotEmpty)
-                            Padding(
-                              padding: const EdgeInsets.only(right: 4),
-                              child: Image.asset(
-                                TierUtils.getTierBadgePath(postTier),
-                                width: 16,
-                                height: 16,
-                                errorBuilder: (context, error, stackTrace) {
-                                  return const SizedBox(width: 16, height: 16);
-                                },
+                            GestureDetector(
+                              onTap: navigateToPost,
+                              child: Padding(
+                                padding: const EdgeInsets.only(right: 4),
+                                child: Image.asset(
+                                  _totalTop3UserIds.contains(postUserId)
+                                      ? TierUtils.getTierBadgePath('legend')
+                                      : TierUtils.getTierBadgePath(postTier),
+                                  width: 20,
+                                  height: 20,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return const SizedBox(width: 20, height: 20);
+                                  },
+                                ),
                               ),
                             ),
                           Flexible(
@@ -361,7 +383,7 @@ class _MyCommentsScreenState extends State<MyCommentsScreen> {
                               '${postNickname.toUpperCase()}의 게시글',
                               style: const TextStyle(
                                 color: Colors.black,
-                                fontSize: 14,
+                                fontSize: 15,
                                 fontWeight: FontWeight.w900,
                               ),
                               overflow: TextOverflow.ellipsis,
@@ -391,18 +413,21 @@ class _MyCommentsScreenState extends State<MyCommentsScreen> {
 
           // 게시글 내용 미리보기
           if (postPreview.isNotEmpty) ...[
-            NesContainer(
-              padding: const EdgeInsets.all(12),
-              backgroundColor: const Color(0xFFF5F5F5),
-              child: Text(
-                postPreview,
-                style: const TextStyle(
-                  color: Colors.black54,
-                  fontSize: 13,
-                  height: 1.4,
+            GestureDetector(
+              onTap: navigateToPost,
+              child: NesContainer(
+                padding: const EdgeInsets.all(12),
+                backgroundColor: const Color(0xFFF5F5F5),
+                child: Text(
+                  postPreview,
+                  style: const TextStyle(
+                    color: Colors.black54,
+                    fontSize: 13,
+                    height: 1.4,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
               ),
             ),
             const SizedBox(height: 12),

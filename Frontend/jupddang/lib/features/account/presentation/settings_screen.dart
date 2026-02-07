@@ -156,7 +156,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(20, 32, 20, 20),
                 child: const Text(
-                  'QUICK SETTINGS',
+                  'SETTINGS',
                   style: TextStyle(
                     color: Colors.black54,
                     fontSize: 14,
@@ -177,7 +177,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     _settingTileHorizontal(
                       context,
                       icon: Pixel.edit,
-                      label: '개인정보 변경',
+                      label: '계정 정보',
                       color: const Color(0xFF17C964),
                       onTap: () async {
                         final result = await Navigator.push(

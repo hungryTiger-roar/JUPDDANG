@@ -12,6 +12,7 @@ import com.jupddang.jupddang.plogging.dto.request.PloggingEndRequest;
 import com.jupddang.jupddang.plogging.dto.response.PloggingResultResponse;
 import com.jupddang.jupddang.plogging.dto.response.PloggingTempDetailResponse;
 import com.jupddang.jupddang.plogging.dto.response.PloggingTempSaveResponse;
+import com.jupddang.jupddang.party.dto.response.PartyMemberLocationResponse;
 import com.jupddang.jupddang.plogging.exception.PloggingErrorCode;
 import com.jupddang.jupddang.plogging.exception.PloggingException;
 import com.jupddang.jupddang.plogging.repository.GridRepository;
@@ -179,6 +180,11 @@ public class PloggingServiceImpl implements PloggingService {
                         false));
             }
 
+            // [추가] 파티원들에게 내 위치 전송 (Broadcasting)
+            if (partyId != null) {
+                broadcastLocation(partyId, userId, request, newTotalDistance);
+            }
+
         } catch (PloggingException e) {
             throw e;
         } catch (Exception e) {
@@ -223,6 +229,11 @@ public class PloggingServiceImpl implements PloggingService {
                     currentTime,
                     false  // 파티원은 점령 안 함
             ));
+            
+            // [추가] 파티원들에게 내 위치 전송 (Broadcasting)
+            if (request.getPartyId() != null) {
+                broadcastLocation(request.getPartyId(), userId, request, newTotalDistance);
+            }
 
             log.info("👥 파티원 위치 업데이트: userId={}, h3={}, distance={}",
                     userId, currentH3, newTotalDistance);
@@ -274,6 +285,28 @@ public class PloggingServiceImpl implements PloggingService {
         if (partyId != null) {
             messagingTemplate.convertAndSend("/topic/party/" + partyId,
                     "유저 " + userId + "님이 " + h3Index + " 구역을 점령했습니다!");
+        }
+    }
+
+    private void broadcastLocation(Long partyId, String userId, LocationRequest request, double totalDistance) {
+        try {
+            int occupiedCount = redisRepository.getCapturedCount(userId);
+            
+            PartyMemberLocationResponse response = PartyMemberLocationResponse.builder()
+                    .userId(userId)
+                    .lat(request.getLat())
+                    .lon(request.getLon())
+                    .totalDistance(totalDistance)
+                    .elapsedTime(request.getElapsedTime())
+                    .occupiedCount(occupiedCount)
+                    .occupyProgress(request.getOccupyProgress())
+                    .currentH3Index(request.getCurrentH3Index())
+                    .build();
+
+            messagingTemplate.convertAndSend("/sub/party/" + partyId + "/locations", response);
+            // log.debug("📡 파티 위치 전송: partyId={}, userId={}", partyId, userId);
+        } catch (Exception e) {
+            log.error("위치 브로드캐스팅 실패: partyId={}, userId={}", partyId, userId, e);
         }
     }
 

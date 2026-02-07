@@ -23,6 +23,8 @@ import '../../../widgets/pixel_character.dart';
 import '../../party/models/party_models.dart';
 import '../../party/data/party_service.dart';
 import '../data/plogging_socket_service.dart';
+import '../data/plogging_service.dart'; // [Added]
+import '../models/occupied_grid_model.dart'; // [Added]
 import '../../raid/models/raid_models.dart';
 import '../../raid/data/raid_service.dart';
 import '../../raid/presentation/boss_detail_screen.dart';
@@ -57,6 +59,7 @@ class _MapScreenState extends State<MapScreen> {
   final LocationH3Service _h3Service = LocationH3Service();
   final GpsSignalFilter _gpsFilter = GpsSignalFilter();
   final PloggingSocketService _socketService = PloggingSocketService();
+  final PloggingService _ploggingService = PloggingService(); // [Added]
   final AuthService _authService = AuthService();
   final PartyService _partyService = PartyService();
   final RaidService _raidService = RaidService();
@@ -77,7 +80,13 @@ class _MapScreenState extends State<MapScreen> {
   Timer? _partyPollTimer;
   List<RaidBossModel> _raidBosses = [];
   List<TrashcanModel> _trashcans = [];
+
   PartyMemberLocation? _leaderLocation;
+  // [Added] All party members locations
+  final Map<String, PartyMemberLocation> _partyMemberLocations = {};
+
+  // [Added] Occupied Grids Map
+  Map<String, OccupiedGrid> _occupiedGridsMap = {};
 
   // --- Plogging Logic State ---
   String? _currentH3Index;
@@ -108,6 +117,21 @@ class _MapScreenState extends State<MapScreen> {
     const Color(0xFFF59E0B),
     const Color(0xFF6B7280),
   ];
+
+  Color _getColorForUser(String userId) {
+    if (userId == (AuthService.userId ?? '')) {
+      return _selectedGridColor;
+    }
+    final colors = [
+      Colors.blue,
+      Colors.green,
+      Colors.purple,
+      Colors.orange,
+      Colors.red,
+      Colors.teal,
+    ];
+    return colors[userId.hashCode.abs() % colors.length];
+  }
 
   // --- Stats ---
   final Stopwatch _sessionStopwatch = Stopwatch();
@@ -185,6 +209,8 @@ class _MapScreenState extends State<MapScreen> {
     await _initLocation();
     await _loadRaidBosses();
     await _setupSocketLogic(); // Generalize setup
+    await _setupSocketLogic(); // Generalize setup
+    await _loadOccupiedGrids(); // [Added] Fetch occupied grids
     if (widget.partyId != null) {
       await _loadPartyInfo();
     }
@@ -295,11 +321,17 @@ class _MapScreenState extends State<MapScreen> {
       _socketService.onMemberLocationUpdate = (memberLocation) {
         if (!mounted) return;
         setState(() {
-          _leaderLocation = memberLocation;
-          if (!_isLeader) {
-            _occupyProgress = memberLocation.occupyProgress;
-            _currentH3Index = memberLocation.currentH3Index;
-            _updateHexagons(_mapController.camera.visibleBounds);
+          // [Logic Change] Store all member locations
+          _partyMemberLocations[memberLocation.userId] = memberLocation;
+
+          // If this is leader's location update appropriate state
+          if (_party != null && memberLocation.userId == _party!.leaderId) {
+            _leaderLocation = memberLocation;
+            if (!_isLeader) {
+              _occupyProgress = memberLocation.occupyProgress;
+              _currentH3Index = memberLocation.currentH3Index;
+              _updateHexagons(_mapController.camera.visibleBounds);
+            }
           }
         });
       };
@@ -315,7 +347,7 @@ class _MapScreenState extends State<MapScreen> {
         AuthService.userId = userId;
       } catch (_) {}
     }
-    
+
     _socketService.connect(userId: userId, partyId: widget.partyId);
 
     // 4. 파티 폴링 (파티 모드일 때만)
@@ -332,6 +364,11 @@ class _MapScreenState extends State<MapScreen> {
       final p = await _partyService.getPartyDetail(widget.partyId!);
       if (!mounted) return;
       setState(() => _party = p);
+
+      // [Added] Check if party is already in progress and start plogging
+      if (p.status == 'IN_PROGRESS' && _phase == PloggingPhase.idle) {
+        _startPlogging();
+      }
     } catch (e) {
       debugPrint("Party load error: $e");
     }
@@ -357,13 +394,27 @@ class _MapScreenState extends State<MapScreen> {
     }
   }
 
+  // [Added] Load occupied grids from server
+  Future<void> _loadOccupiedGrids() async {
+    try {
+      final grids = await _ploggingService.getAllOccupiedGrids();
+      if (!mounted) return;
+      setState(() {
+        _occupiedGridsMap = {for (var g in grids) g.id: g};
+      });
+      debugPrint("✅ Loaded ${grids.length} occupied grids");
+    } catch (e) {
+      debugPrint("Failed to load occupied grids: $e");
+    }
+  }
+
   // ==========================================
   // Location & Map Logic
   // ==========================================
 
   void _centerToCurrentLocation() {
     if (_currentPosition != null) {
-      _mapController.move(_currentPosition!, 16.0);
+      _mapController.move(_currentPosition!, 15.0);
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("현위치를 찾을 수 없습니다. GPS를 확인해주세요.")),
@@ -404,7 +455,7 @@ class _MapScreenState extends State<MapScreen> {
     if (!_isInitialCenterSet &&
         _currentPosition != null &&
         _mapController.camera.zoom > 0) {
-      _mapController.move(_currentPosition!, 16.0);
+      _mapController.move(_currentPosition!, 15.0);
       _isInitialCenterSet = true;
     }
 
@@ -434,7 +485,7 @@ class _MapScreenState extends State<MapScreen> {
   void _sendLocation() {
     if (_currentPosition == null) return;
     final userId = AuthService.userId ?? '';
-    
+
     final locationRequest = LocationRequest(
       lat: _currentPosition!.latitude,
       lon: _currentPosition!.longitude,
@@ -470,14 +521,35 @@ class _MapScreenState extends State<MapScreen> {
     }
 
     // Hexagons
+    // Hexagons
     final List<String> h3Indices = _h3Service.getHexagonsInBounds(
       bounds.southWest,
       bounds.northEast,
     );
     if (h3Indices.isNotEmpty) {
-      final owners = await _h3Service.fetchHexagonOwners(h3Indices);
+      // final owners = await _h3Service.fetchHexagonOwners(h3Indices); // [Removed] API call overload
+      // Instead, we rely on _occupiedGridsMap loaded globally (and updated via WS ideally)
+
+      // Update local visible models based on map data
+      List<HexagonModel> visibleHexagons = [];
+      for (var index in h3Indices) {
+        if (_occupiedGridsMap.containsKey(index)) {
+          final grid = _occupiedGridsMap[index]!;
+          visibleHexagons.add(
+            HexagonModel(
+              h3Index: index,
+              ownerId: grid.userId,
+              color: 0, // Color handled in _generatePolygons
+            ),
+          );
+        } else {
+          // Empty grid
+          visibleHexagons.add(HexagonModel(h3Index: index, color: 0));
+        }
+      }
+
       if (mounted) {
-        _visibleHexagonModels = owners;
+        _visibleHexagonModels = visibleHexagons;
         _generatePolygons();
       }
     }
@@ -531,6 +603,27 @@ class _MapScreenState extends State<MapScreen> {
               ? Colors.transparent
               : Color(model.color).withOpacity(_gridOpacity);
 
+          // Determine Color & Border based on Occupation
+          if (_occupiedGridsMap.containsKey(model.h3Index)) {
+            final grid = _occupiedGridsMap[model.h3Index]!;
+            final ownerColor = _getColorForUser(grid.userId);
+
+            fillColor = ownerColor.withOpacity(_gridOpacity);
+
+            // Lock Logic
+            if (grid.userId != (AuthService.userId ?? '')) {
+              if (grid.isLocked) {
+                // Locked (Red/Darker border?)
+                // Or maybe hatch pattern? For now, red border.
+                // borderColor = Colors.red.withOpacity(0.8);
+                // Let's use darker shade of filling
+                fillColor = ownerColor.withOpacity(0.7); // Darker
+              } else {
+                // Claimable (Highlight?)
+              }
+            }
+          }
+
           // 현재 점령 중인 헥사곤 하이라이트
           bool isCurrentHexagon = model.h3Index == targetH3Index;
           if (isCurrentHexagon) {
@@ -542,13 +635,29 @@ class _MapScreenState extends State<MapScreen> {
                 Color.lerp(fillColor, targetColor, targetProgress) ?? fillColor;
           }
 
+          Color borderColor;
+          double borderStroke = 2.0;
+
+          if (isCurrentHexagon) {
+            borderColor = _selectedGridColor.withOpacity(0.9);
+            borderStroke = 4.0;
+          } else if (_occupiedGridsMap.containsKey(model.h3Index)) {
+            final grid = _occupiedGridsMap[model.h3Index]!;
+            if (grid.userId != (AuthService.userId ?? '') && grid.isLocked) {
+              // Locked grid border
+              borderColor = Colors.red.withOpacity(0.6); // Lock indicator
+            } else {
+              borderColor = Colors.black.withOpacity(0.2);
+            }
+          } else {
+            borderColor = Colors.black.withOpacity(0.4 * _gridOpacity);
+          }
+
           return Polygon(
             points: points,
             color: fillColor,
-            borderColor: isCurrentHexagon
-                ? Colors.white.withOpacity(0.9) // 현재 헥사곤: 흰색 테두리
-                : Colors.black.withOpacity(0.4 * _gridOpacity),
-            borderStrokeWidth: isCurrentHexagon ? 4.0 : 2.0, // 현재 헥사곤: 더 굵은 테두리
+            borderColor: borderColor,
+            borderStrokeWidth: borderStroke,
           );
         })
         .whereType<Polygon>()
@@ -741,8 +850,16 @@ class _MapScreenState extends State<MapScreen> {
 
   void _conquerHexagon(String h3Index) {
     final userId = AuthService.userId ?? "my_user_id";
-    final userColor = AuthService.userColor ?? 0x990000FF;
+    final userColor = AuthService.userColor ?? 0x990000FF; // Example color int
     _h3Service.occupyHexagon(h3Index, userId, userColor);
+
+    // [Added] Update local occupied grids map (Optimistic UI)
+    _occupiedGridsMap[h3Index] = OccupiedGrid(
+      id: h3Index,
+      userId: userId,
+      partyId: widget.partyId,
+      occupiedAt: DateTime.now(),
+    );
     _hexagonDistance = 0.0;
     _occupyProgress = 0.0;
     _coinsGained += 5;
@@ -929,10 +1046,7 @@ class _MapScreenState extends State<MapScreen> {
               Text(
                 content,
                 textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: Colors.black87,
-                  fontSize: 14,
-                ),
+                style: const TextStyle(color: Colors.black87, fontSize: 14),
               ),
               const SizedBox(height: 24),
               SizedBox(
@@ -976,11 +1090,7 @@ class _MapScreenState extends State<MapScreen> {
             children: [
               Row(
                 children: [
-                  const Icon(
-                    Pixel.trash,
-                    color: Color(0xFF17C964),
-                    size: 24,
-                  ),
+                  const Icon(Pixel.trash, color: Color(0xFF17C964), size: 24),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
@@ -1069,17 +1179,11 @@ class _MapScreenState extends State<MapScreen> {
             fontWeight: FontWeight.bold,
           ),
         ),
-        content: Text(
-          content,
-          style: const TextStyle(color: Colors.black),
-        ),
+        content: Text(content, style: const TextStyle(color: Colors.black)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text(
-              "확인",
-              style: TextStyle(color: Colors.black),
-            ),
+            child: const Text("확인", style: TextStyle(color: Colors.black)),
           ),
         ],
       ),
@@ -1103,17 +1207,11 @@ class _MapScreenState extends State<MapScreen> {
             fontWeight: FontWeight.bold,
           ),
         ),
-        content: Text(
-          content,
-          style: const TextStyle(color: Colors.black),
-        ),
+        content: Text(content, style: const TextStyle(color: Colors.black)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text(
-              "취소",
-              style: TextStyle(color: Colors.black),
-            ),
+            child: const Text("취소", style: TextStyle(color: Colors.black)),
           ),
           TextButton(
             onPressed: () {
@@ -1207,7 +1305,7 @@ class _MapScreenState extends State<MapScreen> {
         mapController: _mapController,
         options: MapOptions(
           initialCenter: const LatLng(37.5665, 126.9780),
-          initialZoom: 16.0,
+          initialZoom: 15.0,
           minZoom: 5.0,
           maxZoom: 19.0,
           onPositionChanged: _onMapPositionChanged,
@@ -1338,22 +1436,30 @@ class _MapScreenState extends State<MapScreen> {
       );
     }
 
-    // Leader Marker (if not me)
-    if (_leaderLocation != null && !_isLeader) {
+    // [Changed] Render all party members (except me)
+    _partyMemberLocations.forEach((userId, loc) {
+      if (userId == (AuthService.userId ?? '')) return; // Skip myself
+
       markers.add(
         Marker(
-          point: LatLng(_leaderLocation!.lat, _leaderLocation!.lon),
+          point: LatLng(loc.lat, loc.lon),
           width: 48,
           height: 48,
           child: Column(
             children: [
-              const Icon(Icons.stars, color: Colors.amber, size: 20),
-              PixelCharacter(size: 32, color: Colors.amber, isMoving: true),
+              // Show star for leader
+              if (_party?.leaderId == userId)
+                const Icon(Icons.stars, color: Colors.amber, size: 20),
+              PixelCharacter(
+                size: 32,
+                color: _getColorForUser(userId),
+                isMoving: true,
+              ),
             ],
           ),
         ),
       );
-    }
+    });
 
     // Status Label
     if (_shouldShowStatusLabel()) {
@@ -1696,10 +1802,10 @@ class _MapScreenState extends State<MapScreen> {
           child: Padding(
             // [UX Fix] Add padding for keyboard
             padding: EdgeInsets.fromLTRB(
-              32.0, 
-              32.0, 
-              32.0, 
-              32.0 + MediaQuery.of(context).viewInsets.bottom
+              32.0,
+              32.0,
+              32.0,
+              32.0 + MediaQuery.of(context).viewInsets.bottom,
             ),
             child: NesContainer(
               padding: const EdgeInsets.all(24),

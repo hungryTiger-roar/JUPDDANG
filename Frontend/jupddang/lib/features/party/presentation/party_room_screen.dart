@@ -99,9 +99,17 @@ class _PartyRoomScreenState extends State<PartyRoomScreen> {
   Future<void> _moveToMapScreen() async {
     setState(() => _starting = true);
     try {
+      // [Fix] Call backend API to start party
+      await _partyService.startParty(widget.partyId);
+
       // 시작 후 바로 플로깅 화면으로 이동
       if (mounted) {
         _pollTimer?.cancel();
+        // Also disconnect socket here as MapScreen will create a new one?
+        // Or keep it? Current logic says disconnect on line 41.
+        // But map screen does connect again.
+        _socketService.disconnect();
+
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
@@ -144,11 +152,7 @@ class _PartyRoomScreenState extends State<PartyRoomScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(
-                Pixel.coin,
-                color: Color(0xFFFBBF24),
-                size: 18,
-              ),
+              const Icon(Pixel.coin, color: Color(0xFFFBBF24), size: 18),
               const SizedBox(width: 8),
               const Text(
                 'PARTY BONUS',

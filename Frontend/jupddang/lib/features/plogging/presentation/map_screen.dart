@@ -29,6 +29,7 @@ import '../../raid/models/raid_models.dart';
 import '../../raid/data/raid_service.dart';
 import '../../raid/presentation/boss_detail_screen.dart';
 import '../../../widgets/animated_boss_widget.dart';
+import '../../../widgets/animated_otter_marker.dart';
 import '../../trashcan/data/trashcan_service.dart';
 import '../../trashcan/models/trashcan_model.dart';
 import 'package:jupddang/features/plogging/models/plogging_models.dart';
@@ -1445,16 +1446,15 @@ class _MapScreenState extends State<MapScreen> {
       ),
     );
 
-    // User Marker
+    // User Marker - 수달 GIF
     if (_currentPosition != null) {
       markers.add(
         Marker(
           point: _currentPosition!,
-          width: 48,
-          height: 48,
-          child: PixelCharacter(
-            size: 48,
-            color: _selectedGridColor,
+          width: 64,
+          height: 64,
+          child: AnimatedOtterMarker(
+            size: 64,
             isMoving: _isPlogging,
           ),
         ),
@@ -1712,7 +1712,7 @@ class _MapScreenState extends State<MapScreen> {
             QuestButton(
               isCompleted: _questCompleted,
               onTap: _openQuestModal,
-              isHighlighted: _showQuestTutorial,
+              isHighlighted: !_questCompleted, // 퀘스트 완료 전에는 항상 빛남
             ),
             const SizedBox(height: 12),
           ],

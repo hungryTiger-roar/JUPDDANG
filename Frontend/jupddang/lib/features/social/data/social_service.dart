@@ -65,6 +65,20 @@ class SocialService {
       rethrow;
     }
   }
+
+  // 게시글 상세 조회
+  Future<Map<String, dynamic>?> getPostById(String postId) async {
+    try {
+      final response = await _apiClient.dio.get('/posts/$postId');
+      if (response.data is Map) {
+        return response.data as Map<String, dynamic>;
+      }
+      return null;
+    } catch (e) {
+      print('Get Post By ID Error: $e');
+      return null;
+    }
+  }
   
   // 내 게시글 조회
   Future<List<dynamic>> getMyPosts() async {

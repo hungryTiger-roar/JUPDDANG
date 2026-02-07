@@ -21,6 +21,10 @@ public class MyCommentResponseDto {
     private String postContent;
     private LocalDateTime postCreatedAt;
 
+    // 게시글 작성자 정보
+    private String postUserId;
+    private String postProfileImage;
+
     public MyCommentResponseDto(Comment comment) {
         this.commentId = comment.getCommentId();
         this.content = comment.getContent();
@@ -30,6 +34,10 @@ public class MyCommentResponseDto {
         this.postTier = comment.getPost().getAccount().getTier(); // 게시글 작성자 티어 추가
         this.postContent = comment.getPost().getContent();
         this.postCreatedAt = comment.getPost().getCreatedAt();
+
+        // 게시글 작성자 정보 추가
+        this.postUserId = comment.getPost().getAccount().getUserId();
+        this.postProfileImage = comment.getPost().getAccount().getProfileImage();
     }
 
 }

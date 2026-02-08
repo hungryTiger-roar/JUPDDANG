@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // SystemChrome imports
 import 'package:nes_ui/nes_ui.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart'; // import 추가
 import 'features/auth/presentation/splash_screen.dart';
+import 'features/fcm/data/fcm_service.dart';
 
 // RouteObserver를 글로벌로 선언하여 화면 간 이동 감지
 final RouteObserver<PageRoute> routeObserver = RouteObserver<PageRoute>();
@@ -10,6 +12,8 @@ final RouteObserver<PageRoute> routeObserver = RouteObserver<PageRoute>();
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: ".env");
+  await Firebase.initializeApp();
+  await FcmService().initialize();
 
   // 가로 모드 방지 및 풀스크린 설정
   SystemChrome.setPreferredOrientations([

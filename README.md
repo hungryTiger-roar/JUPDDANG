@@ -1,6 +1,5 @@
 # 🌍 지구를 구하는 가장 즐거운 방법, 줍땅 (JUPDDANG)
 
-![Jupddang Logo](assets/images/logo.png) <!-- 로고 이미지 경로가 있다면 수정 필요 -->
 
 > **"플로깅(Plogging)을 게임처럼! 전 세계를 줍땅으로 만들어보세요."**
 
@@ -59,7 +58,7 @@
 
 ## 🏗️ 시스템 아키텍쳐 & ERD
 
-> *워크플로우, ERD, 시스템 아키텍쳐 다이어그램은 별도 문서로 관리됩니다.*
+
 
 ---
 
@@ -131,23 +130,3 @@ flutter pub get
 flutter build apk --release
 ```
 
----
-
-## 👨‍💻 팀원 소개
-
-| Role | Name | Link |
-|---|---|---|
-| **Leader / FE** | ... | [Github](https://github.com/...) |
-| **Backend** | ... | [Github](https://github.com/...) |
-| **Backend** | ... | [Github](https://github.com/...) |
-| **Frontend** | ... | [Github](https://github.com/...) |
-| **Frontend** | ... | [Github](https://github.com/...) |
-| **Infra / AI** | ... | [Github](https://github.com/...) |
-
----
-
-## 📝 라이선스
-This project is licensed under the ... License.
-
----
-Copyright © 2024 SSAFY 11th Gen - S14P11D208. All Rights Reserved.

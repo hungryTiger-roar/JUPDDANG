@@ -825,36 +825,56 @@ class _MapScreenState extends State<MapScreen> {
   // ==========================================
   // Occupation Logic (100m 거리 기반)
   // ==========================================
-
   /// 100m 거리 기반 점령 진행도 업데이트
   void _updateOccupyProgress() {
-    if (!_isLeader) return;
+    if (!_isLeader) {
+      return;
+    }
     if (!mounted) return;
-    if (_phase != PloggingPhase.plogging) return;
-    if (_currentH3Index == null) return;
+    if (_phase != PloggingPhase.plogging) {
+      return;
+    }
+    if (_currentH3Index == null) {
+      return;
+    }
 
     // 이미 점령된 땅인지 확인
-    final currentModel = _visibleHexagonModels.firstWhere(
-      (m) => m.h3Index == _currentH3Index,
-      orElse: () => HexagonModel(h3Index: _currentH3Index!, color: 0),
-    );
+    final isAlreadyOccupied = _occupiedGridsMap.containsKey(_currentH3Index);
 
-    if (currentModel.ownerId != null) {
-      // 이미 점령된 땅: 진행도 초기화
-      _occupyProgress = 0.0;
-      _hexagonDistance = 0.0;
-      _generatePolygons();
-      return;
+    if (isAlreadyOccupied) {
+      final grid = _occupiedGridsMap[_currentH3Index!]!;
+
+      // 🎯 내 땅이면 점령 로직 스킵 (이미 점령됨)
+      if (grid.userId == (AuthService.userId ?? '')) {
+        // 내 땅: 진행도 초기화하고 위치만 전송
+        _occupyProgress = 0.0;
+        _hexagonDistance = 0.0;
+        _sendLocation(); // 위치는 계속 전송
+        _generatePolygons();
+        return;
+      }
+
+      // 남의 땅: 점령 진행 허용 (서버에서 3시간 보호막 체크)
+      debugPrint(
+        '🔒 [Occupy] Enemy territory: ${grid.userId}, attempting capture...',
+      );
     }
 
     // 100m 기준 점령 진행도 계산
     _occupyProgress = (_hexagonDistance / 100.0).clamp(0.0, 1.0);
+
+    if (_occupyProgress > 0) {
+      debugPrint(
+        '📊 [Occupy] Progress: ${(_occupyProgress * 100).toInt()}% (${_hexagonDistance.toStringAsFixed(1)}m / 100m)',
+      );
+    }
 
     // 파티장/개인인 경우 위치 전송
     _sendLocation();
 
     // 100m 달성 시 점령 처리
     if (_hexagonDistance >= 100.0) {
+      debugPrint('🎉 [Occupy] 100m reached! Conquering hex: $_currentH3Index');
       _occupyProgress = 1.0;
       if (_currentH3Index != null) _conquerHexagon(_currentH3Index!);
     }
@@ -1453,10 +1473,7 @@ class _MapScreenState extends State<MapScreen> {
           point: _currentPosition!,
           width: 64,
           height: 64,
-          child: AnimatedOtterMarker(
-            size: 64,
-            isMoving: _isPlogging,
-          ),
+          child: AnimatedOtterMarker(size: 64, isMoving: _isPlogging),
         ),
       );
     }
@@ -2333,10 +2350,7 @@ class _MapScreenState extends State<MapScreen> {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            msg,
-            style: const TextStyle(color: Colors.white),
-          ),
+          content: Text(msg, style: const TextStyle(color: Colors.white)),
           backgroundColor: isError ? Colors.red : Colors.black87,
           duration: const Duration(seconds: 2),
         ),

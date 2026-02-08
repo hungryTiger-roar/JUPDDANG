@@ -77,6 +77,18 @@ public class PloggingServiceImpl implements PloggingService {
 
         validateCoordinate(request.getLat(), request.getLon());
 
+        // 🎯 [NEW] 프론트엔드에서 100% 점령 완료 신호가 오면 즉시 점령 처리
+        if (request.getOccupyProgress() != null && request.getOccupyProgress() >= 1.0 
+                && request.getCurrentH3Index() != null && !request.getCurrentH3Index().isEmpty()) {
+            log.info("🎯 프론트 점령 완료 감지: userId={}, h3Index={}", userId, request.getCurrentH3Index());
+            boolean success = handleOccupationAttempt(userId, request.getCurrentH3Index(), request.getPartyId());
+            if (success) {
+                redisRepository.addCapturedGrid(userId, request.getCurrentH3Index());
+                log.info("✅ 프론트 기반 점령 성공: {}", request.getCurrentH3Index());
+            }
+            // 점령 처리 후에도 나머지 로직 계속 실행 (위치 업데이트 등)
+        }
+
         Long partyId = request.getPartyId();
         boolean isLeader = false;
 

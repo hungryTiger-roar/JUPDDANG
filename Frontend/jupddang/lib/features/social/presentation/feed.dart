@@ -1,4 +1,4 @@
-import 'dart:io';
+﻿import 'dart:io';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:nes_ui/nes_ui.dart';
@@ -93,6 +93,31 @@ class _CommunityScreenState extends State<CommunityScreen> with RouteAware {
         curve: Curves.easeOut,
       );
     }
+  }
+
+  // Refresh posts and focus a specific post if provided (called from parent)
+  Future<void> refreshAndFocus(String? postId) async {
+    if (postId != null) {
+      _pendingFocusPostId = postId;
+      _showFollowingOnly = false;
+    }
+    await _loadPosts();
+  }
+
+  // Open comments modal for a specific post (called from parent)
+  Future<void> openCommentsByPostId(String postId) async {
+    _pendingFocusPostId = postId;
+    _showFollowingOnly = false;
+    await _loadPosts();
+    CommunityPost? target;
+    for (final post in _allPosts) {
+      if (post.id == postId) {
+        target = post;
+        break;
+      }
+    }
+    if (!mounted || target == null) return;
+    _showComments(target);
   }
 
   // 다른 화면에서 돌아올 때 호출됨 (댓글 삭제 후 돌아올 때)
@@ -307,26 +332,18 @@ class _CommunityScreenState extends State<CommunityScreen> with RouteAware {
       ploggingId: null,
     );
 
-    final newDraft = await Navigator.push<CommunityPostDraft>(
+    await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => CommunityComposeScreen(
           accounts: _accounts.isNotEmpty ? _accounts : [initialAccount],
           initialAccount: initialAccount,
           initialDraft: initialDraft,
+          onSubmit: _submitPost,
         ),
       ),
     );
 
-    // 작성 완료 후 돌아왔을 때 처리
-    if (newDraft != null) {
-      // 기존 임시 글 삭제
-      setState(() {
-        _localPosts.removeWhere((p) => p.id == post.id);
-      });
-      // 새 글 업로드 시도
-      await _submitPost(newDraft);
-    }
   }
 
   void _showComments(CommunityPost post) {
@@ -361,24 +378,19 @@ class _CommunityScreenState extends State<CommunityScreen> with RouteAware {
           ? _accounts.first
           : AccountSummary(userId: 'guest', nickname: 'Guest'),
     );
-    final draft = await Navigator.push<CommunityPostDraft>(
+    await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => CommunityComposeScreen(
           accounts: _accounts.isNotEmpty ? _accounts : [initialAccount],
           initialAccount: initialAccount,
+          onSubmit: _submitPost,
         ),
       ),
     );
-
-    if (draft == null) {
-      return;
-    }
-
-    await _submitPost(draft);
   }
 
-  Future<void> _submitPost(CommunityPostDraft draft) async {
+  Future<String?> _submitPost(CommunityPostDraft draft) async {
     try {
       // 이미지 경로를 개별 변수로 분리
       String? beforeImagePath;
@@ -409,8 +421,10 @@ class _CommunityScreenState extends State<CommunityScreen> with RouteAware {
         );
         _pendingFocusPostId = post.id;
         await _loadPosts();
+        return post.id;
       } else {
         await _loadPosts();
+        return null;
       }
     } catch (e) {
       setState(() {
@@ -421,6 +435,7 @@ class _CommunityScreenState extends State<CommunityScreen> with RouteAware {
           context,
         ).showSnackBar(const SnackBar(content: Text('서버 저장에 실패해 임시로 표시합니다.')));
       }
+      return null;
     }
   }
 
@@ -1667,3 +1682,6 @@ class _CommentBottomSheetState extends State<_CommentBottomSheet> {
     return palette[hash.abs() % palette.length];
   }
 }
+
+
+

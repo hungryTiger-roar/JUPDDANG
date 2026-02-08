@@ -14,12 +14,14 @@ class CommunityComposeScreen extends StatefulWidget {
   final List<AccountSummary> accounts;
   final AccountSummary? initialAccount;
   final CommunityPostDraft? initialDraft;
+  final Future<String?> Function(CommunityPostDraft draft)? onSubmit;
 
   const CommunityComposeScreen({
     super.key,
     required this.accounts,
     this.initialAccount,
     this.initialDraft,
+    this.onSubmit,
   });
 
   @override
@@ -549,7 +551,17 @@ class _CommunityComposeScreenState extends State<CommunityComposeScreen> {
       );
 
       if (!mounted) return;
-      Navigator.pop(context, draft);
+      if (widget.onSubmit != null) {
+        try {
+          await widget.onSubmit!(draft);
+          if (!mounted) return;
+          Navigator.pop(context);
+        } catch (e) {
+          _showMessage('게시글 업로드에 실패했습니다.');
+        }
+      } else {
+        Navigator.pop(context, draft);
+      }
     } finally {
       if (mounted) {
         setState(() => _submitting = false);

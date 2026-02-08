@@ -526,6 +526,182 @@ class _MapScreenState extends State<MapScreen> {
     _socketService.sendLocation(locationRequest);
   }
 
+  /// 🎯 맵 탭 시 해당 헥사곤의 점령자 정보 표시
+  void _onMapTapped(TapPosition tapPosition, LatLng tappedPoint) {
+    // 탭한 위치의 H3 인덱스 계산
+    final h3Index = _h3Service.latLngToH3(tappedPoint);
+    if (h3Index == null) return;
+
+    // 점령된 헥사곤인지 확인
+    if (_occupiedGridsMap.containsKey(h3Index)) {
+      final grid = _occupiedGridsMap[h3Index]!;
+      final isMyLand = grid.userId == (AuthService.userId ?? '');
+      final isLocked = grid.isLocked;
+
+      // 3시간 남은 시간 계산
+      String? remainingTime;
+      if (isLocked && !isMyLand) {
+        final unlockTime = grid.occupiedAt.add(const Duration(hours: 3));
+        final remaining = unlockTime.difference(DateTime.now());
+        if (remaining.isNegative) {
+          remainingTime = '점령 가능!';
+        } else {
+          final hours = remaining.inHours;
+          final minutes = remaining.inMinutes % 60;
+          remainingTime = '$hours시간 ${minutes}분 후 점령 가능';
+        }
+      }
+
+      _showHexagonOwnerDialog(
+        h3Index: h3Index,
+        ownerId: grid.userId,
+        isMyLand: isMyLand,
+        isLocked: isLocked,
+        occupiedAt: grid.occupiedAt,
+        remainingTime: remainingTime,
+      );
+    } else {
+      // 빈 땅 - 점령 가능
+      _snack('🌱 빈 땅입니다. 100m 이동하여 점령하세요!');
+    }
+  }
+
+  /// 점령자 정보 다이얼로그
+  void _showHexagonOwnerDialog({
+    required String h3Index,
+    required String ownerId,
+    required bool isMyLand,
+    required bool isLocked,
+    required DateTime occupiedAt,
+    String? remainingTime,
+  }) {
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: NesContainer(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // 타이틀
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    isMyLand
+                        ? Icons.home
+                        : (isLocked ? Icons.lock : Icons.lock_open),
+                    color: isMyLand
+                        ? Colors.green
+                        : (isLocked ? Colors.red : Colors.orange),
+                    size: 24,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    isMyLand ? '내 영토!' : '점령된 땅',
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+
+              // 소유자 정보
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.grey[100],
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          '👤 점령자:',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        Text(ownerId, style: const TextStyle(fontSize: 16)),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          '🕐 점령 시각:',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        Text(
+                          '${occupiedAt.month}/${occupiedAt.day} ${occupiedAt.hour.toString().padLeft(2, '0')}:${occupiedAt.minute.toString().padLeft(2, '0')}',
+                          style: const TextStyle(fontSize: 14),
+                        ),
+                      ],
+                    ),
+                    if (!isMyLand && remainingTime != null) ...[
+                      const SizedBox(height: 8),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            '⏰ 상태:',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          Text(
+                            remainingTime,
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: isLocked ? Colors.red : Colors.green,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // 안내 메시지
+              Text(
+                isMyLand
+                    ? '🏆 이 땅은 당신의 영토입니다!'
+                    : (isLocked
+                          ? '🔒 3시간 보호막이 적용중입니다.'
+                          : '⚔️ 100m 이동하여 점령을 시도할 수 있습니다!'),
+                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+
+              // 닫기 버튼
+              SizedBox(
+                width: double.infinity,
+                child: NesButton(
+                  type: NesButtonType.primary,
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Padding(
+                    padding: EdgeInsets.only(bottom: 4),
+                    child: Text(
+                      '확인',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   void _onMapPositionChanged(MapCamera camera, bool hasGesture) {
     if (camera.zoom < _minZoomLevel) {
       if (_hexagons.isNotEmpty) setState(() => _hexagons = []);
@@ -1363,6 +1539,7 @@ class _MapScreenState extends State<MapScreen> {
           minZoom: 5.0,
           maxZoom: 19.0,
           onPositionChanged: _onMapPositionChanged,
+          onTap: _onMapTapped, // 🎯 헥사곤 탭 시 점령자 정보 표시
           onMapReady: () {
             Future.delayed(const Duration(milliseconds: 500), () {
               if (mounted) _updateHexagons(_mapController.camera.visibleBounds);

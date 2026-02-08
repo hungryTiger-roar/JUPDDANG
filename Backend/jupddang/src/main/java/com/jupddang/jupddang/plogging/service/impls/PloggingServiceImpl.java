@@ -43,6 +43,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.HashMap;
+import java.util.HashSet;
 
 @Service
 @Slf4j
@@ -343,7 +344,7 @@ public class PloggingServiceImpl implements PloggingService {
         log.info("content : {}", request.content());
 
         // Redis에서 점령 그리드 조회
-        Set<String> capturedGrids = redisRepository.getCapturedGrids(userId);
+        Set<String> capturedGrids = new HashSet<>(redisRepository.getCapturedGrids(userId));
         
         // 🎯 [NEW] 프론트에서 보낸 점령 목록과 병합 (누락 방지)
         if (request.capturedGrids() != null && !request.capturedGrids().isEmpty()) {

@@ -548,7 +548,8 @@ public class PloggingServiceImpl implements PloggingService {
         int ploggingScore = calculatePloggingScore(
                 request.distance(),
                 request.times(),
-                occupiedCount);
+                occupiedCount,
+                request.partyId());
 
         // Plogging 저장 (TEMP 상태)
         Plogging savedPlogging = ploggingRepository.save(Plogging.builder()

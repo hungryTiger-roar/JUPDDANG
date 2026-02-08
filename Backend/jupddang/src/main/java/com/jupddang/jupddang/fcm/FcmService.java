@@ -21,39 +21,43 @@ public class FcmService {
 
     /**
      * FCM 토큰 저장/업데이트
+     * - 동일 토큰이 다른 사용자에 묶여 있으면 제거
      */
     @Transactional
     public void saveToken(FcmTokenRequest request, String userId) {
 
+        String token = request.getToken();
+        String deviceType = request.getDeviceType();
+
+        // 1. 이 토큰을 쓰고 있던 다른 사용자 기록 제거
+        fcmTokenRepository.deleteByToken(token);
+
+        // 2. 현재 사용자 + 디바이스 기준 조회
         FcmToken fcmToken = fcmTokenRepository
-                .findByUserIdAndDeviceType(userId, request.getDeviceType())
+                .findByUserIdAndDeviceType(userId, deviceType)
                 .orElse(null);
 
         if (fcmToken == null) {
-            // 신규 토큰 등록
+            // 신규 등록
             fcmToken = FcmToken.builder()
                     .userId(userId)
-                    .token(request.getToken())
-                    .deviceType(request.getDeviceType())
+                    .token(token)
+                    .deviceType(deviceType)
                     .build();
 
             fcmTokenRepository.save(fcmToken);
-            log.info("FCM 토큰 신규 등록: userId={}, deviceType={}",
-                    userId, request.getDeviceType());
 
-        } else if (!request.getToken().equals(fcmToken.getToken())) {
+            log.info("FCM 토큰 신규 등록: userId={}, deviceType={}", userId, deviceType);
 
-            // 토큰 변경 시에만 업데이트
-            fcmToken.updateToken(request.getToken());
+        } else if (!token.equals(fcmToken.getToken())) {
+            // 토큰 변경
+            fcmToken.updateToken(token);
 
-            log.info("FCM 토큰 변경: userId={}, deviceType={}",
-                    userId, request.getDeviceType());
+            log.info("FCM 토큰 변경: userId={}, deviceType={}", userId, deviceType);
 
         } else {
-            // 토큰 동일 - 아무것도 안 함
             log.info("FCM 토큰 동일 (업데이트 스킵): userId={}", userId);
         }
-
     }
 
     /**
@@ -175,6 +179,22 @@ public class FcmService {
 
         String title = commenterName + "님이 내 게시글에 댓글을 남겼습니다";
         String body = commentPreview;  // 댓글 내용
+
+        sendNotificationToUser(targetUserId, title, body, data);
+    }
+
+    /**
+     * 팔로우 추가 알림
+     */
+    public void sendFollowNotification(String targetUserId, String followerUserId, String followerNickname) {
+
+        Map<String, String> data = new HashMap<>();
+        data.put("type", "FOLLOW");
+        data.put("followerId", followerUserId);
+        data.put("followerNickname", followerNickname);
+
+        String title = "팔로우 추가 알림";
+        String body = followerNickname + "님이 나를 팔로우 했습니다.";
 
         sendNotificationToUser(targetUserId, title, body, data);
     }

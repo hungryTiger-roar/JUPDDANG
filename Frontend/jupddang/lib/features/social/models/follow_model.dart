@@ -1,4 +1,3 @@
-//화현: 팔로우 사용자 모델
 class FollowUser {
   final String userId;
   final String nickname;

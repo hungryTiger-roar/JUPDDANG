@@ -337,7 +337,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  // 화현: 로그아웃 다이얼로그
+  // 로그아웃 다이얼로그
   void _showLogoutDialog(BuildContext context) {
     showDialog(
       context: context,

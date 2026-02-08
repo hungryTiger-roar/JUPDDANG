@@ -2,14 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:pixelarticons/pixelarticons.dart';
 import '../../../services/auth_service.dart';
 import 'package:jupddang/features/social/models/follow_model.dart';
-import '../../account/presentation/profile_screen.dart'; //화현이: 프로필 화면 import 추가
+import '../../account/presentation/profile_screen.dart';
 import '../../../core/utils/tier_utils.dart';
 import '../../ranking/data/ranking_service.dart';
 
 //화련 팔로우 리스트 스크린
 class FollowListScreen extends StatefulWidget {
   final String userId;
-  final int initialTab; // 0=팔로잉, 1=팔로워
+  final int initialTab; // 0=팔로워, 1=팔로잉
 
   const FollowListScreen({
     super.key,
@@ -30,9 +30,13 @@ class _FollowListScreenState extends State<FollowListScreen>
   List<FollowUser> _followingList = [];
   List<FollowUser> _followersList = [];
   bool _loading = true;
-  //화현: 팔로잉 중인 유저 ID 추적
+  // 팔로잉 중인 유저 ID 추적
   final Set<String> _followingIds = {};
   Set<String> _totalTop3UserIds = {}; // 누적 랭킹 top 3 userId 저장
+
+  // 검색
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
 
   @override
   void initState() {
@@ -64,6 +68,7 @@ class _FollowListScreenState extends State<FollowListScreen>
   @override
   void dispose() {
     _tabController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -172,33 +177,6 @@ class _FollowListScreenState extends State<FollowListScreen>
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Text('FOLLOWING'),
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF17C964),
-                            border: Border.all(color: Colors.black, width: 2),
-                          ),
-                          child: Text(
-                            _followingList.length.toString(),
-                            style: const TextStyle(
-                              color: Colors.black,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Tab(
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
                         const Text('FOLLOWERS'),
                         const SizedBox(width: 8),
                         Container(
@@ -222,11 +200,78 @@ class _FollowListScreenState extends State<FollowListScreen>
                       ],
                     ),
                   ),
+                  Tab(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Text('FOLLOWING'),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF17C964),
+                            border: Border.all(color: Colors.black, width: 2),
+                          ),
+                          child: Text(
+                            _followingList.length.toString(),
+                            style: const TextStyle(
+                              color: Colors.black,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ),
 
-            const SizedBox(height: 20),
+            const SizedBox(height: 12),
+
+            // 검색바
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  border: Border.all(color: Colors.black, width: 3),
+                  boxShadow: const [
+                    BoxShadow(color: Colors.black, offset: Offset(3, 3)),
+                  ],
+                ),
+                child: TextField(
+                  controller: _searchController,
+                  onChanged: (value) => setState(() => _searchQuery = value),
+                  style: const TextStyle(color: Colors.black, fontSize: 14),
+                  decoration: InputDecoration(
+                    hintText: '닉네임 또는 아이디 검색...',
+                    hintStyle: const TextStyle(color: Colors.black38),
+                    prefixIcon: const Icon(Pixel.search, color: Colors.black38, size: 20),
+                    suffixIcon: _searchQuery.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Pixel.close, size: 18, color: Colors.black38),
+                            onPressed: () {
+                              _searchController.clear();
+                              setState(() => _searchQuery = '');
+                            },
+                          )
+                        : null,
+                    border: InputBorder.none,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 12,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 12),
 
             // Tab Content
             Expanded(
@@ -239,8 +284,8 @@ class _FollowListScreenState extends State<FollowListScreen>
                   : TabBarView(
                       controller: _tabController,
                       children: [
-                        _buildFollowList(_followingList, 'FOLLOWING'),
-                        _buildFollowList(_followersList, 'FOLLOWERS'),
+                        _buildFollowList(_filteredList(_followersList), 'FOLLOWERS'),
+                        _buildFollowList(_filteredList(_followingList), 'FOLLOWING'),
                       ],
                     ),
             ),
@@ -248,6 +293,16 @@ class _FollowListScreenState extends State<FollowListScreen>
         ),
       ),
     );
+  }
+
+  List<FollowUser> _filteredList(List<FollowUser> users) {
+    if (_searchQuery.isEmpty) return users;
+    final query = _searchQuery.toLowerCase();
+    return users
+        .where((u) =>
+            u.nickname.toLowerCase().contains(query) ||
+            u.userId.toLowerCase().contains(query))
+        .toList();
   }
 
   Widget _buildFollowList(List<FollowUser> users, String type) {
@@ -303,7 +358,7 @@ class _FollowListScreenState extends State<FollowListScreen>
           ),
           child: Row(
             children: [
-              //화현이: 아바타와 사용자 정보 클릭 시 프로필 화면으로 이동
+              //아바타와 사용자 정보 클릭 시 프로필 화면으로 이동
               Expanded(
                 child: GestureDetector(
                   onTap: () {
@@ -370,7 +425,7 @@ class _FollowListScreenState extends State<FollowListScreen>
                                   child: Text(
                                     user.nickname.toUpperCase(),
                                     style: const TextStyle(
-                                      color: Colors.white,
+                                      color: Colors.black,
                                       fontSize: 14,
                                       fontWeight: FontWeight.w900,
                                     ),

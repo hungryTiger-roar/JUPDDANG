@@ -41,7 +41,7 @@ class BeginnerGuideScreen extends StatelessWidget {
             // Section 1: 게임 소개
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -49,12 +49,15 @@ class BeginnerGuideScreen extends StatelessWidget {
                     const SizedBox(height: 8),
                     NesContainer(
                       padding: const EdgeInsets.all(16),
-                      child: const Text(
-                        'JupDDang은 플로깅(Plogging)을 즐기면서\n'
-                        '다른 유저들과 경쟁하는 땅따먹기 게임입니다!\n\n'
-                        '산책하면서 쓰레기를 줍는 즐거운 활동으로\n'
-                        '환경도 지키고 땅을 획득해보세요!',
-                        style: TextStyle(fontSize: 14, height: 1.7, color: Colors.black),
+                      child: const SizedBox(
+                        width: double.infinity,
+                        child: Text(
+                          'JupDDang은 플로깅(Plogging)을 즐기면서\n'
+                          '다른 유저들과 경쟁하는 땅따먹기 게임입니다!\n\n'
+                          '산책하면서 쓰레기를 줍는 즐거운 활동으로\n'
+                          '환경도 지키고 땅을 획득해보세요!',
+                          style: TextStyle(fontSize: 14, height: 1.7, color: Colors.black),
+                        ),
                       ),
                     ),
                   ],
@@ -62,35 +65,45 @@ class BeginnerGuideScreen extends StatelessWidget {
               ),
             ),
 
-            // Section 2: 점수 시스템
+            // Section 2: 지구력(Earth Power)이란?
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _sectionTitle('점수 시스템', Pixel.coin),
+                    _sectionTitle('지구력(Earth Power)이란?', Pixel.zap),
                     const SizedBox(height: 8),
                     NesContainer(
                       padding: const EdgeInsets.all(16),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: const [
+                          Text(
+                            '나의 지구력(Endurance)을 길러 지구(Earth)를 지키는 힘!',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF17C964),
+                              height: 1.5,
+                            ),
+                          ),
+                          SizedBox(height: 12),
                           _GuideItem(
                             icon: Pixel.camera,
-                            text: '전/후 사진을 찍어 인증하면 점수 획득',
+                            text: '인증: 쓰레기를 줍고 사진을 찍으면 지구력이 상승해요.',
                             textColor: Colors.black,
                           ),
                           SizedBox(height: 10),
                           _GuideItem(
                             icon: Pixel.users,
-                            text: '파티 참여 시 보너스 점수 추가 지급',
+                            text: '파티: 함께하면 더 큰 지구력을 모을 수 있어요.',
                             textColor: Colors.black,
                           ),
                           SizedBox(height: 10),
                           _GuideItem(
                             icon: Pixel.trophy,
-                            text: '점수를 모아 더 높은 티어로 승급하세요!',
+                            text: '티어: 지구력이 높을수록 더 높은 명예를 얻습니다.',
                             textColor: Colors.black,
                           ),
                         ],
@@ -108,7 +121,7 @@ class BeginnerGuideScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _sectionTitle('티어', Pixel.moonstars),
+                    _sectionTitle('티어 소개', Pixel.moonstars),
                     const SizedBox(height: 8),
                     NesContainer(
                       padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
@@ -244,7 +257,7 @@ class _TierTableHeader extends StatelessWidget {
           Expanded(
             flex: 4,
             child: Text(
-              '점수 범위 (P)',
+              '지구력 범위 (EP)',
               style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13, color: Colors.black),
               textAlign: TextAlign.right,
             ),

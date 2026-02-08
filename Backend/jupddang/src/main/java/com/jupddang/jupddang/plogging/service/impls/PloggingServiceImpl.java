@@ -2,6 +2,7 @@ package com.jupddang.jupddang.plogging.service.impls;
 
 import com.jupddang.jupddang.account.entity.Account;
 import com.jupddang.jupddang.account.repository.AccountRepository;
+import com.jupddang.jupddang.fcm.FcmService;
 import com.jupddang.jupddang.plogging.domain.Grids;
 import com.jupddang.jupddang.plogging.domain.Plogging;
 import com.jupddang.jupddang.plogging.domain.PloggingStatus;
@@ -59,6 +60,7 @@ public class PloggingServiceImpl implements PloggingService {
     private final RaidService raidService;
     private final PostRepository postRepository;
     private final GcsImageService gcsImageService;
+    private final FcmService fcmService;
 
     // [변경된 로직 1] H3 Resolution 9
     private static final int H3_RESOLUTION = 9;
@@ -364,6 +366,21 @@ public class PloggingServiceImpl implements PloggingService {
 
         // 게시글 작성 성공 이후 플로깅 기록 상태 변경
         savedPlogging.markAsUsed();
+
+        try {
+            fcmService.sendPloggingCompletedNotification(
+                    userId,
+                    request.recordTitle(),
+                    request.distance(),
+                    request.times(),
+                    ploggingScore,
+                    LocalDateTime.now()
+            );
+            log.info("플로깅 완료 알림 전송 성공: userId={}", userId);
+        } catch (Exception e) {
+            log.error("플로깅 완료 알림 전송 실패: userId={}, error={}", userId, e.getMessage());
+            // 알림 실패해도 플로깅 완료 처리는 계속 진행
+        }
 
         PloggingCompletedEvent event = PloggingCompletedEvent.builder()
                 .ploggingId(savedPlogging.getId())

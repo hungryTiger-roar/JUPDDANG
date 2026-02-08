@@ -309,43 +309,43 @@ class _ProfileScreenState extends State<ProfileScreen> with WidgetsBindingObserv
               child: CircularProgressIndicator(color: Color(0xFF17C964)),
             )
           : SafeArea(
-              child: CustomScrollView(
-                slivers: [
-                  // Header with back button
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.all(20),
-                      child: Row(
-                        children: [
-                          GestureDetector(
-                            onTap: () => Navigator.pop(context),
-                            child: NesButton(
-                              type: NesButtonType.normal,
-                              onPressed: () => Navigator.pop(context),
-                              child: const Icon(
-                                Pixel.arrowleft,
-                                color: Colors.black,
-                                size: 24,
-                              ),
-                            ),
-                          ),
-                          const Spacer(),
-                          Text(
-                            widget.userId.toUpperCase(),
-                            style: const TextStyle(
+              child: Column(
+                children: [
+                  // Fixed Header
+                  Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Row(
+                      children: [
+                        GestureDetector(
+                          onTap: () => Navigator.pop(context),
+                          child: NesButton(
+                            type: NesButtonType.normal,
+                            onPressed: () => Navigator.pop(context),
+                            child: const Icon(
+                              Pixel.arrowleft,
                               color: Colors.black,
-                              fontSize: 20,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: 1.5,
+                              size: 24,
                             ),
                           ),
-                          const Spacer(),
-                          const SizedBox(width: 40), // Balance the back button
-                        ],
-                      ),
+                        ),
+                        const Spacer(),
+                        Text(
+                          widget.userId.toUpperCase(),
+                          style: const TextStyle(
+                            color: Colors.black,
+                            fontSize: 20,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 1.5,
+                          ),
+                        ),
+                        const Spacer(),
+                        const SizedBox(width: 40),
+                      ],
                     ),
                   ),
-
+                  Expanded(
+                    child: CustomScrollView(
+                      slivers: [
                   // Profile Header
                   SliverToBoxAdapter(
                     child: Padding(
@@ -420,6 +420,9 @@ class _ProfileScreenState extends State<ProfileScreen> with WidgetsBindingObserv
                   ),
 
                   const SliverToBoxAdapter(child: SizedBox(height: 60)),
+                ],
+              ),
+            ),
                 ],
               ),
             ),
@@ -537,7 +540,7 @@ class _ProfileScreenState extends State<ProfileScreen> with WidgetsBindingObserv
                               MaterialPageRoute(
                                 builder: (context) => FollowListScreen(
                                   userId: widget.userId,
-                                  initialTab: 1, // 팔로워 탭으로 시작
+                                  initialTab: 0, // 팔로워 탭으로 시작
                                 ),
                               ),
                             );
@@ -551,7 +554,7 @@ class _ProfileScreenState extends State<ProfileScreen> with WidgetsBindingObserv
                               MaterialPageRoute(
                                 builder: (context) => FollowListScreen(
                                   userId: widget.userId,
-                                  initialTab: 0, // 팔로잉 탭으로 시작
+                                  initialTab: 1, // 팔로잉 탭으로 시작
                                 ),
                               ),
                             );

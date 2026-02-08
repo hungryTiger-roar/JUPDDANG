@@ -230,13 +230,18 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
+      resizeToAvoidBottomInset: true,
       body: _loading
           ? const Center(
               child: CircularProgressIndicator(color: Color(0xFF17C964)),
             )
           : SafeArea(
-              child: CustomScrollView(
-                slivers: [
+              bottom: false,
+              child: Column(
+                children: [
+                  Expanded(
+                    child: CustomScrollView(
+                      slivers: [
                   // Header
                   SliverToBoxAdapter(
                     child: Padding(
@@ -425,13 +430,26 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                             // 계정 삭제 섹션
                             _buildSectionTitle('계정 삭제'),
                             const SizedBox(height: 8),
-                            Text(
-                              '회원 탈퇴 시 모든 데이터가 영구 삭제되며 복구할 수 없습니다.',
-                              style: TextStyle(
-                                color: Colors.red.shade700,
-                                fontSize: 13,
-                                height: 1.4,
-                              ),
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Icon(
+                                  Pixel.alert,
+                                  size: 16,
+                                  color: Colors.red.shade700,
+                                ),
+                                const SizedBox(width: 6),
+                                Expanded(
+                                  child: Text(
+                                    '회원 탈퇴 시 모든 데이터가 영구 삭제되며 복구할 수 없습니다.',
+                                    style: TextStyle(
+                                      color: Colors.red.shade700,
+                                      fontSize: 13,
+                                      height: 1.4,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                             const SizedBox(height: 12),
                             SizedBox(
@@ -461,45 +479,47 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     ),
                   ),
 
-                  const SliverToBoxAdapter(child: SizedBox(height: 100)),
+                  const SliverToBoxAdapter(child: SizedBox(height: 20)),
                 ],
               ),
             ),
-      bottomNavigationBar: _loading
-          ? null
-          : Container(
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                border: Border(
-                  top: BorderSide(color: Colors.black, width: 4),
-                ),
-              ),
-              padding: const EdgeInsets.all(20),
-              child: SafeArea(
-                child: NesButton(
-                  type: NesButtonType.success,
-                  onPressed: _saving ? null : _saveChanges,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          _saving ? Pixel.hourglass : Pixel.check,
-                          size: 20,
-                        ),
-                        const SizedBox(width: 12),
-                        Text(
-                          _saving ? 'SAVING...' : 'SAVE CHANGES',
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
+                  Container(
+                    decoration: const BoxDecoration(
+                      color: Colors.white,
+                      border: Border(
+                        top: BorderSide(color: Colors.black, width: 4),
+                      ),
+                    ),
+                    padding: const EdgeInsets.all(20),
+                    child: SafeArea(
+                      top: false,
+                      child: NesButton(
+                        type: NesButtonType.success,
+                        onPressed: _saving ? null : _saveChanges,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                _saving ? Pixel.hourglass : Pixel.check,
+                                size: 20,
+                              ),
+                              const SizedBox(width: 12),
+                              Text(
+                                _saving ? 'SAVING...' : 'SAVE CHANGES',
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                      ],
+                      ),
                     ),
                   ),
-                ),
+                ],
               ),
             ),
     );

@@ -118,16 +118,6 @@ class _RankingScreenState extends State<RankingScreen> {
                                   ),
                                 ),
                               ],
-                              // // 1등과 4등 사이가 멀면 점선 표시
-                              // if (myRankWindow.isNotEmpty &&
-                              //     myRankWindow.first.rank > 4)
-                              //   const Padding(
-                              //     padding: EdgeInsets.symmetric(vertical: 8),
-                              //     child: Icon(
-                              //       Icons.more_vert,
-                              //       color: Colors.black26,
-                              //     ),
-                              //   ),
 
                               // 내 주변 리스트
                               ...myRankWindow.map(
@@ -170,9 +160,18 @@ class _RankingScreenState extends State<RankingScreen> {
             ),
           ),
           const SizedBox(height: 4),
-          Text(
-            _isTotal ? 'TOTAL BEST PLAYERS' : 'MONTHLY BEST PLAYERS',
-            style: const TextStyle(color: Colors.black54, fontSize: 11),
+          Center(
+            child: Text(
+              _isTotal ? 'TOTAL BEST PLAYERS' : 'MONTHLY BEST PLAYERS',
+              style: const TextStyle(color: Colors.black54, fontSize: 11),
+            ),
+          ),
+          const SizedBox(height: 2),
+          const Center(
+            child: Text(
+              '최고의 지구력을 보여준 러너들',
+              style: TextStyle(color: Colors.black38, fontSize: 10),
+            ),
           ),
         ],
       ),
@@ -183,6 +182,7 @@ class _RankingScreenState extends State<RankingScreen> {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 0),
       child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
           _filterChip('TOTAL', _isTotal, () {
             if (!_isTotal) {
@@ -434,7 +434,7 @@ class _RankingScreenState extends State<RankingScreen> {
               ),
             ),
             Text(
-              '${ranker.score} P',
+              '${ranker.score} EP',
               style: const TextStyle(
                 color: Color(0xFF17C964),
                 fontWeight: FontWeight.w900,

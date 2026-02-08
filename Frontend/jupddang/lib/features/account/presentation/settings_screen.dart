@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:nes_ui/nes_ui.dart';
 import '../../auth/presentation/splash_screen.dart';
 import 'package:pixelarticons/pixelarticons.dart';
@@ -6,6 +6,7 @@ import 'profile_screen.dart';
 import 'edit_profile_screen.dart';
 import '../../../services/auth_service.dart';
 import '../../social/presentation/my_comments_screen.dart';
+import 'beginner_guide_screen.dart';
 import '../../fcm/data/fcm_service.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -34,7 +35,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     const Text(
                       'SETTINGS',
                       style: TextStyle(
-                        color: Colors.white,
+                        color: Colors.black,
                         fontSize: 28,
                         fontWeight: FontWeight.w900,
                         letterSpacing: 2.0,
@@ -43,7 +44,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     const SizedBox(height: 6),
                     const Text(
                       'MANAGE YOUR ACCOUNT',
-                      style: TextStyle(color: Colors.white70, fontSize: 12),
+                      style: TextStyle(color: Colors.black54, fontSize: 12),
                     ),
                   ],
                 ),
@@ -131,7 +132,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               ),
                               const SizedBox(height: 4),
                               const Text(
-                                'View Profile',
+                                '내 프로필 보기',
                                 style: TextStyle(
                                   color: Color(0xFF17C964),
                                   fontSize: 12,
@@ -208,6 +209,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             builder: (context) => MyCommentsScreen(
                               userId: AuthService.userId ?? 'Guest',
                             ),
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    // 초보자 가이드
+                    _settingTileHorizontal(
+                      context,
+                      icon: Pixel.book,
+                      label: '초보자 가이드',
+                      color: const Color(0xFFA855F7),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const BeginnerGuideScreen(),
                           ),
                         );
                       },
@@ -322,7 +339,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  // 화현: 로그아웃 다이얼로그
+  // 로그아웃 다이얼로그
   void _showLogoutDialog(BuildContext context) {
     showDialog(
       context: context,
@@ -349,7 +366,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 NesButton(
                   type: NesButtonType.normal,
                   onPressed: () => Navigator.pop(context),
-                  child: const Text('Cancel'),
+                  child: const Text(
+                      'Cancel',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
                 ),
                 const SizedBox(width: 16),
                 NesButton(

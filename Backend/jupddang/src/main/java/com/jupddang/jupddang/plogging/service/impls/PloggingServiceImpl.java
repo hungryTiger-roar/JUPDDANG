@@ -2,6 +2,7 @@ package com.jupddang.jupddang.plogging.service.impls;
 
 import com.jupddang.jupddang.account.entity.Account;
 import com.jupddang.jupddang.account.repository.AccountRepository;
+import com.jupddang.jupddang.fcm.FcmService;
 import com.jupddang.jupddang.plogging.domain.Grids;
 import com.jupddang.jupddang.plogging.domain.Plogging;
 import com.jupddang.jupddang.plogging.domain.PloggingStatus;
@@ -59,6 +60,7 @@ public class PloggingServiceImpl implements PloggingService {
     private final RaidService raidService;
     private final PostRepository postRepository;
     private final GcsImageService gcsImageService;
+    private final FcmService fcmService;
 
     // [변경된 로직 1] H3 Resolution 9
     private static final int H3_RESOLUTION = 9;
@@ -74,6 +76,18 @@ public class PloggingServiceImpl implements PloggingService {
                 request.getCurrentH3Index(), request.getOccupyProgress());
 
         validateCoordinate(request.getLat(), request.getLon());
+
+        // 🎯 [NEW] 프론트엔드에서 100% 점령 완료 신호가 오면 즉시 점령 처리
+        if (request.getOccupyProgress() != null && request.getOccupyProgress() >= 1.0 
+                && request.getCurrentH3Index() != null && !request.getCurrentH3Index().isEmpty()) {
+            log.info("🎯 프론트 점령 완료 감지: userId={}, h3Index={}", userId, request.getCurrentH3Index());
+            boolean success = handleOccupationAttempt(userId, request.getCurrentH3Index(), request.getPartyId());
+            if (success) {
+                redisRepository.addCapturedGrid(userId, request.getCurrentH3Index());
+                log.info("✅ 프론트 기반 점령 성공: {}", request.getCurrentH3Index());
+            }
+            // 점령 처리 후에도 나머지 로직 계속 실행 (위치 업데이트 등)
+        }
 
         Long partyId = request.getPartyId();
         boolean isLeader = false;
@@ -109,7 +123,16 @@ public class PloggingServiceImpl implements PloggingService {
 
         // 여기서부터는 솔로 플로깅 or 파티장만 실행
         try {
-            String currentH3 = h3Core.latLngToCellAddress(request.getLat(), request.getLon(), H3_RESOLUTION);
+            // 1. H3 Index 변환 (안전장치 추가)
+            String currentH3;
+            try {
+                currentH3 = h3Core.latLngToCellAddress(request.getLat(), request.getLon(), H3_RESOLUTION);
+            } catch (Exception e) {
+                log.warn("H3 Index 변환 실패 (좌표: {}, {}): {}", request.getLat(), request.getLon(), e.getMessage());
+                // 변환 실패 시 로직 중단하고 리턴 (서버 에러 아님)
+                return;
+            }
+
             UserPloggingStatus lastStatus = redisRepository.getUserState(userId);
             long currentTime = System.currentTimeMillis();
 
@@ -201,8 +224,7 @@ public class PloggingServiceImpl implements PloggingService {
             String currentH3 = h3Core.latLngToCellAddress(
                     request.getLat(),
                     request.getLon(),
-                    H3_RESOLUTION
-            );
+                    H3_RESOLUTION);
 
             long currentTime = System.currentTimeMillis();
             UserPloggingStatus lastStatus = redisRepository.getUserState(userId);
@@ -214,8 +236,7 @@ public class PloggingServiceImpl implements PloggingService {
                         lastStatus.lastLat(),
                         lastStatus.lastLon(),
                         request.getLat(),
-                        request.getLon()
-                );
+                        request.getLon());
             }
 
             double newTotalDistance = (lastStatus != null ? lastStatus.totalDistance() : 0.0) + dist;
@@ -227,9 +248,9 @@ public class PloggingServiceImpl implements PloggingService {
                     request.getLon(),
                     newTotalDistance,
                     currentTime,
-                    false  // 파티원은 점령 안 함
+                    false // 파티원은 점령 안 함
             ));
-            
+
             // [추가] 파티원들에게 내 위치 전송 (Broadcasting)
             if (request.getPartyId() != null) {
                 broadcastLocation(request.getPartyId(), userId, request, newTotalDistance);
@@ -291,7 +312,7 @@ public class PloggingServiceImpl implements PloggingService {
     private void broadcastLocation(Long partyId, String userId, LocationRequest request, double totalDistance) {
         try {
             int occupiedCount = redisRepository.getCapturedCount(userId);
-            
+
             PartyMemberLocationResponse response = PartyMemberLocationResponse.builder()
                     .userId(userId)
                     .lat(request.getLat())
@@ -358,12 +379,26 @@ public class PloggingServiceImpl implements PloggingService {
                 .beforeImageUrl(beforeUrl)
                 .afterImageUrl(afterUrl)
                 .mapImageUrl(mapUrl)
-                .content(finalContent)  // 기록 정보 포함된 content
+                .content(finalContent) // 기록 정보 포함된 content
                 .likeCount(0)
                 .build());
 
         // 게시글 작성 성공 이후 플로깅 기록 상태 변경
         savedPlogging.markAsUsed();
+
+        try {
+            fcmService.sendPloggingCompletedNotification(
+                    userId,
+                    request.recordTitle(),
+                    request.distance(),
+                    request.times(),
+                    ploggingScore,
+                    LocalDateTime.now());
+            log.info("플로깅 완료 알림 전송 성공: userId={}", userId);
+        } catch (Exception e) {
+            log.error("플로깅 완료 알림 전송 실패: userId={}, error={}", userId, e.getMessage());
+            // 알림 실패해도 플로깅 완료 처리는 계속 진행
+        }
 
         PloggingCompletedEvent event = PloggingCompletedEvent.builder()
                 .ploggingId(savedPlogging.getId())
@@ -388,8 +423,7 @@ public class PloggingServiceImpl implements PloggingService {
                 request.distance(),
                 request.recordTitle(),
                 occupiedCount,
-                totalRaidScore
-        );
+                totalRaidScore);
     }
 
     private int calculatePloggingScore(Double distance, Integer times, int occupiedCount) {
@@ -407,7 +441,8 @@ public class PloggingServiceImpl implements PloggingService {
 
     private void validateCoordinate(Double lat, Double lon) {
         if (lat == null || lon == null || lat < -90 || lat > 90 || lon < -180 || lon > 180) {
-            throw new PloggingException(PloggingErrorCode.INVALID_COORDINATE);
+            // throw new PloggingException(PloggingErrorCode.INVALID_COORDINATE);
+            log.warn("⚠️ 이상한 좌표 감지 (무시함): lat={}, lon={}", lat, lon);
         }
     }
 
@@ -464,9 +499,9 @@ public class PloggingServiceImpl implements PloggingService {
     public PloggingTempSaveResponse savePloggingTemp(
             String userId,
             PloggingEndRequest request,
-            MultipartFile before,  //
-            MultipartFile after,   //
-            MultipartFile map) {   // 맵은 필수
+            MultipartFile before, //
+            MultipartFile after, //
+            MultipartFile map) { // 맵은 필수
 
         log.info("임시 저장 시작: userId={}", userId);
 
@@ -474,8 +509,7 @@ public class PloggingServiceImpl implements PloggingService {
         boolean isPartyPlogging = request.partyId() != null;
         if (!isPartyPlogging) {
             boolean hasActiveParty = partyMemberRepository.existsByUserIdAndParty_Status(
-                    userId, PartyStatus.IN_PROGRESS
-            );
+                    userId, PartyStatus.IN_PROGRESS);
             if (hasActiveParty) {
                 throw new PloggingException(PloggingErrorCode.PARTY_ACTIVE_BLOCKS_SOLO);
             }
@@ -491,8 +525,7 @@ public class PloggingServiceImpl implements PloggingService {
         int ploggingScore = calculatePloggingScore(
                 request.distance(),
                 request.times(),
-                occupiedCount
-        );
+                occupiedCount);
 
         // Plogging 저장 (TEMP 상태)
         Plogging savedPlogging = ploggingRepository.save(Plogging.builder()
@@ -575,8 +608,7 @@ public class PloggingServiceImpl implements PloggingService {
                 request.distance(),
                 request.recordTitle(),
                 occupiedCount,
-                totalRaidScore
-        );
+                totalRaidScore);
     }
 
     /**
@@ -598,8 +630,7 @@ public class PloggingServiceImpl implements PloggingService {
                 plogging.getAfterImageUrl(),
                 plogging.getMapImageUrl(),
                 plogging.getContent(),
-                plogging.getCreatedAt()
-        );
+                plogging.getCreatedAt());
     }
 
     /**
@@ -610,8 +641,7 @@ public class PloggingServiceImpl implements PloggingService {
 
         List<Plogging> tempPloggings = ploggingRepository.findByAccountUserIdAndStatusOrderByCreatedAtDesc(
                 userId,
-                PloggingStatus.TEMP
-        );
+                PloggingStatus.TEMP);
 
         return tempPloggings.stream()
                 .map(p -> new PloggingTempDetailResponse(
@@ -624,8 +654,7 @@ public class PloggingServiceImpl implements PloggingService {
                         p.getAfterImageUrl(),
                         p.getMapImageUrl(),
                         p.getContent(),
-                        p.getCreatedAt()
-                ))
+                        p.getCreatedAt()))
                 .toList();
     }
 

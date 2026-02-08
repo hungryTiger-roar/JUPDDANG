@@ -55,3 +55,4 @@ Backend/jupddang/src/main/resources/gcp-credentials.json
 
 # 백엔드 테스트 파일 무시
 Backend/jupddang/src/test/
+Backend/jupddang/src/main/resources/fcm/jupddang-f0415-firebase-adminsdk-fbsvc-03245914b8.json

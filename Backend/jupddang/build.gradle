@@ -86,6 +86,9 @@ dependencies {
 
     // HTTP 클라이언트 (Gemini API 호출용)
     implementation 'org.springframework.boot:spring-boot-starter-webflux'
+
+    // Firebase Admin SDK
+    implementation 'com.google.firebase:firebase-admin:9.2.0'
 }
 
 // 컴파일 인코딩 설정

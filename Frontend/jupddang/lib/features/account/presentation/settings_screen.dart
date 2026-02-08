@@ -7,6 +7,7 @@ import 'edit_profile_screen.dart';
 import '../../../services/auth_service.dart';
 import '../../social/presentation/my_comments_screen.dart';
 import 'beginner_guide_screen.dart';
+import '../../fcm/data/fcm_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -16,6 +17,7 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
+  final FcmService _fcmService = FcmService();
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -372,18 +374,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 const SizedBox(width: 16),
                 NesButton(
                   type: NesButtonType.warning,
-                  onPressed: () {
+                  onPressed: () async {
                     Navigator.pop(context);
+                    try {
+                      await _fcmService.deleteTokenOnLogout();
+                    } catch (_) {}
                     // JWT 토큰 삭제 및 정보 초기화
                     AuthService.accessToken = null;
                     AuthService.userId = null;
                     AuthService.nickname = null;
+                    if (!context.mounted) return;
                     // 스플래시 화면으로 이동 (뒤로가기 방지)
-                    Navigator.of(context).pushAndRemoveUntil(
+                    Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
                       MaterialPageRoute(
                         builder: (context) => const SplashScreen(),
                       ),
-                          (route) => false,
+                      (route) => false,
                     );
                   },
                   child: const Text(

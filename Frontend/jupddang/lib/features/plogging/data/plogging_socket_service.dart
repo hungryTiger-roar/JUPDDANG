@@ -199,24 +199,21 @@ class PloggingSocketService {
   void sendLocation(LocationRequest request) {
     if (_client == null || !isConnected) return;
 
-    final partyId = _isIndividual ? 0 : request.partyId;
+    // 🎯 백엔드 @MessageMapping("/plogging/track")에 맞게 수정
+    // 기존: /pub/plogging/location 또는 /pub/plogging/location/party/$partyId
+    // 수정: /pub/plogging/track (백엔드 엔드포인트와 일치)
+    const String destination = '/pub/plogging/track';
 
-    // Party sends to /pub/plogging/location/party/$partyId
-    // Individual sends to /pub/plogging/location (Assumed)
+    Map<String, dynamic> payload = request.toJson();
 
-    String destination;
+    // 개인 플로깅인 경우 partyId를 null로 설정 (백엔드에서 null 체크)
     if (_isIndividual) {
-      destination = '/pub/plogging/location';
-      // Ensure payload has partyId: 0
-      Map<String, dynamic> payload = request.toJson();
-      payload['partyId'] = 0;
-      _client!.send(destination: destination, body: jsonEncode(payload));
-    } else {
-      destination = '/pub/plogging/location/party/$partyId';
-      _client!.send(
-        destination: destination,
-        body: jsonEncode(request.toJson()),
-      );
+      payload['partyId'] = null;
     }
+
+    _client!.send(destination: destination, body: jsonEncode(payload));
+    debugPrint(
+      '📡 Location sent to $destination: lat=${request.lat}, lon=${request.lon}, h3=${request.currentH3Index}',
+    );
   }
 }

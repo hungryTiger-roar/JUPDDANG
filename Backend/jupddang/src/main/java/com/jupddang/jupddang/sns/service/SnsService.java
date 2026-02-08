@@ -1,6 +1,7 @@
 package com.jupddang.jupddang.sns.service;
 
 import com.jupddang.jupddang.common.infrastructure.storage.GcsImageService;
+import com.jupddang.jupddang.fcm.FcmService;
 import com.jupddang.jupddang.follow.repository.FollowRepository;
 import com.jupddang.jupddang.plogging.domain.Plogging;
 import com.jupddang.jupddang.plogging.domain.event.PloggingCompletedEvent;
@@ -38,6 +39,7 @@ public class SnsService {
     private final AccountRepository accountRepository;
     private final FollowRepository followRepository;
     private final PloggingRepository ploggingRepository;
+    private final FcmService fcmService;
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handlePloggingCompleted(PloggingCompletedEvent event) {
@@ -109,6 +111,22 @@ public class SnsService {
                 .account(account)
                 .content(requestDto.getContent())
                 .build();
+
+        String postAuthorId = post.getAccount().getUserId();
+
+        if (!postAuthorId.equals(comment.getAccount().getUserId())) {
+            try {
+                fcmService.sendCommentNotification(
+                        postAuthorId,
+                        comment.getAccount().getNickname(),  // 또는 getNickname()
+                        postId,
+                        comment.getContent()
+                );
+                log.info("댓글 알림 전송: postId={}", postId);
+            } catch (Exception e) {
+                log.error("댓글 알림 실패: {}", e.getMessage());
+            }
+        }
 
         return commentRepository.save(comment).getCommentId();
     }

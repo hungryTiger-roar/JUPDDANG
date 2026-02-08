@@ -31,6 +31,8 @@ public class FollowController {
         String result = followService.toggleFollow(loginUser.getUserId(), targetId);
         return ResponseEntity.ok(result);
     }
+
+
     @GetMapping("/followings/{userId}")
     @Operation(summary = "팔로잉 목록 조회", description = "특정 유저가 팔로우하는 유저 목록을 조회합니다.")
     public ResponseEntity<List<FollowResponse>> getFollowings(@PathVariable String userId) {

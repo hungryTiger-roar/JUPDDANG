@@ -1,9 +1,12 @@
+﻿import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:jupddang/features/plogging/presentation/map_screen.dart';
 import 'package:jupddang/features/ranking/presentation/ranking_screen.dart';
 import 'package:jupddang/features/social/presentation/feed.dart';
+import 'package:jupddang/features/fcm/data/fcm_service.dart';
 import 'package:jupddang/features/party/presentation/party_screen.dart';
 import 'package:jupddang/features/account/presentation/settings_screen.dart';
+import 'package:jupddang/features/account/presentation/profile_screen.dart';
 import '../../../widgets/custom_bottom_navbar.dart';
 
 class MainScreen extends StatefulWidget {
@@ -18,6 +21,26 @@ class _MainScreenState extends State<MainScreen> {
   dynamic _ploggingResult; // 🎯 플로깅 결과 저장
   final GlobalKey<NavigatorState> _mapNavigatorKey = GlobalKey<NavigatorState>(); // 🎯 맵 네비게이터 키
   final GlobalKey<State<CommunityScreen>> _communityKey = GlobalKey<State<CommunityScreen>>(); // 🎯 커뮤니티 스크롤 제어용
+  StreamSubscription<Map<String, dynamic>>? _notificationSub;
+
+  @override
+  void initState() {
+    super.initState();
+    final fcm = FcmService();
+    _notificationSub = fcm.notificationTapStream.listen(_handleNotificationTap);
+    final pending = fcm.consumePendingTapData();
+    if (pending != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _handleNotificationTap(pending);
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _notificationSub?.cancel();
+    super.dispose();
+  }
 
   void _onItemTapped(int index) async {
     // 🎯 커뮤니티 탭을 다시 누르면 스크롤을 맨 위로 이동
@@ -52,7 +75,73 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   // 🎯 플로깅 결과 설정 메서드 (MapScreen에서 호출)
-  void _setPloggingResult(dynamic result) {
+  Future<void> _handleNotificationTap(Map<String, dynamic> data) async {
+    final type = data['type']?.toString();
+    if (type == 'NEW_COMMENT') {
+      final postId = data['postId']?.toString();
+      await _focusCommunityPost(postId);
+      if (postId != null) {
+        final communityState = _communityKey.currentState;
+        if (communityState != null) {
+          WidgetsBinding.instance.addPostFrameCallback((_) async {
+            try {
+              await (communityState as dynamic).openCommentsByPostId(postId);
+            } catch (_) {}
+          });
+        }
+      }
+      return;
+    }
+    if (type == 'FOLLOW' || type == 'NEW_FOLLOWER' || type == 'FOLLOWER_ADDED') {
+      final followerId =
+          data['followerId']?.toString() ??
+          data['fromUserId']?.toString() ??
+          data['userId']?.toString() ??
+          data['targetId']?.toString();
+      if (followerId != null && followerId.isNotEmpty) {
+        if (!mounted) return;
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => ProfileScreen(userId: followerId),
+          ),
+        );
+      } else {
+        await _focusCommunityPost(null);
+      }
+      return;
+    }
+    if (type == 'PLOGGING_COMPLETE') {
+      final postId = data['postId']?.toString();
+      await _focusCommunityPost(postId);
+      return;
+    }
+    await _focusCommunityPost(null);
+  }
+
+  Future<void> _focusCommunityPost(String? postId) async {
+    final communityState = _communityKey.currentState;
+    if (communityState != null) {
+      try {
+        await (communityState as dynamic).refreshAndFocus(postId);
+      } catch (_) {}
+    }
+    if (!mounted) return;
+    setState(() {
+      _ploggingResult = postId;
+      _selectedIndex = 0;
+    });
+  }
+
+  Future<void> _setPloggingResult(dynamic result) async {
+    final String? postId = result is String ? result as String? : null;
+    final communityState = _communityKey.currentState;
+    if (communityState != null) {
+      try {
+        await (communityState as dynamic).refreshAndFocus(postId);
+      } catch (_) {}
+    }
+
+    if (!mounted) return;
     setState(() {
       _ploggingResult = result;
       _selectedIndex = 0; // 커뮤니티 탭으로 자동 이동
@@ -89,3 +178,9 @@ class _MainScreenState extends State<MainScreen> {
     );
   }
 }
+
+
+
+
+
+

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:nes_ui/nes_ui.dart';
 import '../../../services/auth_service.dart';
 import '../../home/presentation/main_screen.dart';
+import '../../fcm/data/fcm_service.dart';
 import '../../../widgets/pixel_button.dart';
 import '../../../widgets/nes_input_field.dart';
 import 'package:pixelarticons/pixelarticons.dart';
@@ -17,6 +18,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _idController = TextEditingController();
   final _pwController = TextEditingController();
   final AuthService _authService = AuthService();
+  final FcmService _fcmService = FcmService();
   bool _isLoading = false;
 
   Future<void> _login() async {
@@ -39,6 +41,14 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       final response = await _authService.login(id, pw);
       print("Login Success: $response");
+
+      final userId = AuthService.userId;
+      if (userId != null && userId.isNotEmpty) {
+        final token = await _fcmService.getToken();
+        if (token != null) {
+          await _fcmService.sendTokenToServer(token: token);
+        }
+      }
 
       if (!mounted) return;
 

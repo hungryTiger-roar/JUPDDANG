@@ -2067,7 +2067,9 @@ class _MapScreenState extends State<MapScreen> {
         Navigator.of(context).popUntil((route) => route.isFirst);
     } catch (e) {
       if (mounted) Navigator.pop(context);
-      _showAlertDialog("임시 저장 실패", "$e");
+      debugPrint('SAVE TEMP ERROR: $e');
+      _showNesAlertDialog("임시 저장 실패", "$e");
+      _snack("임시 저장 실패: $e", isError: true);
     }
   }
 
@@ -2329,10 +2331,15 @@ class _MapScreenState extends State<MapScreen> {
 
   void _snack(String msg, {bool isError = false}) {
     if (mounted) {
-      NesSnackbar.show(
-        context,
-        text: msg,
-        type: isError ? NesSnackbarType.error : NesSnackbarType.normal,
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            msg,
+            style: const TextStyle(color: Colors.white),
+          ),
+          backgroundColor: isError ? Colors.red : Colors.black87,
+          duration: const Duration(seconds: 2),
+        ),
       );
     }
   }

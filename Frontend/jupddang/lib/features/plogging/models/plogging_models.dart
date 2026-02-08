@@ -7,6 +7,7 @@ class PloggingEndRequest {
   final int? partyId;
   final String? recordTitle;
   final int? score;
+  final List<String>? capturedGrids; // 🎯 [NEW] 점령한 헥사곤 H3 인덱스 목록
 
   PloggingEndRequest({
     this.ploggingId,
@@ -17,6 +18,7 @@ class PloggingEndRequest {
     this.partyId,
     this.recordTitle,
     this.score,
+    this.capturedGrids,
   });
 
   Map<String, dynamic> toJson() => {
@@ -28,6 +30,8 @@ class PloggingEndRequest {
     if (partyId != null) 'partyId': partyId,
     if (recordTitle != null) 'recordTitle': recordTitle,
     if (score != null) 'score': score,
+    if (capturedGrids != null && capturedGrids!.isNotEmpty)
+      'capturedGrids': capturedGrids,
   };
 }
 
@@ -54,7 +58,8 @@ class TempPloggingRequest {
     if (times != null) 'times': times,
     if (endTime != null) 'endTime': endTime,
     if (partyId != null) 'partyId': partyId,
-    if (recordTitle != null && recordTitle!.isNotEmpty) 'recordTitle': recordTitle,
+    if (recordTitle != null && recordTitle!.isNotEmpty)
+      'recordTitle': recordTitle,
   };
 }
 
@@ -97,6 +102,4 @@ class PloggingTempDetailResponse {
       createdAt: DateTime.tryParse(json['createdAt']?.toString() ?? ''),
     );
   }
-
-
 }

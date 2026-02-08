@@ -8,7 +8,8 @@ class ApiClient {
   late final Dio dio;
 
   // [TODO] 환경 변수나 설정 파일로 분리 추천
-  static final String baseUrl = dotenv.env['API_URL'] ?? 'https://i14d208.p.ssafy.io/dev-api/api';
+  static final String baseUrl =
+      dotenv.env['API_URL'] ?? 'https://i14d208.p.ssafy.io/dev-api/api';
 
   String? _accessToken;
 

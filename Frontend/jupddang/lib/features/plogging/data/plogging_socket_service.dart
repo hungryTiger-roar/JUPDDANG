@@ -21,6 +21,8 @@ class PloggingSocketService {
 
   // Party-Specific Callbacks
   Function(List<PartyActivity>)? onActivitiesUpdated;
+  Function()? onFinish;
+  Function()? onExit;
   Function(String)? onStatusUpdated;
   Function(PartyMemberLocation)? onLeaderLocationUpdated;
 
@@ -117,6 +119,24 @@ class PloggingSocketService {
         },
       );
 
+      // 3. Party Finish Notification
+      _client!.subscribe(
+        destination: '/sub/party/$_currentPartyId/finish',
+        callback: (frame) {
+          debugPrint('🏁 Party Finished Signal!');
+          onFinish?.call();
+        },
+      );
+
+      // 4. Party Exit Notification (Forced Exit after Publish)
+      _client!.subscribe(
+        destination: '/sub/party/$_currentPartyId/exit',
+        callback: (frame) {
+          debugPrint('🚪 Party Exit Signal!');
+          onExit?.call();
+        },
+      );
+
       // 3. Leader Location
       _client!.subscribe(
         destination: '/sub/party/$_currentPartyId/leader',
@@ -194,6 +214,29 @@ class PloggingSocketService {
       _client = null;
     }
     isConnected = false;
+  }
+
+  // [New] 파티 종료 신호 직접 전송 (백엔드 재시작 불필요 가능성)
+  void sendFinishSignal() {
+    if (_client == null || !isConnected || _currentPartyId == null) return;
+
+    // Try sending directly to the subscription topic
+    _client!.send(
+      destination: '/sub/party/$_currentPartyId/finish',
+      body: jsonEncode({'type': 'FINISH', 'senderId': _currentUserId}),
+    );
+    debugPrint(
+      "🚀 Socket: Sent Finish Signal Directly to /sub/party/$_currentPartyId/finish",
+    );
+  }
+
+  // [New] 파티 완전 종료(나가기) 신호 전송
+  void sendExitSignal() {
+    if (_client == null || !isConnected || _currentPartyId == null) return;
+    _client!.send(
+      destination: '/sub/party/$_currentPartyId/exit',
+      body: jsonEncode({'type': 'EXIT', 'senderId': _currentUserId}),
+    );
   }
 
   void sendLocation(LocationRequest request) {

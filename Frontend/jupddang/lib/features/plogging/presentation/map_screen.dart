@@ -906,6 +906,14 @@ class _MapScreenState extends State<MapScreen> {
       partyId: widget.partyId,
       occupiedAt: DateTime.now(),
     );
+
+    // 🎯 [IMPORTANT] 점령 완료 신호를 서버에 명시적으로 전송!
+    // occupyProgress = 1.0을 보내야 백엔드가 점령 처리함
+    _occupyProgress = 1.0; // 임시로 1.0 설정
+    _sendLocation(); // 서버에 전송
+    debugPrint('🚀 [Conquer] Sent occupyProgress=1.0 for hex: $h3Index');
+
+    // 이제 값 초기화
     _hexagonDistance = 0.0;
     _occupyProgress = 0.0;
     _coinsGained += 5;
@@ -2001,6 +2009,15 @@ class _MapScreenState extends State<MapScreen> {
 
     _showLoading(const Color(0xFF17C964));
     try {
+      // 🎯 점령한 헥사곤 목록 수집 (이번 세션에서 점령한 것들)
+      final capturedGridsList = _occupiedGridsMap.entries
+          .where((e) => e.value.userId == (AuthService.userId ?? ''))
+          .map((e) => e.key)
+          .toList();
+      debugPrint(
+        '📦 [Publish] Sending ${capturedGridsList.length} captured grids: $capturedGridsList',
+      );
+
       final request = PloggingEndRequest(
         distance: _totalDistance / 1000.0,
         content: _descriptionController.text.trim(),
@@ -2010,6 +2027,7 @@ class _MapScreenState extends State<MapScreen> {
         partyId: widget.partyId,
         recordTitle: _recordTitleController.text.trim(),
         score: _coinsGained,
+        capturedGrids: capturedGridsList, // 🎯 점령 목록 추가
       );
 
       final response = await _authService.endPlogging(

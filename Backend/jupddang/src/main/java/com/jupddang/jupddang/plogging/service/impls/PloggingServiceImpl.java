@@ -341,8 +341,22 @@ public class PloggingServiceImpl implements PloggingService {
         log.info("distance : {}", request.distance());
         log.info("content : {}", request.content());
 
+        // Redis에서 점령 그리드 조회
         Set<String> capturedGrids = redisRepository.getCapturedGrids(userId);
+        
+        // 🎯 [NEW] 프론트에서 보낸 점령 목록과 병합 (누락 방지)
+        if (request.capturedGrids() != null && !request.capturedGrids().isEmpty()) {
+            log.info("📦 프론트에서 받은 점령 그리드: {}", request.capturedGrids());
+            capturedGrids.addAll(request.capturedGrids());
+            
+            // 프론트에서 받은 그리드들을 DB에 저장 (아직 없으면)
+            for (String h3Index : request.capturedGrids()) {
+                handleOccupationAttempt(userId, h3Index, request.partyId());
+            }
+        }
+        
         int occupiedCount = capturedGrids.size();
+        log.info("🎯 총 점령 그리드 수: {}", occupiedCount);
 
         int ploggingScore = calculatePloggingScore(request.distance(), request.times(), occupiedCount);
 

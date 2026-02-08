@@ -2,6 +2,7 @@ package com.jupddang.jupddang.plogging.dto.request;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import java.time.LocalDateTime;
+import java.util.List;
 
 public record PloggingEndRequest(
                 Long ploggingId,
@@ -11,7 +12,9 @@ public record PloggingEndRequest(
                 String recordTitle,
                 Long partyId,
                 Integer score,
-                @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss") LocalDateTime endTime // 종료 시각
+                @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss") LocalDateTime endTime, // 종료 시각
+                List<String> capturedGrids // 🎯 [NEW] 점령한 헥사곤 H3 인덱스 목록
 ) {
 
 }
+

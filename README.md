@@ -58,7 +58,7 @@
 
 ## 🏗️ 시스템 아키텍쳐 & ERD
 
-
+![시스템 아키텍쳐](system_architecture.png)
 
 ---
 

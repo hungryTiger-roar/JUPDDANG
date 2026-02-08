@@ -61,6 +61,9 @@
 ![시스템 아키텍쳐](system_architecture.png)
 
 ---
+![ERD](ERD.png)
+
+---
 
 ## 🚀 빌드 및 실행 가이드 (Exec)
 

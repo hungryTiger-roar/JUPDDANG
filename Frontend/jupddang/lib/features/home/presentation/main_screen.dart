@@ -6,6 +6,7 @@ import 'package:jupddang/features/social/presentation/feed.dart';
 import 'package:jupddang/features/fcm/data/fcm_service.dart';
 import 'package:jupddang/features/party/presentation/party_screen.dart';
 import 'package:jupddang/features/account/presentation/settings_screen.dart';
+import 'package:jupddang/features/account/presentation/profile_screen.dart';
 import '../../../widgets/custom_bottom_navbar.dart';
 
 class MainScreen extends StatefulWidget {
@@ -92,7 +93,21 @@ class _MainScreenState extends State<MainScreen> {
       return;
     }
     if (type == 'FOLLOW' || type == 'NEW_FOLLOWER' || type == 'FOLLOWER_ADDED') {
-      await _focusCommunityPost(null);
+      final followerId =
+          data['followerId']?.toString() ??
+          data['fromUserId']?.toString() ??
+          data['userId']?.toString() ??
+          data['targetId']?.toString();
+      if (followerId != null && followerId.isNotEmpty) {
+        if (!mounted) return;
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => ProfileScreen(userId: followerId),
+          ),
+        );
+      } else {
+        await _focusCommunityPost(null);
+      }
       return;
     }
     if (type == 'PLOGGING_COMPLETE') {

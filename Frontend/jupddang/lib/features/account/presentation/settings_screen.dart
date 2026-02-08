@@ -363,12 +363,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     AuthService.accessToken = null;
                     AuthService.userId = null;
                     AuthService.nickname = null;
+                    if (!context.mounted) return;
                     // 스플래시 화면으로 이동 (뒤로가기 방지)
-                    Navigator.of(context).pushAndRemoveUntil(
+                    Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
                       MaterialPageRoute(
                         builder: (context) => const SplashScreen(),
                       ),
-                          (route) => false,
+                      (route) => false,
                     );
                   },
                   child: const Text(

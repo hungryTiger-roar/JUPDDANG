@@ -4,6 +4,7 @@ import '../../../services/auth_service.dart';
 import 'package:jupddang/features/social/models/follow_model.dart';
 import '../../account/presentation/profile_screen.dart'; //화현이: 프로필 화면 import 추가
 import '../../../core/utils/tier_utils.dart';
+import '../../ranking/data/ranking_service.dart';
 
 //화련 팔로우 리스트 스크린
 class FollowListScreen extends StatefulWidget {
@@ -24,12 +25,14 @@ class _FollowListScreenState extends State<FollowListScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final AuthService _authService = AuthService();
+  final RankingService _rankingService = RankingService();
 
   List<FollowUser> _followingList = [];
   List<FollowUser> _followersList = [];
   bool _loading = true;
   //화현: 팔로잉 중인 유저 ID 추적
   final Set<String> _followingIds = {};
+  Set<String> _totalTop3UserIds = {}; // 누적 랭킹 top 3 userId 저장
 
   @override
   void initState() {
@@ -39,7 +42,23 @@ class _FollowListScreenState extends State<FollowListScreen>
       vsync: this,
       initialIndex: widget.initialTab,
     );
+    _loadTopRanking(); // 누적 랭킹 top 3 로드
     _loadFollowData();
+  }
+
+  // 누적 랭킹 top 3 userId 로드
+  Future<void> _loadTopRanking() async {
+    try {
+      final totalRanking = await _rankingService.getTotalRanking();
+      setState(() {
+        _totalTop3UserIds = totalRanking.topRankers
+            .take(3)
+            .map((ranker) => ranker.userId)
+            .toSet();
+      });
+    } catch (e) {
+      print('❌ Failed to fetch total ranking for legend badges: $e');
+    }
   }
 
   @override
@@ -337,7 +356,9 @@ class _FollowListScreenState extends State<FollowListScreen>
                                   Padding(
                                     padding: const EdgeInsets.only(right: 4),
                                     child: Image.asset(
-                                      TierUtils.getTierBadgePath(user.tier),
+                                      _totalTop3UserIds.contains(user.userId)
+                                          ? TierUtils.getTierBadgePath('legend')
+                                          : TierUtils.getTierBadgePath(user.tier),
                                       width: 24,
                                       height: 24,
                                       errorBuilder: (context, error, stackTrace) {

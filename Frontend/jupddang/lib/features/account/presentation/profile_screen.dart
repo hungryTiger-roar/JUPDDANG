@@ -12,8 +12,9 @@ import '../../ranking/data/ranking_service.dart';
 
 class ProfileScreen extends StatefulWidget {
   final String userId;
+  final String? focusPostId; // 특정 게시글로 스크롤
 
-  const ProfileScreen({super.key, required this.userId});
+  const ProfileScreen({super.key, required this.userId, this.focusPostId});
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
@@ -46,11 +47,18 @@ class _ProfileScreenState extends State<ProfileScreen> with WidgetsBindingObserv
   bool _isGridView = true; // 그리드/피드 뷰 토글
   final Set<String> _likedPostIds = {}; // 좋아요한 게시글 ID
   Set<String> _totalTop3UserIds = {}; // 누적 랭킹 top 3 userId 저장
+  String? _pendingFocusPostId; // 포커스할 게시글 ID
+  final Map<String, GlobalKey> _postKeys = {}; // 게시글별 키
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _pendingFocusPostId = widget.focusPostId;
+    // focusPostId가 있으면 피드 뷰로 시작
+    if (_pendingFocusPostId != null) {
+      _isGridView = false;
+    }
     _loadTopRanking(); // 누적 랭킹 top 3 로드
     _loadProfile();
   }
@@ -193,6 +201,9 @@ class _ProfileScreenState extends State<ProfileScreen> with WidgetsBindingObserv
         _myPosts = userPosts;
         _loadingPosts = false;
       });
+
+      // 특정 게시글로 포커스
+      _focusPostIfNeeded();
     } catch (e) {
       setState(() => _loading = false);
       if (mounted) {
@@ -216,6 +227,31 @@ class _ProfileScreenState extends State<ProfileScreen> with WidgetsBindingObserv
     } catch (e) {
       print('❌ Failed to fetch total ranking for legend badges: $e');
     }
+  }
+
+  // 특정 게시글로 스크롤
+  void _focusPostIfNeeded() {
+    final targetId = _pendingFocusPostId;
+    if (targetId == null) return;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final key = _postKeys[targetId];
+      final ctx = key?.currentContext;
+      if (ctx == null) return;
+
+      Scrollable.ensureVisible(
+        ctx,
+        duration: const Duration(milliseconds: 350),
+        curve: Curves.easeOut,
+        alignment: 0.1,
+      );
+      _pendingFocusPostId = null;
+    });
+  }
+
+  // 게시글 키 생성
+  GlobalKey _ensurePostKey(String postId) {
+    return _postKeys.putIfAbsent(postId, () => GlobalKey());
   }
 
   // 팔로우/언팔로우 토글 함수
@@ -851,8 +887,10 @@ class _ProfileScreenState extends State<ProfileScreen> with WidgetsBindingObserv
     final String currentUserId = AuthService.userId?.toString() ?? '';
     final String postUserId = post.userId?.toString() ?? '';
     final isMine = postUserId.isNotEmpty && postUserId == currentUserId;
+    final cardKey = _ensurePostKey(post.id);
 
     return Padding(
+      key: cardKey,
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       child: NesContainer(
         padding: EdgeInsets.zero,
@@ -878,8 +916,8 @@ class _ProfileScreenState extends State<ProfileScreen> with WidgetsBindingObserv
                       );
                     },
                     child: Container(
-                      width: 36,
-                      height: 36,
+                      width: 37,
+                      height: 37,
                       decoration: BoxDecoration(
                         color: Colors.white,
                         border: Border.all(color: Colors.black, width: 2.0),
@@ -892,7 +930,7 @@ class _ProfileScreenState extends State<ProfileScreen> with WidgetsBindingObserv
                                 errorBuilder: (context, error, stackTrace) {
                                   return Center(
                                     child: PixelCharacter(
-                                      size: 24,
+                                      size: 32,
                                       color: _getColorForNickname(post.nickname),
                                     ),
                                   );
@@ -901,7 +939,7 @@ class _ProfileScreenState extends State<ProfileScreen> with WidgetsBindingObserv
                             )
                           : Center(
                               child: PixelCharacter(
-                                size: 24,
+                                size: 32,
                                 color: _getColorForNickname(post.nickname),
                               ),
                             ),
@@ -921,10 +959,10 @@ class _ProfileScreenState extends State<ProfileScreen> with WidgetsBindingObserv
                                   _totalTop3UserIds.contains(post.userId)
                                       ? TierUtils.getTierBadgePath('legend')
                                       : TierUtils.getTierBadgePath(post.tier),
-                                  width: 28,
-                                  height: 28,
+                                  width: 20,
+                                  height: 20,
                                   errorBuilder: (context, error, stackTrace) {
-                                    return const SizedBox(width: 28, height: 28);
+                                    return const SizedBox(width: 20, height: 20);
                                   },
                                 ),
                               ),
@@ -934,7 +972,7 @@ class _ProfileScreenState extends State<ProfileScreen> with WidgetsBindingObserv
                                 style: const TextStyle(
                                   color: Colors.black,
                                   fontWeight: FontWeight.w900,
-                                  fontSize: 14,
+                                  fontSize: 15,
                                 ),
                                 overflow: TextOverflow.ellipsis,
                               ),

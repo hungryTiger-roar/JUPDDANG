@@ -4,6 +4,7 @@ import '../data/raid_service.dart';
 import '../../../widgets/pixel_character.dart';
 import '../../../widgets/animated_boss_widget.dart';
 import '../../../core/utils/tier_utils.dart';
+import '../../ranking/data/ranking_service.dart';
 
 class BossDetailScreen extends StatefulWidget {
   final int bossId;
@@ -18,12 +19,30 @@ class BossDetailScreen extends StatefulWidget {
 
 class _BossDetailScreenState extends State<BossDetailScreen> {
   final RaidService _raidService = RaidService();
+  final RankingService _rankingService = RankingService();
   late Future<RaidDetailModel?> _detailFuture;
+  Set<String> _totalTop3UserIds = {}; // 누적 랭킹 top 3 userId 저장
 
   @override
   void initState() {
     super.initState();
+    _loadTopRanking(); // 누적 랭킹 top 3 로드
     _loadBossDetail();
+  }
+
+  // 누적 랭킹 top 3 userId 로드
+  Future<void> _loadTopRanking() async {
+    try {
+      final totalRanking = await _rankingService.getTotalRanking();
+      setState(() {
+        _totalTop3UserIds = totalRanking.topRankers
+            .take(3)
+            .map((ranker) => ranker.userId)
+            .toSet();
+      });
+    } catch (e) {
+      print('❌ Failed to fetch total ranking for legend badges: $e');
+    }
   }
 
   void _loadBossDetail() {
@@ -305,7 +324,9 @@ class _BossDetailScreenState extends State<BossDetailScreen> {
                       Padding(
                         padding: const EdgeInsets.only(right: 4),
                         child: Image.asset(
-                          TierUtils.getTierBadgePath(ranker.tier),
+                          _totalTop3UserIds.contains(ranker.userId)
+                              ? TierUtils.getTierBadgePath('legend')
+                              : TierUtils.getTierBadgePath(ranker.tier),
                           width: 28,
                           height: 28,
                           errorBuilder: (context, error, stackTrace) {

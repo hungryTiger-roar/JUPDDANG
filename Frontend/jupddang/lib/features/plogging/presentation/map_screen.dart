@@ -308,31 +308,81 @@ class _MapScreenState extends State<MapScreen> {
     if (widget.partyId != null) {
       _socketService.onActivitiesUpdated = (activities) {
         if (!mounted) return;
-        // 활동 업데이트 처리 (종료/시작 등)
-        // activities는 List<PartyActivity>이므로 각 멤버의 활동 확인
-        for (var activity in activities) {
-          if (activity.isCompleted && _phase != PloggingPhase.summary) {
-            _finishPlogging();
-            break;
+
+        try {
+          // Find Leader
+          final leader = activities.firstWhere(
+            (a) => a.userId == _party?.leaderId,
+            orElse: () => activities.first,
+          );
+
+          // If Leader status is COMPLETED (Published) -> Exit Party/Plogging
+          if (leader.isCompleted) {
+            debugPrint("✅ Leader finished (isCompleted=true) -> Exiting...");
+            _resetPlogging();
+            if (Navigator.of(context).canPop()) {
+              Navigator.of(context).pop(true);
+            }
+            return;
           }
+        } catch (e) {
+          debugPrint("Socket Error: $e");
+        }
+      };
+
+      // [New] 파티 종료 알림 수신
+      _socketService.onFinish = () {
+        if (!mounted) return;
+        debugPrint("🏁 Socket Finish Signal -> Stop Plogging");
+        // 리더가 보낸 종료 신호 -> 로컬도 종료
+        _finishPlogging();
+      };
+
+      // [New] 파티 완전 종료(Publish 후) 알림 수신
+      _socketService.onExit = () {
+        if (!mounted) return;
+        debugPrint("🚪 Socket Exit Signal -> Exit Screen");
+        _resetPlogging();
+        if (Navigator.of(context).canPop()) {
+          Navigator.of(context).pop(true);
         }
       };
 
       _socketService.onMemberLocationUpdate = (memberLocation) {
         if (!mounted) return;
+
+        bool needUpdate = false;
+
         setState(() {
-          // [Logic Change] Store all member locations
           _partyMemberLocations[memberLocation.userId] = memberLocation;
 
-          // If this is leader's location update appropriate state
+          if (memberLocation.occupyProgress >= 100 &&
+              memberLocation.currentH3Index != null) {
+            final h3Index = memberLocation.currentH3Index!;
+            // _occupiedGridsMap check
+            final currentOwner = _occupiedGridsMap[h3Index];
+
+            if (currentOwner == null ||
+                currentOwner.userId != memberLocation.userId) {
+              _occupiedGridsMap[h3Index] = OccupiedGrid(
+                id: h3Index,
+                userId: memberLocation.userId,
+                partyId: widget.partyId,
+                occupiedAt: DateTime.now(),
+              );
+              needUpdate = true;
+              debugPrint(
+                "🗺️ [Socket] ${memberLocation.userId} occupied $h3Index",
+              );
+            }
+          }
+
           if (_party != null && memberLocation.userId == _party!.leaderId) {
             _leaderLocation = memberLocation;
             if (!_isLeader) {
               _occupyProgress = memberLocation.occupyProgress;
               _currentH3Index = memberLocation.currentH3Index;
-              _updateHexagons(_mapController.camera.visibleBounds);
-
-              // [Added] Move camera to leader's location
+              needUpdate = true;
               _mapController.move(
                 LatLng(memberLocation.lat, memberLocation.lon),
                 15.0,
@@ -340,6 +390,10 @@ class _MapScreenState extends State<MapScreen> {
             }
           }
         });
+
+        if (needUpdate) {
+          _updateHexagons(_mapController.camera.visibleBounds);
+        }
       };
     }
 
@@ -541,7 +595,13 @@ class _MapScreenState extends State<MapScreen> {
       // 3시간 남은 시간 계산
       String? remainingTime;
       if (isLocked && !isMyLand) {
-        final unlockTime = grid.occupiedAt.add(const Duration(hours: 3));
+        // [Fix] 타임존 보정: 서버 시간이 UTC로 인식되어 미래로 계산될 경우 9시간(KST) 차감
+        DateTime calcTime = grid.occupiedAt;
+        if (calcTime.difference(DateTime.now()).inHours > 5) {
+          calcTime = calcTime.subtract(const Duration(hours: 9));
+        }
+
+        final unlockTime = calcTime.add(const Duration(hours: 3));
         final remaining = unlockTime.difference(DateTime.now());
         if (remaining.isNegative) {
           remainingTime = '점령 가능!';
@@ -578,9 +638,18 @@ class _MapScreenState extends State<MapScreen> {
     showDialog(
       context: context,
       builder: (ctx) => Dialog(
-        backgroundColor: Colors.transparent,
-        child: NesContainer(
-          padding: const EdgeInsets.all(20),
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(
+            color: isMyLand
+                ? Colors.green
+                : (isLocked ? Colors.red : Colors.orange),
+            width: 3,
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -595,69 +664,121 @@ class _MapScreenState extends State<MapScreen> {
                     color: isMyLand
                         ? Colors.green
                         : (isLocked ? Colors.red : Colors.orange),
-                    size: 24,
+                    size: 32,
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 12),
                   Text(
                     isMyLand ? '내 영토!' : '점령된 땅',
-                    style: const TextStyle(
-                      fontSize: 20,
+                    style: TextStyle(
+                      fontSize: 24,
                       fontWeight: FontWeight.bold,
-                      color: Colors.black,
+                      color: isMyLand ? Colors.green[800] : Colors.black87,
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 20),
 
               // 소유자 정보
               Container(
-                padding: const EdgeInsets.all(12),
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Colors.grey[100],
-                  borderRadius: BorderRadius.circular(8),
+                  color: Colors.grey[50],
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.grey[300]!),
                 ),
                 child: Column(
                   children: [
+                    // 점령자
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
+                        const Icon(Icons.person, color: Colors.blue, size: 24),
+                        const SizedBox(width: 12),
                         const Text(
-                          '👤 점령자:',
-                          style: TextStyle(fontWeight: FontWeight.bold),
+                          '점령자:',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black87,
+                          ),
                         ),
-                        Text(ownerId, style: const TextStyle(fontSize: 16)),
+                        const Spacer(),
+                        Text(
+                          ownerId,
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black,
+                          ),
+                        ),
                       ],
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 12),
+                    // 점령 시각
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text(
-                          '🕐 점령 시각:',
-                          style: TextStyle(fontWeight: FontWeight.bold),
+                        const Icon(
+                          Icons.access_time,
+                          color: Colors.grey,
+                          size: 24,
                         ),
+                        const SizedBox(width: 12),
+                        const Text(
+                          '점령 시각:',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black87,
+                          ),
+                        ),
+                        const Spacer(),
                         Text(
                           '${occupiedAt.month}/${occupiedAt.day} ${occupiedAt.hour.toString().padLeft(2, '0')}:${occupiedAt.minute.toString().padLeft(2, '0')}',
-                          style: const TextStyle(fontSize: 14),
+                          style: const TextStyle(
+                            fontSize: 16,
+                            color: Colors.black,
+                          ),
                         ),
                       ],
                     ),
                     if (!isMyLand && remainingTime != null) ...[
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 12),
                       Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        crossAxisAlignment: CrossAxisAlignment
+                            .start, // 텍스트가 길어져 줄바꿈 될 경우를 대비해 위쪽 정렬
                         children: [
-                          const Text(
-                            '⏰ 상태:',
-                            style: TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          Text(
-                            remainingTime,
-                            style: TextStyle(
-                              fontSize: 14,
+                          Padding(
+                            padding: const EdgeInsets.only(
+                              top: 2,
+                            ), // 텍스트와 높이 맞춤
+                            child: Icon(
+                              isLocked ? Icons.timer : Icons.check_circle,
                               color: isLocked ? Colors.red : Colors.green,
+                              size: 20, // 아이콘 크기 약간 축소
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          const Text(
+                            '상태:',
+                            style: TextStyle(
+                              fontSize: 15,
                               fontWeight: FontWeight.bold,
+                              color: Colors.black87,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            // 남은 공간을 꽉 채우도록 변경
+                            child: Text(
+                              remainingTime,
+                              style: TextStyle(
+                                fontSize: 13, // 폰트 크기 조절
+                                color: isLocked ? Colors.red : Colors.green,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: -0.5, // 자간을 좁혀서 더 많이 들어가게 함
+                              ),
+                              textAlign: TextAlign.end,
                             ),
                           ),
                         ],
@@ -666,32 +787,55 @@ class _MapScreenState extends State<MapScreen> {
                   ],
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 20),
 
               // 안내 메시지
-              Text(
-                isMyLand
-                    ? '🏆 이 땅은 당신의 영토입니다!'
-                    : (isLocked
-                          ? '🔒 3시간 보호막이 적용중입니다.'
-                          : '⚔️ 100m 이동하여 점령을 시도할 수 있습니다!'),
-                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                textAlign: TextAlign.center,
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(
+                  vertical: 12,
+                  horizontal: 16,
+                ),
+                decoration: BoxDecoration(
+                  color: isMyLand
+                      ? Colors.green[50]
+                      : (isLocked ? Colors.red[50] : Colors.orange[50]),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  isMyLand
+                      ? '🏆 이 땅은 당신의 영토입니다!'
+                      : (isLocked
+                            ? '🔒 3시간 보호막이 적용중입니다.'
+                            : '⚔️ 100m 이동하여 점령을 시도할 수 있습니다!'),
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: isMyLand
+                        ? Colors.green[800]
+                        : (isLocked ? Colors.red[800] : Colors.orange[800]),
+                  ),
+                  textAlign: TextAlign.center,
+                ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 20),
 
               // 닫기 버튼
               SizedBox(
                 width: double.infinity,
-                child: NesButton(
-                  type: NesButtonType.primary,
-                  onPressed: () => Navigator.pop(ctx),
-                  child: const Padding(
-                    padding: EdgeInsets.only(bottom: 4),
-                    child: Text(
-                      '확인',
-                      style: TextStyle(fontWeight: FontWeight.bold),
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: isMyLand ? Colors.green : Colors.blue,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
                     ),
+                  ),
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text(
+                    '확인',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                 ),
               ),
@@ -928,6 +1072,9 @@ class _MapScreenState extends State<MapScreen> {
     }
 
     _fetchStartAddress();
+
+    // [Added] 시작 시 현재 위치로 카메라 이동 (파티장: 내위치, 파티원: 리더위치)
+    _centerToCurrentLocation();
   }
 
   Future<void> _fetchStartAddress() async {
@@ -966,6 +1113,19 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   Future<void> _finishPlogging() async {
+    if (_phase == PloggingPhase.summary) return;
+
+    // [New] Party Leader notifies server
+    if (_isLeader && widget.partyId != null) {
+      // 1. Send Socket Signal (Fast & Reliable even without Backend restart)
+      _socketService.sendFinishSignal();
+
+      // 2. Send API Call (Log for debugging)
+      _authService.notifyPartyFinish(widget.partyId!).catchError((e) {
+        debugPrint("⚠️ API Error (Backend might not be restarted): $e");
+      });
+    }
+
     setState(() {
       _phase = PloggingPhase.summary;
       _sessionStopwatch.stop();
@@ -979,12 +1139,8 @@ class _MapScreenState extends State<MapScreen> {
       setState(() => _mapImage = captured);
     }
 
-    // 파티원은 자동 종료 후 이동
-    if (!_isLeader) {
-      Future.delayed(const Duration(seconds: 2), () {
-        if (mounted) Navigator.of(context).popUntil((route) => route.isFirst);
-      });
-    }
+    // 파티원은 Summary 화면 유지 (리더가 Publish 할 때까지 대기)
+    // [Deleted] 자동 종료 로직 제거
   }
 
   void _resetPlogging() {
@@ -1502,6 +1658,7 @@ class _MapScreenState extends State<MapScreen> {
           // if (_phase == PloggingPhase.idle) _buildPaletteButton(),
 
           // 4. Main Plogging Controls (Bottom)
+          // 4. Main Plogging Controls (Bottom)
           if (_isLeader) _buildBottomControls(),
 
           // 5. Summary Modal
@@ -1652,10 +1809,21 @@ class _MapScreenState extends State<MapScreen> {
     );
 
     // User Marker - 수달 GIF
-    if (_currentPosition != null) {
+    // [Mod] 파티 모드: 항상 리더 위치에 수달 표시 (모두가 리더 수달만 봄)
+    LatLng? otterPos;
+    if (_isLeader) {
+      otterPos = _currentPosition;
+    } else {
+      // 파티원은 리더 위치에 수달 표시
+      if (_leaderLocation != null) {
+        otterPos = LatLng(_leaderLocation!.lat, _leaderLocation!.lon);
+      }
+    }
+
+    if (otterPos != null) {
       markers.add(
         Marker(
-          point: _currentPosition!,
+          point: otterPos,
           width: 64,
           height: 64,
           child: AnimatedOtterMarker(size: 64, isMoving: _isPlogging),
@@ -1663,30 +1831,7 @@ class _MapScreenState extends State<MapScreen> {
       );
     }
 
-    // [Changed] Render all party members (except me)
-    _partyMemberLocations.forEach((userId, loc) {
-      if (userId == (AuthService.userId ?? '')) return; // Skip myself
-
-      markers.add(
-        Marker(
-          point: LatLng(loc.lat, loc.lon),
-          width: 48,
-          height: 48,
-          child: Column(
-            children: [
-              // Show star for leader
-              if (_party?.leaderId == userId)
-                const Icon(Icons.stars, color: Colors.amber, size: 20),
-              PixelCharacter(
-                size: 32,
-                color: _getColorForUser(userId),
-                isMoving: true,
-              ),
-            ],
-          ),
-        ),
-      );
-    });
+    // [Deleted] 파티원 개별 마커 렌더링 로직 제거 (요청사항: 수달 하나만 표시)
 
     // Status Label
     if (_shouldShowStatusLabel()) {
@@ -2027,7 +2172,6 @@ class _MapScreenState extends State<MapScreen> {
       child: Center(
         child: SingleChildScrollView(
           child: Padding(
-            // [UX Fix] Add padding for keyboard
             padding: EdgeInsets.fromLTRB(
               32.0,
               32.0,
@@ -2045,6 +2189,7 @@ class _MapScreenState extends State<MapScreen> {
                       fontSize: 24,
                       fontWeight: FontWeight.w900,
                       letterSpacing: 2,
+                      color: Colors.black,
                     ),
                   ),
                   const SizedBox(height: 24),
@@ -2064,87 +2209,120 @@ class _MapScreenState extends State<MapScreen> {
                       _summaryStat(Pixel.coin, "$_coinsGained", "POINT"),
                     ],
                   ),
-                  // 파티 모드일 때 보너스 점수 상세 표시
-                  if (widget.partyId != null) ...[
+
+                  // [Mod] 파티원 분기 처리
+                  if (widget.partyId != null && !_isLeader) ...[
+                    const SizedBox(height: 48),
+                    const Icon(
+                      Icons.timer_outlined,
+                      size: 64,
+                      color: Colors.black54,
+                    ),
+                    const SizedBox(height: 24),
+                    const Text(
+                      "파티장이 기록 작성 중입니다!",
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.black,
+                      ),
+                    ),
                     const SizedBox(height: 16),
-                    _buildPartyBonusInfo(),
+                    const Text(
+                      "파티장이 입력을 완료하고 게시하면\n자동으로 종료됩니다.",
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 15,
+                        color: Colors.black87,
+                        height: 1.4,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 48),
+                  ] else ...[
+                    // 리더 UI (기존 내용 복원)
+                    if (widget.partyId != null) ...[
+                      const SizedBox(height: 16),
+                      _buildPartyBonusInfo(),
+                    ],
+                    const SizedBox(height: 32),
+                    if (_startAddress != null)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 20),
+                        child: Text(
+                          "START: $_startAddress",
+                          style: const TextStyle(
+                            fontSize: 10,
+                            color: Colors.grey,
+                          ),
+                        ),
+                      ),
+
+                    _summaryLabel("DESCRIPTION"),
+                    TextField(
+                      controller: _descriptionController,
+                      maxLines: 3,
+                      style: const TextStyle(fontSize: 12, color: Colors.black),
+                      decoration: _inputDeco("오늘의 줍킹은 어땠나요?"),
+                    ),
+                    const SizedBox(height: 24),
+
+                    _summaryLabel("MAP PHOTO"),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(child: _mapPhotoSlot("MAP", _mapImage)),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+
+                    _summaryLabel("BEFORE / AFTER PHOTOS"),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _photoSlot(
+                            "BEFORE",
+                            _beforeImage,
+                            () => _pickImage(true),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _photoSlot(
+                            "AFTER",
+                            _afterImage,
+                            () => _pickImage(false),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+
+                    _summaryLabel("RECORD NAME"),
+                    TextField(
+                      controller: _recordTitleController,
+                      style: const TextStyle(fontSize: 12, color: Colors.black),
+                      decoration: _inputDeco("ex) 한강 플로깅"),
+                    ),
+                    const SizedBox(height: 24),
+
+                    PixelButton(
+                      text: "PUBLISH RECORD",
+                      isGreen: false,
+                      color: _selectedGridColor,
+                      onPressed: _handlePublish,
+                    ),
+                    const SizedBox(height: 12),
+                    TextButton(
+                      onPressed: _handleTempSave,
+                      child: const Text(
+                        "SAVE TEMPORARILY",
+                        style: TextStyle(color: Colors.orange, fontSize: 10),
+                      ),
+                    ),
                   ],
-                  const SizedBox(height: 32),
-                  if (_startAddress != null)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 20),
-                      child: Text(
-                        "START: $_startAddress",
-                        style: const TextStyle(
-                          fontSize: 10,
-                          color: Colors.grey,
-                        ),
-                      ),
-                    ),
-
-                  _summaryLabel("DESCRIPTION"),
-                  TextField(
-                    controller: _descriptionController,
-                    maxLines: 3,
-                    style: const TextStyle(fontSize: 12, color: Colors.black),
-                    decoration: _inputDeco("오늘의 줍킹은 어땠나요?"),
-                  ),
-                  const SizedBox(height: 24),
-
-                  _summaryLabel("MAP PHOTO"),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(child: _mapPhotoSlot("MAP", _mapImage)),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-
-                  _summaryLabel("BEFORE / AFTER PHOTOS"),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _photoSlot(
-                          "BEFORE",
-                          _beforeImage,
-                          () => _pickImage(true),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _photoSlot(
-                          "AFTER",
-                          _afterImage,
-                          () => _pickImage(false),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-
-                  _summaryLabel("RECORD NAME"),
-                  TextField(
-                    controller: _recordTitleController,
-                    style: const TextStyle(fontSize: 12, color: Colors.black),
-                    decoration: _inputDeco("ex) 한강 플로깅"),
-                  ),
-                  const SizedBox(height: 24),
-
-                  PixelButton(
-                    text: "PUBLISH RECORD",
-                    isGreen: false,
-                    color: _selectedGridColor,
-                    onPressed: _handlePublish,
-                  ),
-                  const SizedBox(height: 12),
-                  TextButton(
-                    onPressed: _handleTempSave,
-                    child: const Text(
-                      "SAVE TEMPORARILY",
-                      style: TextStyle(color: Colors.orange, fontSize: 10),
-                    ),
-                  ),
                 ],
               ),
             ),
@@ -2153,10 +2331,6 @@ class _MapScreenState extends State<MapScreen> {
       ),
     );
   }
-
-  // ==========================================
-  // Summary Handlers
-  // ==========================================
 
   Future<void> _handlePublish() async {
     if (AuthService.accessToken == null)
@@ -2188,7 +2362,11 @@ class _MapScreenState extends State<MapScreen> {
     try {
       // 🎯 점령한 헥사곤 목록 수집 (이번 세션에서 점령한 것들)
       final capturedGridsList = _occupiedGridsMap.entries
-          .where((e) => e.value.userId == (AuthService.userId ?? ''))
+          .where(
+            (e) =>
+                e.value.userId == (AuthService.userId ?? '') ||
+                (widget.partyId != null && e.value.partyId == widget.partyId),
+          )
           .map((e) => e.key)
           .toList();
       debugPrint(
@@ -2214,6 +2392,9 @@ class _MapScreenState extends State<MapScreen> {
         mapImagePath: _mapImage!.path,
       );
 
+      if (_isLeader && widget.partyId != null) {
+        _socketService.sendExitSignal();
+      }
       if (mounted) Navigator.pop(context);
       _snack("기록이 업로드되었습니다!");
       if (widget.onPloggingComplete != null) {
@@ -2291,12 +2472,17 @@ class _MapScreenState extends State<MapScreen> {
 
   Widget _summaryStat(IconData icon, String val, String label) => Column(
     children: [
-      Icon(icon, color: _selectedGridColor.withOpacity(0.9), size: 18),
+      Icon(icon, color: Colors.black87, size: 24),
+      const SizedBox(height: 4),
       Text(
         val,
-        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+        style: const TextStyle(
+          fontWeight: FontWeight.w900,
+          fontSize: 16,
+          color: Colors.black,
+        ),
       ),
-      Text(label, style: const TextStyle(color: Colors.grey, fontSize: 8)),
+      Text(label, style: const TextStyle(color: Colors.black54, fontSize: 10)),
     ],
   );
 
@@ -2518,17 +2704,33 @@ class _MapScreenState extends State<MapScreen> {
     final h3 = _displayCurrentH3Index;
     if (h3 == null) return Colors.grey;
 
-    // Check if occupied or in progress
-    final model = _visibleHexagonModels.firstWhere(
-      (m) => m.h3Index == h3,
-      orElse: () => HexagonModel(h3Index: h3, color: 0),
-    );
-    if (model.ownerId != null || _displayOccupyProgress > 0)
-      return _selectedGridColor;
-    return Colors.grey;
+    // Check if occupied
+    if (_occupiedGridsMap.containsKey(h3)) {
+      final grid = _occupiedGridsMap[h3]!;
+      final isMyLand =
+          grid.userId == (AuthService.userId ?? '') ||
+          (widget.partyId != null && grid.partyId == widget.partyId);
+
+      if (isMyLand) return Colors.green;
+      if (grid.isLocked) return Colors.red;
+    }
+
+    if (_displayOccupyProgress > 0) return _selectedGridColor;
+    return Colors.black;
   }
 
   String _getStatusLabel() {
+    final h3 = _displayCurrentH3Index;
+    if (h3 != null && _occupiedGridsMap.containsKey(h3)) {
+      final grid = _occupiedGridsMap[h3]!;
+      final isMyLand =
+          grid.userId == (AuthService.userId ?? '') ||
+          (widget.partyId != null && grid.partyId == widget.partyId);
+
+      if (isMyLand) return "우리 영토";
+      if (grid.isLocked) return "점령 불가!";
+    }
+
     if (_isLeader) {
       if (_currentH3Index == null) return "위치 확인 중";
       if (_occupyProgress > 0)

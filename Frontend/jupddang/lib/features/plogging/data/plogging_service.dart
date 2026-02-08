@@ -44,6 +44,15 @@ class PloggingService {
     }
   }
 
+  // [New] 파티 종료 알림
+  Future<void> notifyPartyFinish(int partyId) async {
+    try {
+      await _apiClient.dio.get('/v1/plogging/finish/$partyId');
+    } catch (e) {
+      print('Notify Party Finish Error: $e');
+    }
+  }
+
   // 플로깅 임시 저장
   Future<dynamic> savePloggingTemp({
     required TempPloggingRequest requestData,

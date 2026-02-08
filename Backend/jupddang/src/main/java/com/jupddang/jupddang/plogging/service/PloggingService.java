@@ -29,4 +29,5 @@ public interface PloggingService {
             MultipartFile after,
             MultipartFile map);
     List<PloggingTempDetailResponse> getTempPloggings(String userId);
+    void notifyPartyFinish(Long partyId);
 }

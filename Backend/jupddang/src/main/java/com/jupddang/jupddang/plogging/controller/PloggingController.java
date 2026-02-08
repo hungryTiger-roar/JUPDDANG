@@ -11,6 +11,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -23,6 +24,7 @@ import java.util.List;
 @RequestMapping("/api/v1/plogging")
 @RequiredArgsConstructor
 @Tag(name = "plogging api", description = "플로깅 관련 API")
+@Slf4j
 public class PloggingController {
 
         private final PloggingService ploggingService;
@@ -45,19 +47,27 @@ public class PloggingController {
                         @RequestPart("mapImage") @io.swagger.v3.oas.annotations.Parameter(description = "경로 지도 이미지") MultipartFile mapImage,
 
                         @AuthenticationPrincipal Account account) throws Exception {
-                // JSON String을 객체로 변환
-                PloggingEndRequest request = objectMapper.readValue(dataJson, PloggingEndRequest.class);
+                try {
+                    log.info("🔍 [endPlogging] 시작: userId={}, dataJson={}", account.getUserId(), dataJson);
+                    
+                    // JSON String을 객체로 변환
+                    PloggingEndRequest request = objectMapper.readValue(dataJson, PloggingEndRequest.class);
 
-                // 서비스 호출
-                PloggingResultResponse response = ploggingService.endPlogging(
-                                account.getUserId(),
-                                request,
-                                beforeImage,
-                                afterImage,
-                                mapImage);
+                    // 서비스 호출
+                    PloggingResultResponse response = ploggingService.endPlogging(
+                                    account.getUserId(),
+                                    request,
+                                    beforeImage,
+                                    afterImage,
+                                    mapImage);
 
-                // 결과 반환
-                return ResponseEntity.ok(response);
+                    // 결과 반환
+                    log.info("✅ [endPlogging] 성공: ploggingId={}", response.ploggingId());
+                    return ResponseEntity.ok(response);
+                } catch (Exception e) {
+                    log.error("❌ [endPlogging] 오류 발생: {}", e.getMessage(), e);
+                    throw e;
+                }
         }
 
         @PostMapping(value = "/temp", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -107,6 +117,14 @@ public class PloggingController {
 
         PloggingTempDetailResponse detail = ploggingService.getTempPloggingDetail(account.getUserId(), ploggingId);
         return ResponseEntity.ok(detail);
+    }
+
+    @GetMapping("/finish/{partyId}")
+    @Operation(summary = "파티 플로깅 종료 알림", description = "파티장이 종료 버튼을 눌렀을 때 파티원들에게 종료 알림을 보냅니다.")
+    public ResponseEntity<Void> finishPloggingParty(
+            @PathVariable Long partyId) {
+        ploggingService.notifyPartyFinish(partyId);
+        return ResponseEntity.ok().build();
     }
 
 }

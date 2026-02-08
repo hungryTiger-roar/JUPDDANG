@@ -42,6 +42,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.HashMap;
 
 @Service
 @Slf4j
@@ -358,7 +359,8 @@ public class PloggingServiceImpl implements PloggingService {
         int occupiedCount = capturedGrids.size();
         log.info("🎯 총 점령 그리드 수: {}", occupiedCount);
 
-        int ploggingScore = calculatePloggingScore(request.distance(), request.times(), occupiedCount);
+        // 파티 ID 추가 전달
+        int ploggingScore = calculatePloggingScore(request.distance(), request.times(), occupiedCount, request.partyId());
 
         Plogging savedPlogging = ploggingRepository.save(Plogging.builder()
                 .account(account)
@@ -440,12 +442,19 @@ public class PloggingServiceImpl implements PloggingService {
                 totalRaidScore);
     }
 
-    private int calculatePloggingScore(Double distance, Integer times, int occupiedCount) {
+    private int calculatePloggingScore(Double distance, Integer times, int occupiedCount, Long partyId) {
         int distanceScore = (distance != null) ? (int) (distance * 10) : 0;
         int timeScore = (times != null) ? (times / 60) : 0;
         int gridScore = occupiedCount * 5;
 
         int totalScore = distanceScore + timeScore + gridScore;
+        
+        // 🎯 파티 보너스: 파티 ID가 존재하면 20% 추가 점수
+        if (partyId != null && partyId > 0) {
+            int bonus = (int) (totalScore * 0.2);
+            log.info("🎉 파티 보너스 적용: 기본={}점 + 보너스={}점", totalScore, bonus);
+            totalScore += bonus;
+        }
 
         log.debug("점수 계산: distance={}km({}점), times={}초({}점), grids={}개({}점) => 총 {}점",
                 distance, distanceScore, times, timeScore, occupiedCount, gridScore, totalScore);
@@ -670,6 +679,14 @@ public class PloggingServiceImpl implements PloggingService {
                         p.getContent(),
                         p.getCreatedAt()))
                 .toList();
+    }
+
+    @Override
+    public void notifyPartyFinish(Long partyId) {
+        Map<String, Object> message = new HashMap<>();
+        message.put("type", "FINISH");
+        message.put("partyId", partyId);
+        messagingTemplate.convertAndSend("/sub/party/" + partyId + "/finish", message);
     }
 
 }

@@ -161,6 +161,9 @@ class AuthService {
   Future<List<PloggingTempDetailResponse>> getTempPloggings() =>
       _ploggingService.getTempPloggings();
 
+  Future<void> notifyPartyFinish(int partyId) =>
+      _ploggingService.notifyPartyFinish(partyId);
+
   // --- Legacy Support ---
   Future<List<dynamic>> getAccounts() async => []; // 사용처 거의 없음
   Future<Map<String, dynamic>> searchUser(String targetId) =>
